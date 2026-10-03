@@ -1670,6 +1670,44 @@
                   />
                 </div>
                 <div class="sm:col-span-2">
+                  <label class="input-label">{{ t('admin.accounts.tempUnschedulable.scope') }}</label>
+                  <div
+                    class="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                    role="radiogroup"
+                    :aria-label="t('admin.accounts.tempUnschedulable.scope')"
+                  >
+                    <button
+                      v-for="option in tempUnschedScopeOptions"
+                      :key="option.value"
+                      type="button"
+                      role="radio"
+                      :aria-checked="rule.scope === option.value"
+                      :data-testid="`temp-unsched-scope-${option.value}`"
+                      @click="rule.scope = option.value"
+                      :class="[
+                        'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all',
+                        rule.scope === option.value
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                          : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600'
+                      ]"
+                    >
+                      <span
+                        :class="[
+                          'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2',
+                          rule.scope === option.value ? 'border-primary-500' : 'border-gray-300 dark:border-dark-500'
+                        ]"
+                      >
+                        <span v-if="rule.scope === option.value" class="h-1.5 w-1.5 rounded-full bg-primary-500" />
+                      </span>
+                      <span>
+                        <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ option.label }}</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ option.description }}</span>
+                      </span>
+                    </button>
+                  </div>
+                  <p class="input-hint">{{ t('admin.accounts.tempUnschedulable.scopeHint') }}</p>
+                </div>
+                <div class="sm:col-span-2">
                   <label class="input-label">{{ t('admin.accounts.tempUnschedulable.keywords') }}</label>
                   <input
                     v-model="rule.keywords"
@@ -3421,7 +3459,8 @@ import type {
   GrokMediaEligibilityMode,
   GrokMediaEligibilityState,
   OpenCodeGoUsageState,
-  OpenCodeGoUsageWindow
+  OpenCodeGoUsageWindow,
+  TempUnschedulableScope
 } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
@@ -3701,6 +3740,8 @@ interface TempUnschedRuleForm {
   keywords: string
   duration_minutes: number | null
   description: string
+  // 作用范围：account 暂停整个账号，model 只冷却本次请求的模型。
+  scope: TempUnschedulableScope
 }
 
 // State
@@ -4383,6 +4424,19 @@ const openAICompactStatusKey = computed(() => {
 
 // Computed: current preset mappings based on platform
 const presetMappings = computed(() => getPresetMappingsByPlatform(props.account?.platform || 'anthropic'))
+const tempUnschedScopeOptions = computed<Array<{ value: TempUnschedulableScope; label: string; description: string }>>(() => [
+  {
+    value: 'model',
+    label: t('admin.accounts.tempUnschedulable.scopeModel'),
+    description: t('admin.accounts.tempUnschedulable.scopeModelDesc')
+  },
+  {
+    value: 'account',
+    label: t('admin.accounts.tempUnschedulable.scopeAccount'),
+    description: t('admin.accounts.tempUnschedulable.scopeAccountDesc')
+  }
+])
+
 const tempUnschedPresets = computed(() => [
   {
     label: t('admin.accounts.tempUnschedulable.presets.overloadLabel'),
@@ -4390,7 +4444,8 @@ const tempUnschedPresets = computed(() => [
       error_code: 529,
       keywords: 'overloaded, too many',
       duration_minutes: 60,
-      description: t('admin.accounts.tempUnschedulable.presets.overloadDesc')
+      description: t('admin.accounts.tempUnschedulable.presets.overloadDesc'),
+      scope: 'model' as const
     }
   },
   {
@@ -4399,7 +4454,8 @@ const tempUnschedPresets = computed(() => [
       error_code: 429,
       keywords: 'rate limit, too many requests',
       duration_minutes: 10,
-      description: t('admin.accounts.tempUnschedulable.presets.rateLimitDesc')
+      description: t('admin.accounts.tempUnschedulable.presets.rateLimitDesc'),
+      scope: 'model' as const
     }
   },
   {
@@ -4408,7 +4464,8 @@ const tempUnschedPresets = computed(() => [
       error_code: 503,
       keywords: 'unavailable, maintenance',
       duration_minutes: 30,
-      description: t('admin.accounts.tempUnschedulable.presets.unavailableDesc')
+      description: t('admin.accounts.tempUnschedulable.presets.unavailableDesc'),
+      scope: 'model' as const
     }
   }
 ])
@@ -5208,7 +5265,8 @@ const addTempUnschedRule = (preset?: TempUnschedRuleForm) => {
     error_code: null,
     keywords: '',
     duration_minutes: 30,
-    description: ''
+    description: '',
+    scope: 'model'
   })
 }
 
@@ -5231,6 +5289,7 @@ const buildTempUnschedRules = (rules: TempUnschedRuleForm[]) => {
     keywords: string[]
     duration_minutes: number
     description: string
+    scope: TempUnschedulableScope
   }> = []
 
   for (const rule of rules) {
@@ -5250,7 +5309,8 @@ const buildTempUnschedRules = (rules: TempUnschedRuleForm[]) => {
       error_code: Math.trunc(errorCode),
       keywords,
       duration_minutes: Math.trunc(duration),
-      description: rule.description.trim()
+      description: rule.description.trim(),
+      scope: rule.scope
     })
   }
 
@@ -5348,11 +5408,13 @@ function loadTempUnschedRules(credentials?: Record<string, unknown>) {
 
   tempUnschedRules.value = rawRules.map((rule) => {
     const entry = rule as Record<string, unknown>
+    const errorCode = toPositiveNumber(entry.error_code)
     return {
-      error_code: toPositiveNumber(entry.error_code),
+      error_code: errorCode,
       keywords: formatTempUnschedKeywords(entry.keywords),
       duration_minutes: toPositiveNumber(entry.duration_minutes),
-      description: typeof entry.description === 'string' ? entry.description : ''
+      description: typeof entry.description === 'string' ? entry.description : '',
+      scope: resolveTempUnschedScope(entry.scope, errorCode)
     }
   })
 }
@@ -5458,6 +5520,16 @@ function formatTempUnschedKeywords(value: unknown) {
     return value
   }
   return ''
+}
+
+// 未设置 scope 的规则由后端按「401 账号级、其余模型级」处理，这里按同一规则回显，
+// 保证打开再保存不改变规则行为。
+function resolveTempUnschedScope(value: unknown, errorCode: number | null): TempUnschedulableScope {
+  const scope = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  if (scope === 'account' || scope === 'model') {
+    return scope
+  }
+  return errorCode === 401 ? 'account' : 'model'
 }
 
 const splitTempUnschedKeywords = (value: string) => {
