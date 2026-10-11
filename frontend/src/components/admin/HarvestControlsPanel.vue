@@ -24,9 +24,6 @@
           <label class="mb-3 block text-sm">{{ t('admin.harvestFlow.transportLabel') }}
             <select v-model="draft.transport" class="input mt-2 max-w-xs"><option value="sse">SSE</option><option value="websocket">WebSocket</option></select>
           </label>
-          <label class="block text-sm">{{ t('admin.harvestFlow.gatewayLabel') }}
-            <input v-model="draft.target_gateway" data-testid="target-gateway" class="input mt-2 max-w-xs" placeholder="unified-88 / any" required />
-          </label>
           <p class="mt-2 text-xs text-gray-500">{{ t('admin.harvestFlow.gatewayHint') }}</p>
           <p class="mt-2 text-xs text-gray-500">{{ t('admin.harvestFlow.nativeHint') }}</p>
         </div>

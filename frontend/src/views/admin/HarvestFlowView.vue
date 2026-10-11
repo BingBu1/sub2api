@@ -395,6 +395,11 @@ function stageDetail(stage: CodexHarvestFlowStage) {
       return resultLabel(stage.detail) || stage.node || stage.detail || t('admin.harvestFlow.idleProbe')
     case 'shape':
       if (stage.status === 'idle') return t('admin.harvestFlow.idleShape')
+      if (stage.detail === 'probe_verified') return t('admin.harvestFlow.probeVerified')
+      if (stage.expected_length === 780 || stage.length === 780) {
+        if (stage.detail === 'probe_reissued' || stage.detail === 'probe_route_changed') return resultLabel(stage.detail)
+        return t('admin.harvestFlow.probeIncomplete')
+      }
       if (stage.detail === 'ticket shape matches; validation incomplete') {
         return t('admin.harvestFlow.shapeValidationIncomplete', { length: stage.length || 0, blocks: stage.blocks || 0 })
       }

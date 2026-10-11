@@ -287,7 +287,7 @@ func recordCodexHarvestNode(now, groupType string, allCount int) {
 	})
 }
 
-func recordCodexHarvestProbe(account *Account, model, result, node, detail string, httpStatus, length, blocks, expectedLength, expectedBlocks int) {
+func recordCodexHarvestProbe(account *Account, model, result, node, detail string, httpStatus, length, blocks, expectedLength, expectedBlocks int, verified ...bool) {
 	kind := "probe_miss"
 	if result == "success" {
 		kind = "probe_hit"
@@ -306,6 +306,11 @@ func recordCodexHarvestProbe(account *Account, model, result, node, detail strin
 		Result:         result,
 		Detail:         detail,
 	}
+	if result == "success" && len(verified) > 0 && verified[0] {
+		// Reason is persisted by the existing event schema. Old shape-only hits
+		// have no marker and cannot become successful probes after a restart.
+		event.Reason = "probe_verified"
+	}
 	if result != "success" {
 		message, _, _ := describeCodexHarvestOutcome(result, detail, httpStatus, length, blocks, expectedLength, expectedBlocks, model, node)
 		event.Detail = message
@@ -315,7 +320,11 @@ func recordCodexHarvestProbe(account *Account, model, result, node, detail strin
 		}
 		event.Reason = result
 	} else if strings.TrimSpace(detail) == "" && length > 0 {
-		event.Detail = fmt.Sprintf("合格门票 %d 字节 / %d 块", length, blocks)
+		if event.Reason == "probe_verified" {
+			event.Detail = "探针校验通过：完整续接，原票未重签"
+		} else {
+			event.Detail = fmt.Sprintf("合格门票 %d 字节 / %d 块", length, blocks)
+		}
 	}
 	if account != nil {
 		event.AccountID = account.ID
@@ -803,7 +812,7 @@ func BuildCodexHarvestFlow(ctx context.Context, cfg *config.Config, settings *Se
 		}
 		for i := range item.Tickets {
 			ticket := &item.Tickets[i]
-			if ticket.Length == 780 && (ticket.Transport != policy.Transport || !codex780GatewayAllowed(ticket.Gateway, policy.TargetGateway)) {
+			if ticket.Length == 780 && ticket.Transport != policy.Transport {
 				ticket.Ready = false
 				ticket.RemainingSeconds = 0
 				ticket.ExpiresAt = nil
@@ -965,6 +974,21 @@ func buildCodexHarvestFlowStages(snapshot CodexHarvestFlowSnapshot) []CodexHarve
 }
 
 func shapeStageFromEvents(last map[string]CodexHarvestFlowEvent, ready int) CodexHarvestFlowStage {
+	// Keep the stage ID for API compatibility. Native tickets are now admitted
+	// by the completed continuation probe, never by their length or an old hit.
+	latestProbe := last["probe"]
+	if latestProbe.ExpectedLength == 780 || latestProbe.Length == 780 {
+		stage := CodexHarvestFlowStage{ID: "shape", Status: "warn", Detail: latestProbe.Result, Model: latestProbe.Model}
+		at := latestProbe.At
+		stage.At = &at
+		copyFlowMetrics(&stage, latestProbe)
+		if latestProbe.Kind == "probe_hit" && latestProbe.Result == "success" && latestProbe.Reason == "probe_verified" {
+			stage.Status, stage.Detail = "ok", "probe_verified"
+		} else if latestProbe.Result == "probe_reissued" || latestProbe.Result == "probe_route_changed" || latestProbe.Result == "invalid_state" {
+			stage.Status = "fail"
+		}
+		return stage
+	}
 	shape := CodexHarvestFlowStage{ID: "shape", Status: "idle", Detail: "waiting for ticket validation"}
 	latest := last["probe"]
 	hit := last["probe:probe_hit"]
@@ -1057,6 +1081,14 @@ func copyFlowMetrics(stage *CodexHarvestFlowStage, event CodexHarvestFlowEvent) 
 }
 
 func describeCodexHarvestOutcome(kind, raw string, status, length, blocks, expectedLen, expectedBlk int, model, node string) (message, level, detail string) {
+	switch kind {
+	case "probe_reissued":
+		return "探针续接返回新票，原票未通过校验 → 换节点重试", "WARN", "ticket probe reissued"
+	case "probe_route_changed":
+		return "探针续接更换了路由，原票未通过校验", "WARN", "ticket probe route changed"
+	case "probe_inconclusive":
+		return "探针未完成，门票未入库（请检查剩余请求预算）", "WARN", "ticket probe incomplete"
+	}
 	if kind == "model_mismatch" {
 		_, _, detail = describeCodexProbeFailure(raw, status, model, node)
 		return "上游模型声明与请求不一致，门票未入库", "WARN", detail
@@ -1069,6 +1101,9 @@ func describeCodexHarvestOutcome(kind, raw string, status, length, blocks, expec
 		detailParts := []string{fmt.Sprintf("len=%d blk=%d", length, blocks)}
 		if node != "" {
 			detailParts = append(detailParts, "node="+node)
+		}
+		if expectedLen == 780 {
+			return "探针校验通过：完整续接，原票未重签", "OK", strings.Join(detailParts, " · ")
 		}
 		return fmt.Sprintf("成功捕获合规门票（%d 字节 / %d 块）", length, blocks), "OK", strings.Join(detailParts, " · ")
 	}

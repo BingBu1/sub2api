@@ -49,6 +49,19 @@ function response() {
 }
 
 describe('HarvestFlowView nullable API lists', () => {
+  it.each([
+    ['probe_verified', 'ok', 'admin.harvestFlow.probeVerified'],
+    ['780 / 33 blk', 'ok', 'admin.harvestFlow.probeIncomplete'],
+    ['probe_reissued', 'fail', 'probe_reissued']
+  ])('renders probe evidence for %s without treating shape as success', async (detail, status, expected) => {
+    getFlow.mockResolvedValue({ ...response(), stages: [{ id: 'shape', status, detail, length: 780, blocks: 33, expected_length: 780 }] })
+    const wrapper = mount(HarvestFlowView, { global: { stubs: { Icon: true, LoadingSpinner: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.text()).toContain(expected)
+      expect(wrapper.text()).not.toContain('admin.harvestFlow.shapeOk')
+    } finally { wrapper.unmount() }
+  })
   it('shows a route failure without claiming the 780 body is missing or malformed', async () => {
     getFlow.mockResolvedValue({
       ...response(),
@@ -58,7 +71,7 @@ describe('HarvestFlowView nullable API lists', () => {
     const wrapper = mount(HarvestFlowView, { global: { stubs: { Icon: true, LoadingSpinner: true } } })
     try {
       await flushPromises()
-      expect(wrapper.text()).toContain('admin.harvestFlow.shapeValidationIncomplete 780 33')
+      expect(wrapper.text()).toContain('admin.harvestFlow.probeIncomplete')
       expect(wrapper.text()).toContain('route_cflb_missing')
       expect(wrapper.text()).not.toContain('admin.harvestFlow.shapeNoBody')
       expect(wrapper.text()).not.toContain('admin.harvestFlow.shapeBad')

@@ -2,13 +2,15 @@ export default {
   harvestFlow: {
     transportLabel: 'Mint transport',
     edgeLabel: 'Edge IP (optional)',
-    edgeHint: 'Dial this public IP while keeping chatgpt.com Host, TLS SNI and certificate verification. Leave empty for DNS. Edge IP and Cookie gateway are separate selections.',
+    edgeHint: 'Dial this public IP while keeping chatgpt.com Host, TLS SNI and certificate verification. Leave empty for DNS. The edge IP controls the connection, not probe admission.',
     gatewayLabel: 'Target routing gateway',
-    gatewayHint: 'Defaults to unified-88; accepts 88, unified_88 or a full host. Use any for any valid gateway. Valid routes survive model mismatches until cookie expiry; gateway and model declarations do not prove capability.',
+    gatewayHint: 'Admission uses the target account’s probe result, not a datacenter host. Each exit mints a fresh ticket, then completes a continuation with that ticket and its route cookies. Store only if neither ticket nor route changes.',
     shapeValidationIncomplete: 'Ticket {length}/{blocks} matches the target length and block count, but full validation did not pass; see probe details',
-    nativeHint: 'Native server minting through the existing harvest proxy; no cloud function. 780 is a format length, with a maximum ticket age of 240 seconds. Gateway and model declarations do not prove capability. Mint transport must match the upstream request transport; switching discards tickets from the previous transport.',
+    nativeHint: 'Mint and continuation use the same account, directed exit and transport. Both requests consume the shared budget. Length, HTTP 101 and model declarations do not prove probe success. This short probe is not a full quality test. Maximum ticket age remains 240 seconds; changing transport requires new validation.',
+    probeVerified: 'Continuation completed · original ticket retained · route unchanged',
+    probeIncomplete: 'Probe failed or incomplete; length and handshake success are not acceptance evidence',
     title: 'Ticket Harvest Flow',
-    description: 'Node rotate → harvest probe → 780 shape check → ticket store → account select',
+    description: 'Node rotation → target account mint → probe validation → ticket store → account selection',
     externalProxy: 'Static / external proxy',
     externalProxyHint: 'Node rotation is managed by the proxy provider; no local sidecar is required.',
     proxyUnconfigured: 'Harvest proxy not configured',
@@ -48,7 +50,7 @@ export default {
     waitingSidecar: 'Waiting for sidecar',
     poolOnline: 'Load-balance · {n} nodes',
     idleProbe: 'Waiting for harvest probe',
-    idleShape: 'Waiting for 780 check',
+    idleShape: 'Waiting for probe validation',
     idleTicket: 'No stored ticket',
     cookies: { none: 'No cookies', active: '{count} cookies · {time} left', expired: '{count} cookies · expired' },
     idleSelect: 'Waiting for assistant request',
@@ -63,7 +65,7 @@ export default {
     ticketStored: 'Stored',
     schedulable: 'Schedulable',
     unschedulable: 'Not schedulable',
-    noEvents: 'No flow events yet. This page records node rotation, harvest probes, 780 checks, ticket storage, and account selection.',
+    noEvents: 'No flow events yet. This page records node rotation, target account minting, probe validation, ticket storage, and account selection.',
     noAccounts: 'No ChatGPT OAuth accounts eligible for harvest',
     events: 'Flow events',
     accounts: 'Ticket accounts',
@@ -75,7 +77,7 @@ export default {
     durationMinutes: '{minutes}m',
     durationSeconds: '{seconds}s',
     lastProbe: 'Last probe {time}',
-    blocked: 'No 780 ticket; this model is paused',
+    blocked: 'No probe-verified ticket; this model is paused',
     missing: 'No valid ticket',
     standby: 'Standby',
     skipHarvest: 'Skip harvest',
@@ -107,7 +109,7 @@ export default {
     console: {
       collectLanes: 'Parallel lanes',
       parallelStart: 'Collect in parallel',
-      parallelHint: 'Lane count applies only to parallel collection. Requires managed Mihomo; independent exits share the attempt budget and stop after saving a ticket for each model. No fixed lane cap; concurrency is bounded by the remaining budget and eligible nodes. Nodes are not repeated within a collection; the next task resumes from the last position. Serial harvest uses the switch rule above.',
+      parallelHint: 'Lane count applies only to parallel collection. Requires managed Mihomo; independent exits share the attempt budget and stop after saving a ticket for each model. No fixed lane cap; each lane needs two requests for minting and verification, so concurrency is bounded by the remaining budget and eligible nodes. Nodes are not repeated within a collection; the next task resumes from the last position. Serial harvest uses the switch rule above.',
       title: 'Directed single-account harvest',
       description: 'Manually harvest one account. Node switches use the directed exit and node memory, not business rotation.',
       account: 'Account',
@@ -124,7 +126,7 @@ export default {
       rateLimitCooldown: '429 cooldown',
       rateLimitCooldownHint: '1–60 seconds',
       maxAttempts: 'Max attempts',
-      maxAttemptsHint: 'Positive integer with no fixed cap; shared across all models and lanes.',
+      maxAttemptsHint: 'Positive integer with no fixed cap; shared across all models and lanes. Mint and continuation each consume one request; full validation needs at least two.',
       invalidBudget: 'Attempts must be a positive integer; parallel lanes must be an integer of at least 2.',
       nodeSwitch: 'Node switch rule',
       nodeSwitchRules: {
@@ -158,7 +160,7 @@ export default {
     stages: {
       node: 'Node rotate',
       probe: 'Harvest probe',
-      shape: '780 check',
+      shape: 'Probe validation',
       ticket: 'Ticket store',
       select: 'Account select'
     },
@@ -170,7 +172,7 @@ export default {
     },
     kinds: {
       rotate: 'Rotate',
-      probe_hit: '780 hit',
+      probe_hit: 'Probe passed',
       probe_miss: 'Probe miss',
       accept: 'Ticket stored',
       reject: 'Ticket rejected',
@@ -180,7 +182,7 @@ export default {
       unavailable: 'Select failed'
     },
     reasons: {
-      ticket_unavailable: 'No valid 780 ticket for this model',
+      ticket_unavailable: 'No probe-verified ticket for this model',
       harvest_excluded: 'Out of harvest scope; leftover tickets are not spent',
       unavailable: 'No available account'
     },
@@ -232,6 +234,9 @@ export default {
       previous: 'Previous', next: 'Next', loadFailed: 'Could not load node records.', resetFailed: 'Reset failed. Records are unchanged.'
     },
     results: {
+      probe_reissued: 'Continuation reissued the ticket',
+      probe_route_changed: 'Probe route changed',
+      probe_inconclusive: 'Probe incomplete',
       success: 'Qualified ticket',
       network_error: 'Network error',
       upstream_error: 'Upstream error',
