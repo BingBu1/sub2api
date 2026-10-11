@@ -51,7 +51,7 @@ export default {
     idleShape: '等待探针校验',
     idleTicket: '暂无有效门票',
     cookies: { none: '无 Cookie', active: 'Cookie {count} 个 · 剩余 {time}', expired: 'Cookie {count} 个 · 已过期' },
-    idleSelect: '等待助手请求',
+    idleSelect: '等待号池调度',
     filterAll: '全部',
     ticketsReadyCount: '{n} 张有效',
     ticketsPausedCount: '{n} 个模型已暂停',
@@ -59,7 +59,7 @@ export default {
     ticketStored: '已入库',
     schedulable: '可调度',
     unschedulable: '不可调度',
-    noEvents: '还没有流程事件。打开本页后会记录节点轮换、目标账号自采、探针校验、门票入库和账号选中。',
+    noEvents: '还没有流程事件。打开本页后会记录节点轮换、目标账号自采、探针校验、门票入库和号池调度。',
     noAccounts: '没有可打票的 ChatGPT OAuth 账号',
     events: '流程事件',
     accounts: '门票账号',
@@ -155,7 +155,7 @@ export default {
       probe: '打票探测',
       shape: '探针校验',
       ticket: '门票入库',
-      select: '账号选中'
+      select: '号池调度'
     },
     status: {
       ok: '正常',
@@ -169,7 +169,7 @@ export default {
       probe_miss: '探测未中',
       accept: '门票入库',
       reject: '门票拒绝',
-      selected: '账号选中',
+      selected: '号池调度',
       skip: '账号跳过',
       failed: '选号失败',
       unavailable: '选号失败'

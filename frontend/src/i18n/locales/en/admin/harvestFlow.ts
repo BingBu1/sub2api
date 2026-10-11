@@ -51,7 +51,7 @@ export default {
     idleShape: 'Waiting for probe validation',
     idleTicket: 'No valid ticket',
     cookies: { none: 'No cookies', active: '{count} cookies · {time} left', expired: '{count} cookies · expired' },
-    idleSelect: 'Waiting for assistant request',
+    idleSelect: 'Waiting for pool scheduling',
     filterAll: 'All',
     ticketsReadyCount: '{n} ready',
     ticketsPausedCount: '{n} models paused',
@@ -59,7 +59,7 @@ export default {
     ticketStored: 'Stored',
     schedulable: 'Schedulable',
     unschedulable: 'Not schedulable',
-    noEvents: 'No flow events yet. This page records node rotation, target account minting, probe validation, ticket storage, and account selection.',
+    noEvents: 'No flow events yet. This page records node rotation, target account minting, probe validation, ticket storage, and pool scheduling.',
     noAccounts: 'No ChatGPT OAuth accounts eligible for harvest',
     events: 'Flow events',
     accounts: 'Ticket accounts',
@@ -155,7 +155,7 @@ export default {
       probe: 'Harvest probe',
       shape: 'Probe validation',
       ticket: 'Ticket store',
-      select: 'Account select'
+      select: 'Pool scheduling'
     },
     status: {
       ok: 'OK',
@@ -169,7 +169,7 @@ export default {
       probe_miss: 'Probe miss',
       accept: 'Ticket stored',
       reject: 'Ticket rejected',
-      selected: 'Account selected',
+      selected: 'Pool scheduled',
       skip: 'Account skipped',
       failed: 'Select failed',
       unavailable: 'Select failed'
