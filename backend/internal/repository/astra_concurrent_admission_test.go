@@ -36,6 +36,10 @@ func receiveAdmission(t *testing.T, results <-chan error) error {
 		return nil
 	}
 }
+
+func forceAstraProbe(req *http.Request) *http.Request {
+	return req.WithContext(context.WithValue(req.Context(), astraForceProbeKey{}, true))
+}
 func TestAstraConcurrentPreparationSharesResult(t *testing.T) {
 	for _, success := range []bool{true, false} {
 		t.Run(map[bool]string{true: "success", false: "failure"}[success], func(t *testing.T) {
@@ -102,16 +106,12 @@ func TestAstraConcurrentPreparationWaiterCancellation(t *testing.T) {
 	close(release)
 	require.NoError(t, receiveAdmission(t, leader))
 }
-func TestAstraConcurrentTargetValidationSharesProbe(t *testing.T) {
+func TestAstraConcurrentBusinessRequestsSkipTargetProbe(t *testing.T) {
 	s := concurrentAstraWrapper()
-	entered, release := make(chan struct{}), make(chan struct{})
 	var probes, business atomic.Int32
 	s.delegate = gatewayPinDelegate{call: func(r *http.Request, _ string, _ int64, _ int, _ *tlsfingerprint.Profile) (*http.Response, error) {
 		if service.IsOpenAICodexStateProbeRequest(r.Context()) {
-			if probes.Add(1) == 1 {
-				close(entered)
-				<-release
-			}
+			probes.Add(1)
 		} else {
 			business.Add(1)
 		}
@@ -126,22 +126,13 @@ func TestAstraConcurrentTargetValidationSharesProbe(t *testing.T) {
 		}
 		results <- err
 	}
-	go request()
-	<-entered
-	for range 4 {
+	for range 5 {
 		go request()
 	}
-	select {
-	case err := <-results:
-		close(release)
-		t.Fatalf("premature admission: %v", err)
-	case <-time.After(40 * time.Millisecond):
-	}
-	close(release)
 	for range 5 {
 		require.NoError(t, receiveAdmission(t, results))
 	}
-	require.EqualValues(t, 2, probes.Load(), "one two-shot validation for the same identity")
+	require.Zero(t, probes.Load(), "business requests must not run target probes")
 	require.EqualValues(t, 5, business.Load(), "each business request is sent exactly once")
 }
 func TestAstraTargetWaitCancellationAndRouteChange(t *testing.T) {
@@ -160,13 +151,17 @@ func TestAstraTargetWaitCancellationAndRouteChange(t *testing.T) {
 			seedConcurrentAstraRoute(t, s, "old")
 			pool := s.current(t.Context())
 			leader := make(chan error, 1)
-			go func() { _, _, _, done, err := s.targetRouteOnce(pinRequest(t), "", 300, 1, nil); done(); leader <- err }()
+			go func() {
+				_, _, _, done, err := s.targetRouteOnce(forceAstraProbe(pinRequest(t)), "", 300, 1, nil)
+				done()
+				leader <- err
+			}()
 			<-entered
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			follower := make(chan error, 1)
 			go func() {
-				_, _, _, done, err := s.targetRouteOnce(pinRequest(t).WithContext(ctx), "", 300, 1, nil)
+				_, _, _, done, err := s.targetRouteOnce(forceAstraProbe(pinRequest(t).WithContext(ctx)), "", 300, 1, nil)
 				done()
 				follower <- err
 			}()
@@ -237,7 +232,7 @@ func TestAstraTargetWaitDeadlineReleasesNodeLease(t *testing.T) {
 	defer pool.targetProbeMu.Unlock()
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
-	_, _, _, release, err := s.targetRouteOnce(rotationTarget(t).WithContext(ctx), "", 300, 1, nil)
+	_, _, _, release, err := s.targetRouteOnce(forceAstraProbe(rotationTarget(t).WithContext(ctx)), "", 300, 1, nil)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.Zero(t, *leases, "expired waiter releases the pinned exit")
 	release()

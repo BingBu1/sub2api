@@ -98,7 +98,7 @@ func TestAstraProbeTransportFailureRevokesExistingPass(t *testing.T) {
 	}}
 	resp, err := wrapper.Do(pinRequest(t), "", 299, 1)
 	consumeAffinityResponse(t, resp, err)
-	resp, err = wrapper.Do(pinRequest(t), "", 300, 1)
+	resp, err = wrapper.Do(forceAstraProbe(pinRequest(t)), "", 300, 1)
 	consumeAffinityResponse(t, resp, err)
 	require.Equal(t, 1, wrapper.AstraGatewaySnapshot(t.Context()).ReadyRoutes)
 	fail = true

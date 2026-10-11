@@ -92,6 +92,7 @@ func (s *AccountTestService) syncAstraAccountScheduling(ctx context.Context) {
 			}
 		}
 		astraRecentScheduling.add(AstraSchedulingRecord{CheckedAt: time.Now(), AccountID: id, Schedulable: ready, Reason: reason, Mode: action.Action})
+		recordCodexHarvestScheduling(account, action.Action, reason, ready)
 	}
 }
 

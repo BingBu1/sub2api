@@ -1,5 +1,5 @@
 <template>
-  <section class="card overflow-visible p-5" aria-labelledby="harvest-console-title">
+  <section :class="embedded ? 'border-t border-gray-100 pt-5 dark:border-dark-700' : 'card overflow-visible p-5'" aria-labelledby="harvest-console-title">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h2 id="harvest-console-title" class="text-sm font-semibold text-gray-900 dark:text-white">{{ t(`${prefix}.title`) }}</h2>
@@ -156,7 +156,8 @@ import {
   resolveHarvestAvailability
 } from '@/utils/harvestAvailability'
 
-const props = defineProps<{ accounts: CodexHarvestFlowAccount[]; models: string[] }>()
+const props = defineProps<{ accounts: CodexHarvestFlowAccount[]; models: string[]; embedded?: boolean }>()
+const embedded = computed(() => props.embedded === true)
 const emit = defineEmits<{ running: [boolean]; finished: [] }>()
 const { t } = useI18n()
 const prefix = 'admin.harvestFlow.console'
