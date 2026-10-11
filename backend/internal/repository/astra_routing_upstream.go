@@ -232,12 +232,17 @@ func (s *astraRoutingUpstream) AstraGatewaySnapshot(ctx context.Context) service
 		return result
 	}
 	now := time.Now()
+	cookie, sourceID := pool.currentCookie("/backend-api/codex/responses", now)
 	// Never hold a lock for the duration of a network validation. Snapshot a
 	// coherent route/check pair; only an exact current Cookie can be ready.
 	pool.targetMu.Lock()
 	pool.mu.Lock()
 	defer pool.targetMu.Unlock()
 	defer pool.mu.Unlock()
+	if route, ok := pool.routes[sourceID]; ok && cookie != nil && route.cookie.Value == cookie.Value && now.Before(route.expires) {
+		expires := route.expires
+		result.RouteExpiresAt = &expires
+	}
 	result.Cooldowns = s.rotationCache.snapshot(settings.CookiePool.TargetAccountIDs, now)
 	result.Gateways = pool.gatewayObservations()
 	result.UnknownGatewaySamples = pool.unknownGatewaySamples

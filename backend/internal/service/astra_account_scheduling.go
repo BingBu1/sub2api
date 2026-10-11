@@ -4,13 +4,14 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"reflect"
+	"slices"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 )
 
-// Read existing validation state only: never prepare routes or issue model requests.
+// Read existing route availability only: never prepare routes or issue model requests.
 func (s *AccountTestService) startAstraAccountScheduling() func() {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -36,12 +37,8 @@ func astraAccountSchedulingReady(settings config.AstraRoutingSettings, snapshot 
 	if !settings.CookiePool.Enabled || snapshot.Revision != settings.Revision {
 		return false
 	}
-	for _, row := range snapshot.Targets {
-		if row.AccountID == id {
-			return row.State == "ready" && row.Reason == "target_probe_passed" && row.ExpiresAt != nil && now.Before(*row.ExpiresAt)
-		}
-	}
-	return false
+	return slices.Contains(settings.CookiePool.TargetAccountIDs, id) &&
+		snapshot.RouteExpiresAt != nil && now.Before(*snapshot.RouteExpiresAt)
 }
 
 func (s *AccountTestService) syncAstraAccountScheduling(ctx context.Context) {
@@ -88,7 +85,7 @@ func (s *AccountTestService) syncAstraAccountScheduling(ctx context.Context) {
 		}
 		fields = append(fields, zap.String("mode", action.Action))
 		logger.L().Info("astra_account_scheduling_changed", fields...)
-		reason := "target_not_verified"
+		reason := "source_route_unavailable"
 		for _, field := range fields {
 			if field.Key == "reason" {
 				reason = field.String
@@ -101,23 +98,17 @@ func (s *AccountTestService) syncAstraAccountScheduling(ctx context.Context) {
 // Only explicit non-secret fields: no account credentials, cookies, proxy URLs
 // or upstream errors. unchanged states never call this logger.
 func astraSchedulingLogFields(settings config.AstraRoutingSettings, snapshot AstraGatewayRuntime, account *Account, ready bool, now time.Time) []zap.Field {
-	reason := "target_not_verified"
+	reason := "source_route_unavailable"
 	gateway := ""
-	var expiry *time.Time
-	for _, row := range snapshot.Targets {
-		if row.AccountID == account.ID {
-			gateway, expiry = row.Gateway, row.ExpiresAt
-			if row.Reason != "" {
-				reason = row.Reason
-			}
-			if row.State != "ready" && reason == "target_probe_passed" {
-				reason = "target_not_verified"
-			}
+	expiry := snapshot.RouteExpiresAt
+	for _, row := range snapshot.Sources {
+		if row.Active {
+			gateway = row.Gateway
 			break
 		}
 	}
 	if ready {
-		reason = "target_probe_passed"
+		reason = "source_route_available"
 	} else if !settings.CookiePool.Enabled {
 		reason = "cookie_pool_disabled"
 	} else if snapshot.Revision != settings.Revision {
