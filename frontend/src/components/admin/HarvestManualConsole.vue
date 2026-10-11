@@ -160,7 +160,7 @@ const props = defineProps<{ accounts: CodexHarvestFlowAccount[]; models: string[
 const emit = defineEmits<{ running: [boolean]; finished: [] }>()
 const { t } = useI18n()
 const prefix = 'admin.harvestFlow.console'
-const nodeSwitchRules = ['312_or_2fail', 'every_request', '312_only', 'never'] as const
+const nodeSwitchRules = ['rejected_or_2fail', 'every_request', 'rejected_only', 'never'] as const
 const accountRoot = ref<HTMLElement | null>(null)
 const keyword = ref('')
 const open = ref(false)
@@ -178,7 +178,7 @@ const form = ref({
   probe_interval_seconds: 10,
   rate_limit_cooldown_seconds: 30,
   max_attempts: 20,
-  node_switch_rule: '312_or_2fail',
+  node_switch_rule: 'rejected_or_2fail',
   stop_on_success: true
 })
 let abort: AbortController | null = null

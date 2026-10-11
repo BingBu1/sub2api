@@ -14,6 +14,11 @@ const mountView = () => shallowMount(ProxiesView, { global: { stubs: {
 beforeEach(() => { vi.clearAllMocks(); route.hash = ''; list.mockResolvedValue({ items: [], total: 0, pages: 1 }) })
 afterEach(() => wrapper?.unmount())
 describe('IP management navigation', () => {
+  it('opens harvest exit settings in IP management', async () => {
+    route.hash = '#harvest'; wrapper = mountView(); await flushPromises()
+    expect(wrapper.findComponent({ name: 'HarvestProxySettings' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'MihomoSettings' }).exists()).toBe(false)
+  })
   it('preserves the existing proxy list and exposes the four management sections', async () => {
     wrapper = mountView(); await flushPromises()
     expect(wrapper.find('input[type="text"]').exists()).toBe(true)
