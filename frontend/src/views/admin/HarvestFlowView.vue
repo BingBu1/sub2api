@@ -24,12 +24,12 @@
       </div>
 
       <HarvestPolicyPanel @saved="fetchFlow" />
-      <HarvestControlsPanel :refresh-key="snapshot?.generated_at" :runtime="snapshot?.runtime" @saved="fetchFlow" />
-      <HarvestGatewayBorrowPanel />
-      <HarvestManualConsole
-        v-if="snapshot"
-        :accounts="snapshot.accounts || []"
-        :models="snapshot.harvest.models || []"
+      <HarvestControlsPanel
+        :refresh-key="snapshot?.generated_at"
+        :runtime="snapshot?.runtime"
+        :accounts="snapshot?.accounts || []"
+        :models="snapshot?.harvest.models || []"
+        @saved="fetchFlow"
         @running="harvesting = $event"
         @finished="fetchFlow"
       />
@@ -234,7 +234,6 @@
 
 <script setup lang="ts">
 import HarvestPolicyPanel from '@/components/admin/HarvestPolicyPanel.vue'
-import HarvestGatewayBorrowPanel from '@/components/admin/HarvestGatewayBorrowPanel.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -242,7 +241,6 @@ import SmartOpsNav from '@/components/admin/operations/SmartOpsNav.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import HarvestControlsPanel from '@/components/admin/HarvestControlsPanel.vue'
-import HarvestManualConsole from '@/components/admin/HarvestManualConsole.vue'
 import HarvestNodeRecords from '@/components/admin/HarvestNodeRecords.vue'
 import { getCodexHarvestFlow, updateCodexSkipHarvest, type CodexHarvestFlowAccount, type CodexHarvestFlowEvent, type CodexHarvestFlowSnapshot, type CodexHarvestFlowStage, type CodexHarvestFlowTicket } from '@/api/admin/accounts'
 import { harvestAvailabilityClass, harvestAvailabilityRecoverClock, resolveHarvestAvailability } from '@/utils/harvestAvailability'
