@@ -17,6 +17,7 @@ export default {
     groupsRemoved: 'Left groups',
     chooseSchedulingGroups: 'Select at least one group',
     accountScheduling: 'Account pool scheduling',
+    ticketPoolSchedulingHint: 'Applies to accounts in the automatic harvest scope. Normal harvesting and quick reuse share the same ticket store. Valid tickets join selected groups or restore state; missing or expired tickets remove membership or disable state. Model mode checks Astra tickets only. Other groups and manual changes are preserved. Syncs every second without extra probes. Turning this off leaves current state unchanged.',
     accountSchedulingHint: 'After a passing target probe with a valid route, group mode joins all selected groups, including groups the account has never joined. Failure, expiry or no route removes those memberships. Other groups stay unchanged. Model and account modes restore only states disabled by this feature. Syncs every second without tests and preserves conflicting manual edits. Changing modes or selected groups first undoes the previous owned action; disabling preserves current state.',
     nodeCooldown: "Failed node / host cooldown",
     nodeCooldownHint: "The 3600-second default is a retry policy, not a measured upstream cache lifetime. Skip failed nodes and nodes known to share that host for the same target. Settings saves preserve cooldowns; process restarts clear them. Stop testing when all nodes are cooling; never fall back to direct access.",

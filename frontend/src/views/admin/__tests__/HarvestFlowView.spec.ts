@@ -244,6 +244,17 @@ describe('HarvestFlowView request ordering', () => {
     expect(getFlow).toHaveBeenCalledTimes(2)
   })
 
+  it('enables an unselected OAuth account without toggling it off', async () => {
+    const data = response()
+    getFlow.mockResolvedValue({ ...data, accounts: [{ ...data.accounts[0], harvest_selected: false, in_scope: false }] })
+    updateSkip.mockResolvedValue({ account_id: 1, skip_harvest: false })
+    wrapper = mountFlow()
+    await flushPromises()
+    await button(wrapper, 'admin.harvestFlow.enableHarvest').trigger('click')
+    await flushPromises()
+    expect(updateSkip).toHaveBeenCalledWith(1, false)
+  })
+
   it('isolates reads during a save and preserves the saved toggle when refresh fails', async () => {
     const old = deferred<ReturnType<typeof response>>()
     const save = deferred<{ account_id: number; skip_harvest: boolean }>()

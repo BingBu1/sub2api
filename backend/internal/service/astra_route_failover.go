@@ -26,7 +26,7 @@ func (s *OpenAIGatewayService) astraRouteFailover(ctx context.Context, account *
 		return err
 	}
 	settings := s.cfg.AstraRouting(ctx)
-	if account == nil || (!settings.CookiePool.Enabled && !settings.AccountScheduling) || !slices.Contains(settings.CookiePool.TargetAccountIDs, account.ID) {
+	if account == nil || (!settings.CookiePool.Enabled && !settings.AccountScheduling) || (!settings.TicketPoolScheduling && !slices.Contains(settings.CookiePool.TargetAccountIDs, account.ID)) {
 		return err
 	}
 	if disable && settings.AccountScheduling && s.accountRepo != nil {
@@ -44,8 +44,14 @@ func (s *OpenAIGatewayService) astraRouteFailover(ctx context.Context, account *
 
 func (s *OpenAIGatewayService) checkAstraSchedulingRoute(ctx context.Context, account *Account) error {
 	settings := s.cfg.AstraRouting(ctx)
-	if !settings.AccountScheduling || account == nil || !slices.Contains(settings.CookiePool.TargetAccountIDs, account.ID) {
+	if !settings.AccountScheduling && !settings.TicketPoolScheduling || account == nil || (!settings.TicketPoolScheduling && !slices.Contains(settings.CookiePool.TargetAccountIDs, account.ID)) {
 		return nil
+	}
+	if settings.TicketPoolScheduling {
+		if !s.openAICodexTicketEnabledContext(ctx) || !s.ticketPoolSchedulingIncludes(ctx, account) || s.ticketPoolSchedulingReady(account, settings) {
+			return nil
+		}
+		return s.astraRouteFailover(ctx, account, errors.New("astra_route_not_ready"))
 	}
 	snapshot := AstraGatewayRuntime{}
 	if provider, ok := s.httpUpstream.(AstraGatewayRuntimeProvider); ok {
