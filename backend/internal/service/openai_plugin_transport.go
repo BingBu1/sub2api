@@ -11,6 +11,8 @@ func (s *OpenAIGatewayService) SetPluginManager(manager *PluginManager) {
 func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL string, account *Account) (result *http.Response, resultErr error) {
 	request = s.stickBoundCodexTicketRequest(request, account)
 	boundTicket := s.codexTicketRequestBound(request, account)
+	observationTicket := s.boundCodexTicket(request, account)
+	observationHeaders := request.Header.Clone()
 	releaseChat := func() {}
 	if boundTicket {
 		releaseChat = s.holdCodexTicketChat(account)
@@ -24,6 +26,7 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 		result, resultErr = attachCodexTicketEgressRelease(result, resultErr, func() {
 			release()
 			releaseChat()
+			s.observeScheduledAstraCandy(request.Context(), observationHeaders, account, observationTicket)
 		})
 	}()
 	defer func() {
@@ -35,6 +38,10 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 				// Timing/fallback layers clone request headers before the routing
 				// adapter installs a newly acquired bundle. Observe the sent copy.
 				observedRequest = result.Request
+			}
+			if ticket := s.boundCodexTicket(observedRequest, account); ticket != nil {
+				observationTicket = ticket
+				observationHeaders = observedRequest.Header.Clone()
 			}
 			responseBound := boundTicket || s.codexTicketRequestBound(observedRequest, account)
 			s.observeCodexTicketResponse(observedRequest, result, account)

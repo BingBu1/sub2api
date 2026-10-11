@@ -774,7 +774,7 @@ func BuildCodexHarvestFlow(ctx context.Context, cfg *config.Config, settings *Se
 	rawEvents := listCodexHarvestFlowEvents()
 	events := make([]CodexHarvestFlowEvent, 0, len(rawEvents))
 	for _, event := range rawEvents {
-		if event.Stage == "select" && event.Kind != "schedule_join" && event.Kind != "schedule_leave" {
+		if event.Stage == "select" && event.Kind != "schedule_join" && event.Kind != "schedule_leave" && event.Kind != "candy_pass" && event.Kind != "candy_fail" {
 			continue
 		}
 		events = append(events, event)
@@ -977,7 +977,7 @@ func buildCodexHarvestFlowStages(snapshot CodexHarvestFlowSnapshot) []CodexHarve
 	if event, ok := last["select"]; ok {
 		copyFlowMetrics(&selectStage, event)
 		switch event.Kind {
-		case "schedule_join":
+		case "schedule_join", "candy_pass":
 			selectStage.Status = "ok"
 		case "schedule_leave":
 			selectStage.Status = "warn"
