@@ -69,23 +69,6 @@
                 <h2 class="font-semibold">{{ t(`${p}.accountScheduling`) }}</h2>
                 <p class="mt-2 text-sm text-gray-500">{{ t(`${p}.accountSchedulingHint`) }}</p>
               </div>
-              <Toggle :model-value="draft.account_scheduling ?? false" @update:model-value="draft.account_scheduling = $event" data-testid="account-scheduling-toggle" :aria-label="t(`${p}.accountScheduling`)" />
-            </div>
-            <div class="mt-4 space-y-3">
-              <label class="block text-sm">{{ t(`${p}.schedulingMode`) }}
-                <select v-model="draft.scheduling_mode" class="input mt-1" data-testid="scheduling-mode">
-                  <option value="model">{{ t(`${p}.modeModel`) }}</option>
-                  <option value="account">{{ t(`${p}.modeAccount`) }}</option>
-                  <option value="groups">{{ t(`${p}.modeGroups`) }}</option>
-                </select>
-              </label>
-              <div v-if="draft.scheduling_mode === 'groups'" data-testid="scheduling-groups">
-                <p class="text-sm">{{ t(`${p}.schedulingGroups`) }}</p>
-                <p v-if="groupsError" class="text-sm text-red-600">{{ groupsError }}</p>
-                <label v-for="group in groups" :key="group.id" class="mr-4 inline-flex items-center gap-2 text-sm">
-                  <input v-model="draft.scheduling_group_ids" type="checkbox" :value="group.id" />{{ group.name }} (#{{ group.id }})
-                </label>
-              </div>
             </div>
             <div class="mt-4 border-t pt-3 dark:border-dark-600" data-testid="scheduling-records">
               <h3 class="text-sm font-medium">{{ t(`${p}.schedulingLog`) }}</h3>
@@ -127,8 +110,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { getAllIncludingInactive } from '@/api/admin/groups'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import Toggle from '@/components/common/Toggle.vue'
@@ -151,18 +133,11 @@ const savedMessage = ref(false)
 const error = ref('')
 const saved = ref<AstraGatewaySettings>()
 const draft = ref<AstraGatewaySettings>()
-const groups = ref<{ id: number; name: string }[]>([])
-const groupsError = ref('')
-watch(() => draft.value?.scheduling_mode, async mode => {
- if (mode !== 'groups') return
- try { groups.value = await getAllIncludingInactive(); groupsError.value = '' } catch { groupsError.value = t(`${p}.loadError`) }
-})
 const accounts = ref<{ id: number; name: string }[]>([])
 const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(saved.value))
 const validation = computed(() => {
   if (!draft.value) return ''
   const value = resolveAstraDependencies(draft.value)
-  if (value.account_scheduling && value.scheduling_mode === 'groups' && !value.scheduling_group_ids?.length) return t(`${p}.chooseSchedulingGroups`)
   if (value.cookie_pool.rotate_nodes && (!Number.isInteger(draft.value.cookie_pool.node_cooldown_seconds) || draft.value.cookie_pool.node_cooldown_seconds! < 60 || draft.value.cookie_pool.node_cooldown_seconds! > 86400)) return t(`${p}.nodeCooldownInvalid`)
   if (value.cookie_pool.rotate_nodes && (!Number.isInteger(draft.value.cookie_pool.max_node_attempts) || draft.value.cookie_pool.max_node_attempts! < 1 || draft.value.cookie_pool.max_node_attempts! > 10)) return t(`${p}.nodeAttemptsInvalid`)
   if (!Number.isInteger(value.cookie_pool.ttl_seconds) || value.cookie_pool.ttl_seconds! < 30 || value.cookie_pool.ttl_seconds! > 240 || !Number.isInteger(value.ws_session.ttl_seconds) || value.ws_session.ttl_seconds! < 60 || value.ws_session.ttl_seconds! > 3600) return t(`${p}.ttlInvalid`)
@@ -204,7 +179,7 @@ async function save() {
   if (!draft.value || validation.value || saving.value || loading.value || !dirty.value) return
   saving.value = true; error.value = ''; savedMessage.value = false
   try {
-    const value = await saveAstraGateway(resolveAstraDependencies(draft.value))
+    const value = await saveAstraGateway(resolveAstraDependencies({ ...draft.value, account_scheduling: false }))
     saved.value = normalizeAstraGateway(value); draft.value = normalizeAstraGateway(value); savedMessage.value = true
    } catch (err: unknown) {
     const message = (err as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (err as { message?: string }).message || ''
