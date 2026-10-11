@@ -66,7 +66,7 @@ func (s *OpenAIGatewayService) runScheduledAstraCandy(ctx context.Context, heade
 		return "candy_unavailable"
 	}
 	account, err := s.accountRepo.GetByID(ctx, id)
-	if err != nil || !astraTicketAccountEligible(ctx, account) || !ticketIdentityMatches(account, ticket) || !s.openAICodexTicketEnabledContext(ctx) {
+	if err != nil || !astraTicketAccountEligible(ctx, account) || !ticketIdentityMatches(account, ticket) || headers.Get("Authorization") == "" || headers.Get("ChatGPT-Account-ID") != account.GetCredential("chatgpt_account_id") || !s.openAICodexTicketEnabledContext(ctx) {
 		return "candy_stale"
 	}
 	proxy, release, err := s.pinStoredCodexTicketEgress(ctx, ticket, openAIAccountProxyURL(account))

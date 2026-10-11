@@ -23,10 +23,13 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 		return nil, err
 	}
 	defer func() {
+		observe := resultErr == nil && result != nil && result.StatusCode == http.StatusOK
 		result, resultErr = attachCodexTicketEgressRelease(result, resultErr, func() {
 			release()
 			releaseChat()
-			s.observeScheduledAstraCandy(request.Context(), observationHeaders, account, observationTicket)
+			if observe {
+				s.observeScheduledAstraCandy(request.Context(), observationHeaders, account, observationTicket)
+			}
 		})
 	}()
 	defer func() {
