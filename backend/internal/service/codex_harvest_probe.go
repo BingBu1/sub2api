@@ -244,7 +244,7 @@ func codexHarvestTicket(account *Account, model string, r codexHarvestProbeResul
 			transport = "sse"
 		}
 	}
-	return &openAICodexTicket{ProbeVerified: r.ProbeVerified, EdgeIP: r.EdgeIP, Transport: transport, Gateway: r.Gateway, AccountID: account.ID, Model: model, State: r.State, Length: len(r.State),
+	return &openAICodexTicket{Acquisition: "self", ProbeVerified: r.ProbeVerified, EdgeIP: r.EdgeIP, Transport: transport, Gateway: r.Gateway, AccountID: account.ID, Model: model, State: r.State, Length: len(r.State),
 		CapturedAt: now, ExpiresAt: expires, Attempts: attempts, Blocks: r.Shape.Blocks, IssuedAt: r.Shape.IssuedAt,
 		HarvestLite: len(r.State) != 780, HarvestCookies: append([]string(nil), r.Cookies...), HarvestCookiesAt: now}
 }

@@ -8,7 +8,6 @@ vi.mock('@/api/admin/accounts', () => ({
   getCodexHarvestFlow: getFlow,
   updateCodexSkipHarvest: updateSkip
 }))
-vi.mock('@/components/admin/HarvestGatewayBorrowPanel.vue', () => ({ default: { template: '<section data-testid="gateway-borrow-panel" />' } }))
 vi.mock('@/components/admin/HarvestPolicyPanel.vue', () => ({ default: { template: '<section />' } }))
 vi.mock('@/components/admin/HarvestControlsPanel.vue', () => ({ default: { template: '<section />' } }))
 vi.mock('@/components/admin/HarvestManualConsole.vue', () => ({ default: { template: '<section />' } }))
@@ -50,6 +49,28 @@ function response() {
 }
 
 describe('HarvestFlowView nullable API lists', () => {
+  it('shows Astra pool scheduling changes in the selection flow filter', async () => {
+    const data = response()
+    getFlow.mockResolvedValue({ ...data,
+      stages: [{ id: 'select', status: 'warn', detail: 'route_expired', at: '2026-10-12T01:40:39Z' }],
+      events: [
+        { id: 'leave', stage: 'select', kind: 'schedule_leave', result: 'groups', reason: 'route_expired', detail: 'route_expired', account_id: 459, account_name: 'pool-target', at: '2026-10-12T01:40:39Z' },
+        { id: 'join', stage: 'select', kind: 'schedule_join', result: 'groups', reason: 'target_probe_passed', detail: 'target_probe_passed', account_id: 459, account_name: 'pool-target', at: '2026-10-12T01:40:30Z' }
+      ],
+      counts: { ...data.counts, select_ok: 1, select_skip: 1 }
+    })
+    const wrapper = mount(HarvestFlowView, { global: { stubs: { Icon: true, LoadingSpinner: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.text()).toContain('schedule_leave')
+      expect(wrapper.text()).toContain('schedule_join')
+      expect(wrapper.text()).toContain('route_expired')
+      expect(wrapper.text()).toContain('modeGroups')
+      await wrapper.findAll('button').find(button => button.text() === 'admin.harvestFlow.stages.select')?.trigger('click')
+      expect(wrapper.findAll('ol li').length).toBeGreaterThan(0)
+    } finally { wrapper.unmount() }
+  })
+
   it('renders stored legacy events without numeric ticket heuristics', async () => {
     getFlow.mockResolvedValue({ ...response(),
       harvest: { ...response().harvest, target_length: 780 },
@@ -140,7 +161,6 @@ describe('HarvestFlowView nullable API lists', () => {
     try {
       await flushPromises()
       expect(errors).toEqual([])
-      expect(wrapper.find('[data-testid="gateway-borrow-panel"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('admin.harvestFlow.title')
       expect(wrapper.text()).toContain(text)
     } finally {

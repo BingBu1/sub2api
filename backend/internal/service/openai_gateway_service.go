@@ -655,6 +655,9 @@ func NewOpenAIGatewayService(
 	for _, option := range options {
 		option(svc)
 	}
+	if registrar, ok := httpUpstream.(interface{ SetAstraTicketLifecycle(AstraTicketLifecycle) }); ok {
+		registrar.SetAstraTicketLifecycle(svc)
+	}
 	svc.logOpenAIWSModeBootstrap()
 	svc.StartOpenAICodexTicketHarvester()
 	return svc

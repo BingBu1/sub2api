@@ -126,11 +126,22 @@ func codex780Route(cookies []string, target string, now time.Time) ([]string, ti
 	return []string{"__cflb=" + pair["__cflb"], "__oailb=" + pair["__oailb"]}, time.Unix(claims.Exp, 0), nil
 }
 
+type codex780SeedContextKey struct{}
+type codex780Seed struct {
+	state   string
+	cookies []string
+}
+
 func (s *OpenAIGatewayService) requestCodex780Probe(ctx context.Context, account *Account, token, model, proxy string, reserve func() bool, session string) (out codexHarvestProbeResult) {
-	// A fresh candidate belongs to this account and exit. Never seed a new
-	// candidate from another lane, a previous failed route, or gateway borrowing.
+	// Self collection has no seed. Fast reuse is an explicit candidate, and
+	// only the new state issued to the target may enter its account store.
 	controls, _ := s.harvestControls(ctx)
-	out = s.requestCodex780Shot(ctx, account, token, model, proxy, reserve, session, "", nil, controls)
+	seed, borrowed := ctx.Value(codex780SeedContextKey{}).(codex780Seed)
+	out = s.requestCodex780Shot(ctx, account, token, model, proxy, reserve, session, seed.state, seed.cookies, controls)
+	if borrowed && out.Err == nil && out.State == seed.state {
+		out.Err = &codexMintError{kind: "probe_inconclusive", detail: "reuse did not issue a target-owned state"}
+		return
+	}
 	out.Shape, out.Kind = classifyCodexHarvestProbe(ctx, account, s.openAICodexTicketConfig(), out)
 	if out.Kind != "success" {
 		return
