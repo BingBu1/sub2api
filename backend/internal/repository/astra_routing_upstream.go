@@ -26,6 +26,8 @@ type astraRoutingUpstream struct {
 	rotationCache   astraRotationCache
 	listNodes       func() ([]mihomo.AstraNode, error)
 	pinNode         func(context.Context, mihomo.AstraNode) (string, func(), error)
+	prepareCallMu   sync.Mutex
+	prepareCall     *astraPreparation
 	prepareMu       sync.Mutex
 	preparer        func(context.Context, int64) error
 	retryAfter      time.Time
@@ -117,13 +119,57 @@ func (s *astraRoutingUpstream) SetAstraGatewayPreparer(fn func(context.Context, 
 	s.preparer = fn
 	s.prepareMu.Unlock()
 }
+
+// Concurrent requests share one preparation, including its failure, instead of
+// launching another source scan or failing merely because a scan is running.
+type astraPreparation struct {
+	done chan struct{}
+	pool *codexGatewayPinUpstream
+	err  error
+}
+
 func (s *astraRoutingUpstream) PrepareAstraGateway(ctx context.Context) error {
-	if !s.prepareMu.TryLock() {
-		return errors.New("preparation_in_progress")
-	}
-	defer s.prepareMu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	pool := s.current(ctx)
+	s.prepareCallMu.Lock()
+	if call := s.prepareCall; call != nil {
+		s.prepareCallMu.Unlock()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-call.done:
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if call.pool != pool || s.current(ctx) != pool {
+				return errors.New("configuration_changed")
+			}
+			return call.err
+		}
+	}
+	call := &astraPreparation{done: make(chan struct{}), pool: pool}
+	s.prepareCall = call
+	s.prepareCallMu.Unlock()
+	defer func() {
+		s.prepareCallMu.Lock()
+		s.prepareCall = nil
+		close(call.done)
+		s.prepareCallMu.Unlock()
+	}()
+	call.err = s.prepareAstraGateway(ctx)
+	return call.err
+}
+
+func (s *astraRoutingUpstream) prepareAstraGateway(ctx context.Context) error {
+	s.prepareMu.Lock()
+	defer s.prepareMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	pool := s.current(ctx)
 	if pool == nil {
 		return errors.New("cookie_pool_disabled")

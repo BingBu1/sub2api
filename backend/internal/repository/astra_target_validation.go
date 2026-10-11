@@ -7,12 +7,38 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/mihomo"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
+
+// astraContextMutex bounds admission waits without spawning a goroutine per
+// waiter. Its zero value is ready to use; cancellation never acquires a lease.
+type astraContextMutex struct {
+	once  sync.Once
+	token chan struct{}
+}
+
+func (m *astraContextMutex) Lock(ctx context.Context) error {
+	m.once.Do(func() { m.token = make(chan struct{}, 1) })
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	select {
+	case m.token <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			m.Unlock()
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+func (m *astraContextMutex) Unlock() { <-m.token }
 
 type astraTargetValidation struct {
 	node                         mihomo.AstraNode
@@ -93,10 +119,26 @@ func (s *astraRoutingUpstream) targetRouteOnce(req *http.Request, proxy string, 
 	fingerprint, _ := json.Marshal(profile)
 	identity = append(identity, string(fingerprint))
 	key := sha256.Sum256([]byte(strings.Join(identity, "\x00")))
-	if !pool.targetProbeMu.TryLock() {
-		return nil, key, proxy, release, errors.New("target_validation_in_progress")
+	ctx, cancel := context.WithTimeout(req.Context(), 90*time.Second)
+	defer cancel()
+	if err := pool.targetProbeMu.Lock(ctx); err != nil {
+		return nil, key, proxy, release, err
 	}
 	defer pool.targetProbeMu.Unlock()
+	// The route may have expired, rotated or been replaced while waiting. Never
+	// reuse old evidence or probe the old exit after admission.
+	if s.current(ctx) != pool {
+		return nil, key, proxy, release, errors.New("configuration_changed")
+	}
+	current, currentID := pool.currentCookie(req.URL.Path, time.Now())
+	pool.mu.Lock()
+	currentRoute := pool.routes[sourceID]
+	pool.mu.Unlock()
+	if current == nil || current.Value != cookie.Value || currentID != sourceID ||
+		(pool.config.IPAffinity && !pool.config.RotateNodes && currentRoute.proxy != route.proxy) ||
+		currentRoute.node.Identity != route.node.Identity {
+		return nil, key, proxy, release, errors.New("configuration_changed")
+	}
 	now := time.Now()
 	pool.targetMu.Lock()
 	old, exists := pool.targetChecks[id]
@@ -111,8 +153,6 @@ func (s *astraRoutingUpstream) targetRouteOnce(req *http.Request, proxy string, 
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(req.Context(), 90*time.Second)
-	defer cancel()
 	probe := req.Clone(service.WithHTTPUpstreamRedirectsDisabled(ctx))
 	replaceCodexGatewayCookie(probe, cookie)
 	result := service.ProbeOpenAICodexStateRoute(ctx, s.delegate, probe, proxy, id, n, profile)
@@ -128,12 +168,12 @@ func (s *astraRoutingUpstream) targetRouteOnce(req *http.Request, proxy string, 
 	if s.current(req.Context()) != pool {
 		return nil, key, proxy, release, errors.New("configuration_changed")
 	}
-	current, currentID := pool.currentCookie(req.URL.Path, time.Now())
+	current, currentID = pool.currentCookie(req.URL.Path, time.Now())
 	if current == nil || current.Value != cookie.Value || currentID != sourceID {
 		return nil, key, proxy, release, errors.New("configuration_changed")
 	}
 	pool.mu.Lock()
-	currentRoute := pool.routes[sourceID]
+	currentRoute = pool.routes[sourceID]
 	pool.mu.Unlock()
 	if (pool.config.IPAffinity && !pool.config.RotateNodes && currentRoute.proxy != route.proxy) || currentRoute.node.Identity != route.node.Identity {
 		return nil, key, proxy, release, errors.New("configuration_changed")

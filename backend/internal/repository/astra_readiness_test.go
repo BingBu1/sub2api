@@ -56,7 +56,7 @@ func TestAstraReadinessSnapshotDoesNotWaitForNetwork(t *testing.T) {
 	cfg.Gateway.CodexGatewayPin = pinConfig()
 	wrapper := &astraRoutingUpstream{cfg: cfg}
 	pool := wrapper.current(t.Context())
-	pool.targetProbeMu.Lock()
+	require.NoError(t, pool.targetProbeMu.Lock(t.Context()))
 	defer pool.targetProbeMu.Unlock()
 	done := make(chan struct{})
 	go func() { wrapper.AstraGatewaySnapshot(context.Background()); close(done) }()
