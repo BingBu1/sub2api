@@ -42,9 +42,9 @@ export default {
     probeMiss: 'Misses',
     ticketAccept: 'Stored',
     ticketReject: 'Rejected',
-    selectOk: 'Selected',
-    selectSkip: 'Skipped',
-    selectFail: 'Select failed',
+    selectOk: 'Added',
+    selectSkip: 'Removed',
+    selectFail: 'Scheduling failed',
     waitingSidecar: 'Waiting for sidecar',
     poolOnline: 'Load-balance · {n} nodes',
     idleProbe: 'Waiting for harvest probe',
@@ -164,6 +164,10 @@ export default {
       idle: 'Idle'
     },
     kinds: {
+      schedule_join: 'Added to pool',
+      schedule_leave: 'Removed from pool',
+      schedule_enable: 'Scheduling restored',
+      schedule_disable: 'Scheduling paused',
       rotate: 'Rotate',
       probe_hit: 'Probe passed',
       probe_miss: 'Probe miss',

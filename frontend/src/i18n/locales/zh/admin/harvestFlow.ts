@@ -42,9 +42,9 @@ export default {
     probeMiss: '未中',
     ticketAccept: '入库',
     ticketReject: '拒票',
-    selectOk: '选中',
-    selectSkip: '跳过',
-    selectFail: '选号失败',
+    selectOk: '已加入',
+    selectSkip: '已移出',
+    selectFail: '调度失败',
     waitingSidecar: '等待 sidecar',
     poolOnline: '负载均衡 · {n} 个节点',
     idleProbe: '等待打票探测',
@@ -164,6 +164,10 @@ export default {
       idle: '等待'
     },
     kinds: {
+      schedule_join: '加入号池',
+      schedule_leave: '移出号池',
+      schedule_enable: '恢复调度',
+      schedule_disable: '暂停调度',
       rotate: '切节点',
       probe_hit: '探针通过',
       probe_miss: '探测未中',

@@ -408,6 +408,22 @@ func recordCodexHarvestSelect(account *Account, model, kind, reason, detail stri
 	recordCodexHarvestFlow(event)
 }
 
+// recordCodexHarvestScheduling publishes the account-pool handoff in the same
+// redacted flow used by the harvest page. It contains no credentials, routes or
+// upstream response data; the select stage is now the scheduling timeline.
+func recordCodexHarvestScheduling(account *Account, mode, reason string, schedulable bool) {
+	kind := "schedule_leave"
+	if schedulable {
+		kind = "schedule_join"
+	}
+	event := CodexHarvestFlowEvent{Stage: "select", Kind: kind, Reason: clipFlowText(reason, 64), Detail: clipFlowText(reason, 64), Result: clipFlowText(mode, 32)}
+	if account != nil {
+		event.AccountID = account.ID
+		event.AccountName = account.Name
+	}
+	recordCodexHarvestFlow(event)
+}
+
 func clipFlowText(value string, max int) string {
 	value = strings.TrimSpace(value)
 	if max <= 0 {
@@ -758,7 +774,7 @@ func BuildCodexHarvestFlow(ctx context.Context, cfg *config.Config, settings *Se
 	rawEvents := listCodexHarvestFlowEvents()
 	events := make([]CodexHarvestFlowEvent, 0, len(rawEvents))
 	for _, event := range rawEvents {
-		if event.Stage == "select" {
+		if event.Stage == "select" && event.Kind != "schedule_join" && event.Kind != "schedule_leave" {
 			continue
 		}
 		events = append(events, event)
@@ -843,9 +859,9 @@ func BuildCodexHarvestFlow(ctx context.Context, cfg *config.Config, settings *Se
 			snapshot.Counts.TicketAccept++
 		case "reject":
 			snapshot.Counts.TicketReject++
-		case "selected":
+		case "schedule_join":
 			snapshot.Counts.SelectOK++
-		case "skip":
+		case "schedule_leave":
 			snapshot.Counts.SelectSkip++
 		case "failed", "unavailable":
 			snapshot.Counts.SelectFail++
@@ -961,9 +977,9 @@ func buildCodexHarvestFlowStages(snapshot CodexHarvestFlowSnapshot) []CodexHarve
 	if event, ok := last["select"]; ok {
 		copyFlowMetrics(&selectStage, event)
 		switch event.Kind {
-		case "selected":
+		case "schedule_join":
 			selectStage.Status = "ok"
-		case "skip":
+		case "schedule_leave":
 			selectStage.Status = "warn"
 		default:
 			selectStage.Status = "fail"

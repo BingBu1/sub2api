@@ -41,6 +41,35 @@ func TestCodexHarvestFlowRecordsProbeTicketAndSelect(t *testing.T) {
 	require.Equal(t, "skip", events[3].Kind)
 }
 
+func TestCodexHarvestFlowRecordsAstraScheduling(t *testing.T) {
+	resetCodexHarvestFlow()
+	t.Cleanup(resetCodexHarvestFlow)
+	account := ticketTestAccount(459)
+	account.Name = "pool-target"
+	recordCodexHarvestScheduling(account, "groups", "target_probe_passed", true)
+	recordCodexHarvestScheduling(account, "groups", "route_expired", false)
+
+	events := listCodexHarvestFlowEvents()
+	require.Len(t, events, 2)
+	require.Equal(t, "select", events[0].Stage)
+	require.Equal(t, "schedule_join", events[0].Kind)
+	require.Equal(t, "target_probe_passed", events[0].Reason)
+	require.Equal(t, "groups", events[0].Result)
+	require.Equal(t, "target_probe_passed", events[0].Detail)
+	require.Equal(t, "schedule_leave", events[1].Kind)
+	require.Equal(t, "route_expired", events[1].Reason)
+
+	snapshot := BuildCodexHarvestFlow(t.Context(), &config.Config{}, nil, []Account{*account})
+	require.Len(t, snapshot.Events, 2)
+	require.Equal(t, "schedule_leave", snapshot.Events[0].Kind)
+	require.Equal(t, "schedule_join", snapshot.Events[1].Kind)
+	require.Equal(t, 1, snapshot.Counts.SelectOK)
+	require.Equal(t, 1, snapshot.Counts.SelectSkip)
+	require.Equal(t, "select", snapshot.Stages[4].ID)
+	require.Equal(t, "warn", snapshot.Stages[4].Status)
+	require.Equal(t, "route_expired", snapshot.Stages[4].Detail)
+}
+
 func TestBuildCodexHarvestFlowSnapshotAndStages(t *testing.T) {
 	resetCodexHarvestFlow()
 	t.Cleanup(resetCodexHarvestFlow)

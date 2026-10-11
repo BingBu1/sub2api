@@ -112,9 +112,9 @@
             <p class="text-xs text-gray-400">{{ t('admin.harvestFlow.ticketAccept') }} {{ snapshot.counts.ticket_accept }} · {{ t('admin.harvestFlow.ticketReject') }} {{ snapshot.counts.ticket_reject }}</p>
           </div>
           <div class="card p-4">
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.harvestFlow.selectOk') }}</p>
-            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ snapshot.counts.select_ok }}</p>
-            <p class="text-xs text-gray-400">{{ t('admin.harvestFlow.selectSkip') }} {{ snapshot.counts.select_skip }} · {{ t('admin.harvestFlow.selectFail') }} {{ snapshot.counts.select_fail }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.harvestFlow.stages.select') }}</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ snapshot.counts.select_ok }} / {{ snapshot.counts.select_skip }}</p>
+            <p class="text-xs text-gray-400">{{ t('admin.harvestFlow.selectOk') }} / {{ t('admin.harvestFlow.selectSkip') }}</p>
             <p v-if="snapshot.harvest.harvest_proxy" class="mt-2 truncate font-mono text-[11px] text-gray-400">{{ snapshot.harvest.harvest_proxy }}</p>
           </div>
         </div>
@@ -208,7 +208,7 @@
                 <div class="min-w-0 flex-1">
                   <div class="flex flex-wrap items-center justify-between gap-2">
                     <p class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ kindLabel(event.kind) }}
+                      {{ kindLabel(event.kind, event.result) }}
                       <span v-if="event.model" class="ml-1 font-mono text-xs text-gray-500">{{ event.model }}</span>
                     </p>
                     <span class="text-[11px] text-gray-400">{{ formatClock(event.at) }}</span>
@@ -330,10 +330,10 @@ function stageTextClass(status: string) {
 }
 
 function eventDotClass(kind: string) {
-  if (kind === 'probe_hit' || kind === 'accept' || kind === 'selected' || kind === 'rotate') {
+  if (kind === 'probe_hit' || kind === 'accept' || kind === 'schedule_join' || kind === 'rotate') {
     return 'bg-emerald-500'
   }
-  if (kind === 'skip' || kind === 'probe_miss') {
+  if (kind === 'schedule_leave' || kind === 'probe_miss') {
     return 'bg-amber-500'
   }
   return 'bg-rose-500'
@@ -350,12 +350,16 @@ function statusLabel(status: string) {
   return lookupLabel('admin.harvestFlow.status', status)
 }
 
-function kindLabel(kind: string) {
+function kindLabel(kind: string, mode?: string) {
+  if (mode && mode !== 'groups' && kind === 'schedule_join') return lookupLabel('admin.harvestFlow.kinds', 'schedule_enable')
+  if (mode && mode !== 'groups' && kind === 'schedule_leave') return lookupLabel('admin.harvestFlow.kinds', 'schedule_disable')
   return lookupLabel('admin.harvestFlow.kinds', kind)
 }
 
 function reasonLabel(reason?: string) {
-  return lookupLabel('admin.harvestFlow.reasons', reason)
+  if (!reason) return ''
+  const harvest = lookupLabel('admin.harvestFlow.reasons', reason)
+  return harvest === reason ? lookupLabel('admin.astraGateway.reasons', reason) : harvest
 }
 
 function resultLabel(result?: string) {
@@ -371,6 +375,12 @@ function eventDetail(event: CodexHarvestFlowEvent) {
   // not old free-text claims about ticket length or model quality.
   if (event.stage === 'probe' && ['invalid_state', 'invalid_route', 'probe_reissued', 'probe_route_changed', 'probe_inconclusive'].includes(event.result || '')) {
     return resultLabel(event.result)
+  }
+  if (event.stage === 'select') {
+    const mode = event.result || ''
+    const modeKey = mode === 'groups' ? 'modeGroups' : mode === 'model' ? 'modeModel' : mode === 'account' ? 'modeAccount' : ''
+    const modeLabel = modeKey ? lookupLabel('admin.astraGateway', modeKey) : ''
+    return [reasonLabel(event.reason), modeLabel].filter(Boolean).join(' · ') || event.detail || resultLabel(event.result)
   }
   return event.detail || reasonLabel(event.reason) || resultLabel(event.result)
 }
