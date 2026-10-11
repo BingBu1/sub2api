@@ -306,14 +306,16 @@ func TestBuildCodexHarvestFlowAvailabilityWindows(t *testing.T) {
 	require.NotNil(t, snapshot.Accounts[0].RecoverAt)
 }
 
-func TestRecordCodexHarvestProbeHumanizesMiss(t *testing.T) {
+func TestRecordCodexHarvestProbeReportsValidationFailure(t *testing.T) {
 	resetCodexHarvestFlow()
 	t.Cleanup(resetCodexHarvestFlow)
 	account := ticketTestAccount(2)
 	recordCodexHarvestProbe(account, "gpt-6-astra", "invalid_state", "node-a", "", 200, 312, 11, 292, 10)
 	events := listCodexHarvestFlowEvents()
 	require.NotEmpty(t, events)
-	require.Contains(t, events[len(events)-1].Detail, "降智")
+	require.Equal(t, "probe_miss", events[len(events)-1].Kind)
+	require.Equal(t, "invalid_state", events[len(events)-1].Reason)
+	require.Equal(t, "票据未通过校验，未入库", events[len(events)-1].Detail)
 }
 
 type memoryHarvestFlowStore struct {
