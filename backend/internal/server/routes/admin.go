@@ -1050,6 +1050,7 @@ func registerChannelMonitorV3Routes(admin *gin.RouterGroup, h *handler.Handlers,
 	{
 		monitor.GET("/settings", h.ChannelMonitorV3.GetSettings)
 		monitor.PUT("/config", h.ChannelMonitorV3.UpdateConfig)
+		monitor.PUT("/idle-probe", h.ChannelMonitorV3.UpdateIdleProbe)
 		monitor.POST("/categories", h.ChannelMonitorV3.CreateCategory)
 		monitor.PUT("/categories/:id", h.ChannelMonitorV3.UpdateCategory)
 		monitor.DELETE("/categories/:id", h.ChannelMonitorV3.DeleteCategory)
