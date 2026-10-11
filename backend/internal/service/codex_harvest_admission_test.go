@@ -100,20 +100,20 @@ func TestCodex780AdmissionRequiresOriginalTicketContinuation(t *testing.T) {
 func TestCodex780ProbeStageDoesNotReuseOldSuccess(t *testing.T) {
 	now := time.Now()
 	legacy := CodexHarvestFlowEvent{At: now, Kind: "probe_hit", Result: "success", Length: 780, Blocks: 33, ExpectedLength: 780}
-	require.NotEqual(t, "ok", shapeStageFromEvents(map[string]CodexHarvestFlowEvent{"probe": legacy}, 1).Status)
+	require.NotEqual(t, "ok", probeValidationStageFromEvents(map[string]CodexHarvestFlowEvent{"probe": legacy}).Status)
 	legacy.Reason = "probe_verified"
-	require.Equal(t, "probe_verified", shapeStageFromEvents(map[string]CodexHarvestFlowEvent{"probe": legacy}, 1).Detail)
+	require.Equal(t, "probe_verified", probeValidationStageFromEvents(map[string]CodexHarvestFlowEvent{"probe": legacy}).Detail)
 	for _, result := range []string{"probe_reissued", "probe_inconclusive", "network_error"} {
 		latest := CodexHarvestFlowEvent{At: now, Result: result, Kind: "probe_miss", ExpectedLength: 780, Length: 780, Blocks: 33}
-		stage := shapeStageFromEvents(map[string]CodexHarvestFlowEvent{
+		stage := probeValidationStageFromEvents(map[string]CodexHarvestFlowEvent{
 			"probe":           latest,
 			"probe:probe_hit": {At: now.Add(-time.Minute), Kind: "probe_hit", Result: "success", Length: 780, Blocks: 33},
-		}, 1)
+		})
 		require.NotEqual(t, "ok", stage.Status)
 		require.Equal(t, result, stage.Detail)
 	}
-	for _, rule := range []string{ManualHarvestNodeSwitch312Only, ManualHarvestNodeSwitch312Or2Fail} {
-		require.True(t, manualHarvestShouldSwitch(rule, 1, "probe_reissued", 780, 33))
+	for _, rule := range []string{ManualHarvestNodeSwitchRejectedOnly, ManualHarvestNodeSwitchRejectedOr2Fail} {
+		require.True(t, manualHarvestShouldSwitch(rule, 1, "probe_reissued"))
 	}
 }
 

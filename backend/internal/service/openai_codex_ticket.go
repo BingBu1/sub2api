@@ -1077,7 +1077,6 @@ func (s *OpenAIGatewayService) StartOpenAICodexTicketHarvester() {
 	}()
 	logger.L().Info("openai_codex_ticket harvester started",
 		zap.Int("ttl_seconds", s.openAICodexTicketConfig().TTLSeconds),
-		zap.Int("target_length", s.openAICodexTicketConfig().TargetLength),
 		zap.Strings("models", s.openAICodexTicketConfig().Models),
 	)
 }

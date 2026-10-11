@@ -141,7 +141,7 @@ func (s *OpenAIGatewayService) runParallelHarvest(ctx context.Context, req Manua
 			}
 			r := out.result
 			raw := safeCodexHarvestError(r.Err)
-			message, level, detail := describeCodexHarvestOutcome(r.Kind, raw, r.Status, len(r.State), r.Shape.Blocks, openAICodexTicketTargetLength(account, cfg), codexHarvestExpectedBlocks(account, cfg), model, mihomo.NodeDisplayName(out.node))
+			message, level, detail := describeCodexHarvestOutcome(r.Kind, raw, r.Status, model, mihomo.NodeDisplayName(out.node), r.ProbeVerified)
 			event := ManualHarvestProgress{Attempt: out.attempt, MaxAttempts: req.MaxAttempts, Model: model, Node: mihomo.NodeDisplayName(out.node), HTTPStatus: r.Status, Length: len(r.State), Blocks: r.Shape.Blocks, Result: r.Kind, Level: level, Message: message, Detail: detail, TicketsStored: stored}
 			recordCodexHarvestProbe(account, model, r.Kind, mihomo.NodeDisplayName(out.node), raw, r.Status, len(r.State), r.Shape.Blocks, openAICodexTicketTargetLength(account, cfg), codexHarvestExpectedBlocks(account, cfg), r.ProbeVerified)
 			if r.Kind == "success" {

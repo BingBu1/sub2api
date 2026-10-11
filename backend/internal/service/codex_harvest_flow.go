@@ -312,7 +312,7 @@ func recordCodexHarvestProbe(account *Account, model, result, node, detail strin
 		event.Reason = "probe_verified"
 	}
 	if result != "success" {
-		message, _, _ := describeCodexHarvestOutcome(result, detail, httpStatus, length, blocks, expectedLength, expectedBlocks, model, node)
+		message, _, _ := describeCodexHarvestOutcome(result, detail, httpStatus, model, node, event.Reason == "probe_verified")
 		event.Detail = message
 		// Native mint errors contain only controlled diagnostic categories.
 		if (result == "invalid_route" || result == "model_mismatch" || strings.HasPrefix(detail, "mint transport:")) && detail != "" {
@@ -323,7 +323,7 @@ func recordCodexHarvestProbe(account *Account, model, result, node, detail strin
 		if event.Reason == "probe_verified" {
 			event.Detail = "探针校验通过：完整续接，原票未重签"
 		} else {
-			event.Detail = fmt.Sprintf("合格门票 %d 字节 / %d 块", length, blocks)
+			event.Detail = "已捕获票据，未记录续接验收结果"
 		}
 	}
 	if account != nil {
@@ -920,6 +920,7 @@ func buildCodexHarvestFlowStages(snapshot CodexHarvestFlowSnapshot) []CodexHarve
 
 	probe := stageFromEvent("probe", last["probe"], "waiting for harvest probe")
 	if event, ok := last["probe"]; ok {
+		probe.Detail = event.Result
 		copyFlowMetrics(&probe, event)
 		if event.Kind == "probe_hit" {
 			probe.Status = "ok"
@@ -931,7 +932,7 @@ func buildCodexHarvestFlowStages(snapshot CodexHarvestFlowSnapshot) []CodexHarve
 		}
 	}
 
-	shape := shapeStageFromEvents(last, snapshot.Counts.TicketsReady)
+	shape := probeValidationStageFromEvents(last)
 
 	ticket := CodexHarvestFlowStage{ID: "ticket", Status: "idle", Detail: "no stored ticket"}
 	switch {
@@ -950,11 +951,9 @@ func buildCodexHarvestFlowStages(snapshot CodexHarvestFlowSnapshot) []CodexHarve
 		if event.Kind == "reject" && snapshot.Counts.TicketsReady == 0 {
 			ticket.Status = "fail"
 			ticket.Detail = "response rejected"
-		} else if event.Kind == "accept" && ticket.Status != "fail" {
-			ticket.Status = "ok"
-			if snapshot.Counts.TicketsReady == 0 && event.Standby {
-				ticket.Detail = "standby stored"
-			}
+		} else if event.Kind == "accept" && snapshot.Counts.TicketsReady == 0 && ticket.Status != "fail" {
+			ticket.Status = "warn"
+			ticket.Detail = "no valid ticket"
 		}
 	}
 
@@ -973,76 +972,29 @@ func buildCodexHarvestFlowStages(snapshot CodexHarvestFlowSnapshot) []CodexHarve
 	return []CodexHarvestFlowStage{node, probe, shape, ticket, selectStage}
 }
 
-func shapeStageFromEvents(last map[string]CodexHarvestFlowEvent, ready int) CodexHarvestFlowStage {
-	// Keep the stage ID for API compatibility. Native tickets are now admitted
-	// by the completed continuation probe, never by their length or an old hit.
-	latestProbe := last["probe"]
-	if latestProbe.ExpectedLength == 780 || latestProbe.Length == 780 {
-		stage := CodexHarvestFlowStage{ID: "shape", Status: "warn", Detail: latestProbe.Result, Model: latestProbe.Model}
-		at := latestProbe.At
-		stage.At = &at
-		copyFlowMetrics(&stage, latestProbe)
-		if latestProbe.Kind == "probe_hit" && latestProbe.Result == "success" && latestProbe.Reason == "probe_verified" {
-			stage.Status, stage.Detail = "ok", "probe_verified"
-		} else if latestProbe.Result == "probe_reissued" || latestProbe.Result == "probe_route_changed" || latestProbe.Result == "invalid_state" {
-			stage.Status = "fail"
-		}
+func probeValidationStageFromEvents(last map[string]CodexHarvestFlowEvent) CodexHarvestFlowStage {
+	// Keep the stage ID for API compatibility; only a recorded continuation
+	// result can establish success. Old lengths and earlier hits are not evidence.
+	stage := CodexHarvestFlowStage{ID: "shape", Status: "idle", Detail: "waiting for ticket validation"}
+	latest := last["probe"]
+	if latest.ID == "" && latest.At.IsZero() {
 		return stage
 	}
-	shape := CodexHarvestFlowStage{ID: "shape", Status: "idle", Detail: "waiting for ticket validation"}
-	latest := last["probe"]
-	hit := last["probe:probe_hit"]
-	if flowEventEmpty(latest) && flowEventEmpty(hit) {
-		return shape
+	at := latest.At
+	stage.At, stage.Model = &at, latest.Model
+	copyFlowMetrics(&stage, latest)
+	stage.Status, stage.Detail = "warn", latest.Result
+	if latest.Kind == "probe_hit" && latest.Result == "success" && latest.Reason == "probe_verified" {
+		stage.Status, stage.Detail = "ok", "probe_verified"
+	} else {
+		switch latest.Result {
+		case "probe_reissued", "probe_route_changed", "invalid_state", "invalid_route":
+			stage.Status = "fail"
+		case "success", "":
+			stage.Detail = "probe_inconclusive"
+		}
 	}
-	if latest.Result != "invalid_state" && latest.Kind != "probe_hit" && latest.Length == latest.ExpectedLength && latest.Blocks == latest.ExpectedBlocks && latest.Length > 0 {
-		at := latest.At
-		shape.At, shape.Model = &at, latest.Model
-		copyFlowMetrics(&shape, latest)
-		shape.Status = "warn"
-		shape.Detail = "ticket shape matches; validation incomplete"
-		return shape
-	}
-	if (latest.HTTPStatus == 200 || latest.HTTPStatus == 101) && latest.Length > 0 && (latest.Kind != "probe_hit" || (latest.ExpectedLength > 0 && latest.Length != latest.ExpectedLength)) {
-		at := latest.At
-		shape.At = &at
-		shape.Model = latest.Model
-		copyFlowMetrics(&shape, latest)
-		shape.Status = "fail"
-		shape.Detail = fmt.Sprintf("got %d/%d want %d/%d", latest.Length, latest.Blocks, latest.ExpectedLength, latest.ExpectedBlocks)
-		return shape
-	}
-	source := hit
-	if flowEventEmpty(source) {
-		source = latest
-	}
-	if source.Kind == "probe_hit" && (source.ExpectedLength == 0 || source.Length == source.ExpectedLength) {
-		at := source.At
-		shape.At = &at
-		shape.Model = source.Model
-		copyFlowMetrics(&shape, source)
-		shape.Status = "ok"
-		shape.Detail = fmt.Sprintf("%d / %d blk", source.Length, source.Blocks)
-		return shape
-	}
-	if ready > 0 {
-		shape.Status = "ok"
-		shape.Detail = fmt.Sprintf("%d ready", ready)
-		return shape
-	}
-	if !flowEventEmpty(latest) {
-		at := latest.At
-		shape.At = &at
-		shape.Model = latest.Model
-		copyFlowMetrics(&shape, latest)
-		shape.Status = "warn"
-		shape.Detail = "no ticket body"
-	}
-	return shape
-}
-
-func flowEventEmpty(event CodexHarvestFlowEvent) bool {
-	return event.ID == "" && event.At.IsZero()
+	return stage
 }
 
 func stageFromEvent(id string, event CodexHarvestFlowEvent, idle string) CodexHarvestFlowStage {
@@ -1080,41 +1032,28 @@ func copyFlowMetrics(stage *CodexHarvestFlowStage, event CodexHarvestFlowEvent) 
 	stage.ExpectedBlocks = event.ExpectedBlocks
 }
 
-func describeCodexHarvestOutcome(kind, raw string, status, length, blocks, expectedLen, expectedBlk int, model, node string) (message, level, detail string) {
+func describeCodexHarvestOutcome(kind, raw string, status int, model, node string, verified bool) (message, level, detail string) {
+	_, _, detail = describeCodexProbeFailure(raw, status, model, node)
 	switch kind {
 	case "probe_reissued":
-		return "探针续接返回新票，原票未通过校验 → 换节点重试", "WARN", "ticket probe reissued"
+		return "探针续接返回新票，原票未通过校验", "WARN", detail
 	case "probe_route_changed":
-		return "探针续接更换了路由，原票未通过校验", "WARN", "ticket probe route changed"
+		return "探针续接更换了路由，原票未通过校验", "WARN", detail
 	case "probe_inconclusive":
-		return "探针未完成，门票未入库（请检查剩余请求预算）", "WARN", "ticket probe incomplete"
-	}
-	if kind == "model_mismatch" {
-		_, _, detail = describeCodexProbeFailure(raw, status, model, node)
-		return "上游模型声明与请求不一致，门票未入库", "WARN", detail
-	}
-	if kind == "invalid_route" {
-		_, _, detail = describeCodexProbeFailure(raw, status, model, node)
-		return fmt.Sprintf("已收到 %d 字节票体，但路由 Cookie 验收失败，未入库", length), "WARN", detail
-	}
-	if kind == "success" {
-		detailParts := []string{fmt.Sprintf("len=%d blk=%d", length, blocks)}
-		if node != "" {
-			detailParts = append(detailParts, "node="+node)
+		return "探针未完成，票据未入库（请检查剩余请求预算）", "WARN", detail
+	case "model_mismatch":
+		return "上游模型声明与请求不一致，票据未入库", "WARN", detail
+	case "invalid_route":
+		return "路由 Cookie 未通过校验，票据未入库", "WARN", detail
+	case "invalid_state":
+		return "票据未通过校验，未入库", "WARN", detail
+	case "success":
+		if verified {
+			return "探针校验通过：完整续接，原票未重签，路由未变", "OK", detail
 		}
-		if expectedLen == 780 {
-			return "探针校验通过：完整续接，原票未重签", "OK", strings.Join(detailParts, " · ")
-		}
-		return fmt.Sprintf("成功捕获合规门票（%d 字节 / %d 块）", length, blocks), "OK", strings.Join(detailParts, " · ")
-	}
-	if kind == "invalid_state" && (blocks == 11 || blocks == 13 || length == 312 || length == 356) {
-		_, _, detail = describeCodexProbeFailure(raw, status, model, node)
-		return fmt.Sprintf("拿到的是降智票据（%d 字节 / %d 块），已拒收 → 换节点重试", length, blocks), "WARN",
-			fmt.Sprintf("%s · 合规应为 %d/%d", detail, expectedLen, expectedBlk)
-	}
-	if kind == "rate_limited" || status == http.StatusTooManyRequests {
-		_, _, detail = describeCodexProbeFailure(raw, status, model, node)
-		return "上游限流了，进入冷静期后自动继续", "WARN", detail
+		return "已捕获票据，未记录续接验收结果", "INFO", detail
+	case "rate_limited":
+		return "上游限流，本次探针未通过", "WARN", detail
 	}
 	return describeCodexProbeFailure(raw, status, model, node)
 }

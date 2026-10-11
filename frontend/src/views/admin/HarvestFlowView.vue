@@ -23,6 +23,7 @@
         {{ errorMessage }}
       </div>
 
+      <HarvestPolicyPanel @saved="fetchFlow" />
       <HarvestControlsPanel :refresh-key="snapshot?.generated_at" :runtime="snapshot?.runtime" @saved="fetchFlow" />
       <HarvestGatewayBorrowPanel />
       <HarvestManualConsole
@@ -51,7 +52,6 @@
               <span>{{ t('admin.harvestFlow.scope') }} {{ scopeLabel(snapshot.harvest.scope_mode, snapshot.harvest.account_policy, snapshot.harvest.group_ids) }}</span>
               <span>{{ t('admin.harvestFlow.interval') }} {{ t('admin.harvestFlow.seconds', { n: snapshot.harvest.probe_interval_seconds }) }}</span>
               <span>{{ t('admin.harvestFlow.cooldown') }} {{ t('admin.harvestFlow.seconds', { n: snapshot.harvest.cooldown_seconds }) }}</span>
-              <span>{{ t('admin.harvestFlow.targetLength', { n: snapshot.harvest.target_length }) }}</span>
               <span v-if="snapshot.harvest.models?.length">{{ t('admin.harvestFlow.models') }} {{ snapshot.harvest.models.join(' / ') }}</span>
             </div>
             <p v-if="lastUpdated" class="text-xs text-gray-400">{{ t('admin.harvestFlow.lastUpdated', { time: lastUpdated }) }}</p>
@@ -74,7 +74,7 @@
                   <span v-if="stage.model">{{ stage.model }}</span>
                   <span v-if="stage.http_status"> · HTTP {{ stage.http_status }}</span>
                   <span v-if="(stage.model || stage.http_status) && stage.at"> · </span>
-                  <span v-if="stage.at">{{ formatClock(stage.at) }}</span>
+                  <span v-if="stage.at">{{ stage.id === 'ticket' ? t('admin.harvestFlow.latestTicketEvent', { time: formatClock(stage.at) }) : formatClock(stage.at) }}</span>
                 </p>
               </div>
               <div v-if="index < snapshot.stages.length - 1" class="pointer-events-none absolute right-[-10px] top-1/2 hidden h-px w-5 bg-gradient-to-r from-gray-300 to-transparent md:block dark:from-dark-600" />
@@ -168,7 +168,6 @@
                     :class="ticket.blocked ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' : ticket.ready ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-gray-300'"
                   >
                     <span class="font-medium">{{ ticket.model }} · {{ ticketStatusLine(account, ticket) }}</span>
-                    <span class="mt-auto block min-h-[1rem] font-mono text-[11px] opacity-80">{{ ticket.length ? `${ticket.length}B` : '—' }}</span>
                     <span class="block min-h-[1rem] text-[11px] opacity-80">{{ ticketCookieLine(ticket) }}</span>
                     <span class="block min-h-[1rem] text-[11px] opacity-80">{{ ticketProbeLine(ticket) }}</span>
                   </span>
@@ -217,15 +216,11 @@
                   <p class="mt-1 break-all font-mono text-xs text-gray-500 dark:text-gray-400">
                     <span v-if="event.account_name">{{ event.account_name }}</span>
                     <span v-if="event.node"> · {{ event.node }}</span>
-                    <span v-if="event.length"> · {{ event.length }}/{{ event.blocks || '-' }}</span>
-                    <span v-if="event.expected_length && event.length && event.length !== event.expected_length">
-                      · {{ t('admin.harvestFlow.wantShape', { length: event.expected_length, blocks: event.expected_blocks || '-' }) }}
-                    </span>
                     <span v-if="event.http_status"> · HTTP {{ event.http_status }}</span>
                     <span v-if="event.standby"> · {{ t('admin.harvestFlow.standby') }}</span>
                   </p>
                   <p v-if="event.reason || event.detail || event.result" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ event.detail || reasonLabel(event.reason) || resultLabel(event.result) || event.result }}
+                    {{ eventDetail(event) }}
                   </p>
                 </div>
               </li>
@@ -238,6 +233,7 @@
 </template>
 
 <script setup lang="ts">
+import HarvestPolicyPanel from '@/components/admin/HarvestPolicyPanel.vue'
 import HarvestGatewayBorrowPanel from '@/components/admin/HarvestGatewayBorrowPanel.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -368,6 +364,19 @@ function resultLabel(result?: string) {
   return lookupLabel('admin.harvestFlow.results', result)
 }
 
+function eventDetail(event: CodexHarvestFlowEvent) {
+  if (event.kind === 'reject') return t('admin.harvestFlow.ticketRejected')
+  if (event.kind === 'probe_hit') {
+    return event.reason === 'probe_verified' ? t('admin.harvestFlow.probeVerified') : t('admin.harvestFlow.probeIncomplete')
+  }
+  // Stored history may predate probe validation. Render the stable outcome,
+  // not old free-text claims about ticket length or model quality.
+  if (event.stage === 'probe' && ['invalid_state', 'invalid_route', 'probe_reissued', 'probe_route_changed', 'probe_inconclusive'].includes(event.result || '')) {
+    return resultLabel(event.result)
+  }
+  return event.detail || reasonLabel(event.reason) || resultLabel(event.result)
+}
+
 function scopeLabel(mode?: string, policy?: string, groupIds?: number[]) {
   if (snapshot.value?.harvest.scope_error) return t('admin.harvestFlow.scopeUnavailable')
   const scope = mode === 'selected'
@@ -396,25 +405,8 @@ function stageDetail(stage: CodexHarvestFlowStage) {
     case 'shape':
       if (stage.status === 'idle') return t('admin.harvestFlow.idleShape')
       if (stage.detail === 'probe_verified') return t('admin.harvestFlow.probeVerified')
-      if (stage.expected_length === 780 || stage.length === 780) {
-        if (stage.detail === 'probe_reissued' || stage.detail === 'probe_route_changed') return resultLabel(stage.detail)
-        return t('admin.harvestFlow.probeIncomplete')
-      }
-      if (stage.detail === 'ticket shape matches; validation incomplete') {
-        return t('admin.harvestFlow.shapeValidationIncomplete', { length: stage.length || 0, blocks: stage.blocks || 0 })
-      }
-      if (stage.status === 'ok') {
-        return t('admin.harvestFlow.shapeOk', { length: stage.length || 0, blocks: stage.blocks || 0 })
-      }
-      if (stage.status === 'warn' || stage.detail === 'no ticket body') {
-        return t('admin.harvestFlow.shapeNoBody')
-      }
-      return t('admin.harvestFlow.shapeBad', {
-        length: stage.length || 0,
-        blocks: stage.blocks || 0,
-        expected_length: stage.expected_length || 292,
-        expected_blocks: stage.expected_blocks || 10
-      })
+      if (['probe_reissued', 'probe_route_changed', 'invalid_state', 'invalid_route', 'network_error', 'account_error', 'rate_limited'].includes(stage.detail || '')) return resultLabel(stage.detail)
+      return t('admin.harvestFlow.probeIncomplete')
     case 'ticket':
       if (stage.status === 'idle') return t('admin.harvestFlow.idleTicket')
       if (stage.status === 'fail') {
@@ -422,7 +414,7 @@ function stageDetail(stage: CodexHarvestFlowStage) {
           ? t('admin.harvestFlow.ticketsPausedCount', { n: snapshot.value.counts.tickets_blocked })
           : t('admin.harvestFlow.ticketRejected')
       }
-      if (stage.detail === 'standby stored') return t('admin.harvestFlow.ticketStandby')
+      if (!snapshot.value?.counts.tickets_ready) return t('admin.harvestFlow.idleTicket')
       return t('admin.harvestFlow.ticketsReadyCount', { n: snapshot.value?.counts.tickets_ready ?? 0 })
     case 'select':
       if (stage.status === 'idle') return t('admin.harvestFlow.idleSelect')

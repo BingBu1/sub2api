@@ -128,7 +128,7 @@
       </div>
       <label v-if="status?.installed" class="flex items-center gap-2 text-sm"><input type="checkbox" :checked="status.use_once" :disabled="busy" @change="operate(status.use_once ? 'once_off' : 'once_on')" />{{ text('打票节点用后移出（需手动恢复）', 'Retire harvest nodes after use (manual recovery)') }}</label>
       <MihomoCountryFilter v-if="status?.installed" :filter="status.country_filter" :codes="status.country_codes || []" :nodes="status.node_states || []" :busy="busy" @save="operate('country_filter', { country_filter: $event })" @scan="operate('country_scan')" />
-      <p class="text-xs text-gray-500">{{ text('这里的配置独立保存。打票代理在系统设置中选择，账号业务代理在账号设置中选择。', 'Configuration is saved here independently. Select ticket proxies in system settings and account proxies in account settings.') }}</p>
+      <p class="text-xs text-gray-500">{{ text('这里的配置独立保存。采票出口在本页「采票出口」中选择，账号业务代理在账号设置中选择。', 'Configuration is saved here independently. Select the harvest exit in the Harvest Exit tab and account proxies in account settings.') }}</p>
     </template>
     <p v-if="status && !status.installed && section !== 'kernel'" class="text-sm text-amber-700">{{ text('请先在“内核与规则”中安装内核。', 'Install the kernel in Kernel and rules first.') }}</p>
 
