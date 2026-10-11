@@ -28,8 +28,11 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 	}()
 	defer func() {
 		if resultErr == nil {
+			// Fast admission may have installed the ticket inside the upstream
+			// adapter. Capture the binding before observation can revoke it.
+			responseBound := boundTicket || s.codexTicketRequestBound(request, account)
 			s.observeCodexTicketResponse(request, result, account)
-			if boundTicket && codexResponseMismatches(request, result, account) && s.settingService.CodexTicketStrictResponse(request.Context()) {
+			if responseBound && codexResponseMismatches(request, result, account) && s.settingService.CodexTicketStrictResponse(request.Context()) {
 				if result.Body != nil {
 					_ = result.Body.Close()
 				}
