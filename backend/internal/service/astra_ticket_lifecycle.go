@@ -311,6 +311,9 @@ func (s *OpenAIGatewayService) StoredAstraSnapshot(ctx context.Context) AstraGat
 		out.Targets = append(out.Targets, r)
 		if r.State == "ready" {
 			out.ReadyRoutes++
+			if out.RouteExpiresAt == nil || (r.ExpiresAt != nil && r.ExpiresAt.Before(*out.RouteExpiresAt)) {
+				out.RouteExpiresAt = r.ExpiresAt
+			}
 		}
 	}
 	return out

@@ -37,8 +37,18 @@ func astraAccountSchedulingReady(settings config.AstraRoutingSettings, snapshot 
 	if !settings.CookiePool.Enabled || snapshot.Revision != settings.Revision {
 		return false
 	}
-	return slices.Contains(settings.CookiePool.TargetAccountIDs, id) &&
-		snapshot.RouteExpiresAt != nil && now.Before(*snapshot.RouteExpiresAt)
+	if !slices.Contains(settings.CookiePool.TargetAccountIDs, id) {
+		return false
+	}
+	if snapshot.RouteExpiresAt != nil && now.Before(*snapshot.RouteExpiresAt) {
+		return true
+	}
+	for _, row := range snapshot.Targets {
+		if row.AccountID == id && row.State == "ready" && row.ExpiresAt != nil && now.Before(*row.ExpiresAt) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *AccountTestService) syncAstraAccountScheduling(ctx context.Context) {
@@ -102,6 +112,20 @@ func astraSchedulingLogFields(settings config.AstraRoutingSettings, snapshot Ast
 	reason := "source_route_unavailable"
 	gateway := ""
 	expiry := snapshot.RouteExpiresAt
+	for _, row := range snapshot.Targets {
+		if row.AccountID == account.ID {
+			if expiry == nil {
+				expiry = row.ExpiresAt
+			}
+			if row.Gateway != "" {
+				gateway = row.Gateway
+			}
+			if row.Reason != "" {
+				reason = row.Reason
+			}
+			break
+		}
+	}
 	for _, row := range snapshot.Sources {
 		if row.Active {
 			gateway = row.Gateway
@@ -109,7 +133,9 @@ func astraSchedulingLogFields(settings config.AstraRoutingSettings, snapshot Ast
 		}
 	}
 	if ready {
-		reason = "source_route_available"
+		if reason == "source_route_unavailable" {
+			reason = "source_route_available"
+		}
 	} else if !settings.CookiePool.Enabled {
 		reason = "cookie_pool_disabled"
 	} else if snapshot.Revision != settings.Revision {
