@@ -41,7 +41,7 @@ func (s *OpenAIGatewayService) UnifiedAstraTicketsEnabled(ctx context.Context) b
 func astraTicketAccountEligible(ctx context.Context, a *Account) bool {
 	// Explicit preparation can restore a target paused by Astra scheduling, but
 	// never bypasses authentication, expiry, transport or upstream cooldowns.
-	if a == nil || !a.IsActive() || !isOpenAICodexTicketAccount(a, OpenAICodexStateProbeDefaultModel) || a.ParentAccountID != nil || !a.IsModelSupported(OpenAICodexStateProbeDefaultModel) {
+	if a == nil || !a.IsActive() || !isOpenAICodexTicketAccount(a, OpenAICodexStateProbeDefaultModel) || a.ParentAccountID != nil {
 		return false
 	}
 	now := time.Now()
@@ -80,6 +80,10 @@ func (s *OpenAIGatewayService) PrepareStoredAstraSources(ctx context.Context) er
 	if _, ticket := s.storedAstraDonor(ctx, 0); ticket != nil {
 		return nil
 	}
+	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+	defer cancel()
+	controls, _ := s.harvestControls(ctx)
+	ctx = context.WithValue(ctx, codexHarvestRoundKey{}, &codexHarvestRound{limit: controls.Speed.MaxRequestsPerRound})
 	// Reuse is the fast path. When it has no donor, use the existing self
 	// collector for source accounts rather than creating a second ticket store.
 	for _, id := range s.cfg.AstraRouting(ctx).CookiePool.SourceAccountIDs {
@@ -193,6 +197,9 @@ func (s *OpenAIGatewayService) acquireStoredAstraTarget(ctx context.Context, id 
 	if ticket := s.lookupOpenAICodexTicket(account, OpenAICodexStateProbeDefaultModel); ticket.valid(time.Now(), 780) && ticket.Transport == protocol {
 		return account, ticket, nil
 	}
+	if protocol != "sse" {
+		return nil, nil, ErrOpenAICodexTicketUnavailable
+	}
 	if _, ticket := s.storedAstraDonor(ctx, id); ticket == nil {
 		if err := s.PrepareStoredAstraSources(ctx); err != nil {
 			return nil, nil, err
@@ -204,9 +211,6 @@ func (s *OpenAIGatewayService) acquireStoredAstraTarget(ctx context.Context, id 
 		if ticket := s.lookupOpenAICodexTicket(account, OpenAICodexStateProbeDefaultModel); ticket.valid(time.Now(), 780) && ticket.Transport == protocol {
 			return account, ticket, nil
 		}
-	}
-	if protocol != "sse" {
-		return nil, nil, ErrOpenAICodexTicketUnavailable
 	}
 	if !s.codexHarvestRunMu.TryLock() {
 		return nil, nil, errors.New("target_validation_in_progress")
@@ -259,8 +263,8 @@ func (s *OpenAIGatewayService) ApplyStoredAstraTarget(ctx context.Context, h htt
 	if err != nil {
 		return "", func() {}, err
 	}
-	// Never combine a new identity snapshot with credentials already assembled
-	// by the caller. Refresh/rotation must start a new request instead.
+	// Never combine another workspace with the caller's credentials. The
+	// access-token provider may have refreshed a token since this DB snapshot.
 	if h.Get("ChatGPT-Account-ID") != account.GetCredential("chatgpt_account_id") || h.Get("Authorization") == "" {
 		return "", func() {}, errors.New("configuration_changed")
 	}
@@ -285,7 +289,7 @@ func (s *OpenAIGatewayService) StoredAstraSnapshot(ctx context.Context) AstraGat
 			return r
 		}
 		ticket := s.lookupOpenAICodexTicket(account, OpenAICodexStateProbeDefaultModel)
-		if !ticket.valid(now, 780) || ticket.Transport != "sse" {
+		if !ticket.valid(now, 780) {
 			return r
 		}
 		expires := openAICodexTicketRemainingUntil(ticket)

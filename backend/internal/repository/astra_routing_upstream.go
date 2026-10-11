@@ -90,6 +90,9 @@ func (s *astraRoutingUpstream) DoWithTLS(r *http.Request, p string, a int64, n i
 				r = astraFreshRequest(r.Clone(service.WithHTTPUpstreamRedirectsDisabled(r.Context())))
 				r.Close = true
 				resp, err := s.delegate.DoWithTLS(r, proxy, a, n, f)
+				if resp != nil {
+					resp.Request = r
+				}
 				return attachAstraLease(resp, err, release)
 			}
 			return s.delegate.DoWithTLS(r, p, a, n, f)
