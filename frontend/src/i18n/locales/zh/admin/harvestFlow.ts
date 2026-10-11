@@ -2,13 +2,15 @@ export default {
   harvestFlow: {
     transportLabel: '采票协议',
     edgeLabel: '边缘 IP（可选）',
-    edgeHint: '指定公网 IP 直拨，Host、TLS SNI 和证书校验仍使用 chatgpt.com；留空走 DNS。边缘 IP 与 Cookie 目标网关分别校验。',
+    edgeHint: '指定公网 IP 直拨，Host、TLS SNI 和证书校验仍使用 chatgpt.com；留空走 DNS。边缘 IP 仅用于连接，不参与探针通过判定。',
     gatewayLabel: '目标路由网关',
-    gatewayHint: '默认 unified-88，也支持 88、unified_88 或完整 host；填 any 接受任意有效网关。模型声明不匹配时保留已验收路由，Cookie 按自身有效期复用；网关与模型声明不代表能力验证。',
+    gatewayHint: '按目标账号的实际探针结果验收，不按数据中心 host 筛票。每个节点先自采，再回带原票和路由 Cookie 完整续接；原票未重签、路由未变才入库。',
     shapeValidationIncomplete: '票体 {length}/{blocks} 长度与块数符合目标，但完整验收未通过；原因见打票探测',
-    nativeHint: '服务器原生采票，沿用采票代理，无需云函数。780 是格式长度，票龄最多 240 秒；网关与模型声明不代表能力验证。采票协议须与业务上游协议一致，切换后旧协议票不复用。',
+    nativeHint: '采票与复验使用同一目标账号、定向出口和协议，两次请求均消耗预算。票体长度、HTTP 101 和模型声明不作为探针通过依据；短探针不代表完整质量测试。票龄最多 240 秒，切换协议后重新验票。',
+    probeVerified: '完整续接通过 · 原票未重签 · 路由未变',
+    probeIncomplete: '探针未通过或未完成，票体长度与握手成功不能替代验收',
     title: '打票全流程',
-    description: '节点轮换 → 打票探测 → 780 形态校验 → 门票入库 → 账号选中',
+    description: '节点轮换 → 目标账号自采 → 探针校验 → 门票入库 → 账号选中',
     externalProxy: '静态/外部代理',
     externalProxyHint: '节点轮换由代理服务商管理，无需本地 sidecar。',
     proxyUnconfigured: '尚未配置采票代理',
@@ -48,7 +50,7 @@ export default {
     waitingSidecar: '等待 sidecar',
     poolOnline: '负载均衡 · {n} 个节点',
     idleProbe: '等待打票探测',
-    idleShape: '等待 780 校验',
+    idleShape: '等待探针校验',
     idleTicket: '暂无入库门票',
     cookies: { none: '无 Cookie', active: 'Cookie {count} 个 · 剩余 {time}', expired: 'Cookie {count} 个 · 已过期' },
     idleSelect: '等待助手请求',
@@ -63,7 +65,7 @@ export default {
     ticketStored: '已入库',
     schedulable: '可调度',
     unschedulable: '不可调度',
-    noEvents: '还没有流程事件。打开本页后会记录节点轮换、打票探测、780 校验、门票入库和账号选中。',
+    noEvents: '还没有流程事件。打开本页后会记录节点轮换、目标账号自采、探针校验、门票入库和账号选中。',
     noAccounts: '没有可打票的 ChatGPT OAuth 账号',
     events: '流程事件',
     accounts: '门票账号',
@@ -75,7 +77,7 @@ export default {
     durationMinutes: '{minutes} 分钟',
     durationSeconds: '{seconds} 秒',
     lastProbe: '上次探测 {time}',
-    blocked: '未打到 780，该模型已暂停',
+    blocked: '未取得探针合格票，该模型已暂停',
     missing: '暂无有效门票',
     standby: '备用',
     skipHarvest: '不打票',
@@ -107,9 +109,9 @@ export default {
     console: {
       collectLanes: '并行通道数',
       parallelStart: '并行获取凭证',
-      parallelHint: '通道数仅用于“并行获取凭证”。需要托管 Mihomo；独立出口共享尝试预算，每个模型成功入库后停止。通道数不设固定上限，实际并发不超过剩余预算与可用节点数。每轮节点不重复，下次接着上次位置继续。串行打票使用上面的换节点规则。',
+      parallelHint: '通道数仅用于“并行获取凭证”。需要托管 Mihomo；独立出口共享尝试预算，每个模型成功入库后停止。通道数不设固定上限，每路需要采票和复验 2 次请求，实际并发受剩余预算与可用节点数限制。每轮节点不重复，下次接着上次位置继续。串行打票使用上面的换节点规则。',
       title: '单号定向打票',
-      description: '手动对指定账号打票。换节点走定向出口和节点记忆，不走业务轮询。',
+      description: '目标账号自采并回带原票完成探针校验，通过后入库。换节点走定向出口和节点记忆，不走业务轮询。',
       account: '目标账号',
       accountPlaceholder: '点击查看全部账号，或输入 #ID / 名称搜索',
       accountCount: '共 {n} 个账号',
@@ -124,7 +126,7 @@ export default {
       rateLimitCooldown: '429 冷静',
       rateLimitCooldownHint: '1–60 秒',
       maxAttempts: '最大尝试',
-      maxAttemptsHint: '填写正整数，不设固定上限；所有模型和通道共享此预算。',
+      maxAttemptsHint: '填写正整数，不设固定上限；所有模型和通道共享预算。采票与回带探针各消耗 1 次，完整验票至少需要 2 次。',
       invalidBudget: '尝试次数须为正整数，并行通道数须为不小于 2 的整数。',
       nodeSwitch: '换节点规则',
       nodeSwitchRules: {
@@ -158,7 +160,7 @@ export default {
     stages: {
       node: '节点轮换',
       probe: '打票探测',
-      shape: '780 校验',
+      shape: '探针校验',
       ticket: '门票入库',
       select: '账号选中'
     },
@@ -170,7 +172,7 @@ export default {
     },
     kinds: {
       rotate: '切节点',
-      probe_hit: '打中 780',
+      probe_hit: '探针通过',
       probe_miss: '探测未中',
       accept: '门票入库',
       reject: '门票拒绝',
@@ -180,7 +182,7 @@ export default {
       unavailable: '选号失败'
     },
     reasons: {
-      ticket_unavailable: '该模型没有有效 780 门票',
+      ticket_unavailable: '该模型没有探针合格门票',
       harvest_excluded: '不在采集范围内，遗留门票不参与门控选号',
       unavailable: '没有可用账号'
     },
@@ -232,6 +234,9 @@ export default {
       previous: '上一页', next: '下一页', loadFailed: '节点记录读取失败。', resetFailed: '重置失败，记录保持不变。'
     },
     results: {
+      probe_reissued: '探针续接重签，原票未通过',
+      probe_route_changed: '探针路由改变',
+      probe_inconclusive: '探针未完成',
       success: '合格票命中',
       network_error: '网络故障',
       upstream_error: '上游响应失败',

@@ -227,7 +227,21 @@ func (s *OpenAIGatewayService) ExecuteManualHarvest(ctx context.Context, req Man
 
 			started := time.Now()
 			session := s.harvestAttemptSession(account, model, lease)
-			result := s.executeCodexHarvestProbe(ctx, account, token, model, lease.proxy, timeout, func() bool { return ctx.Err() == nil }, session)
+			first := true // The node attempt already reserved the first request.
+			result := s.executeCodexHarvestProbe(ctx, account, token, model, lease.proxy, timeout, func() bool {
+				if ctx.Err() != nil || s.codexTicketChatHeld(account.ID) {
+					return false
+				}
+				if first {
+					first = false
+					return true
+				}
+				if attempt >= req.MaxAttempts {
+					return false
+				}
+				attempt++
+				return true
+			}, session)
 			s.completeManualHarvestAttempt(ctx, lease, result, time.Since(started), controls)
 			length, blocks := len(result.State), result.Shape.Blocks
 			raw := ""
@@ -244,7 +258,7 @@ func (s *OpenAIGatewayService) ExecuteManualHarvest(ctx context.Context, req Man
 			case "rate_limited":
 				progressResult = "rate_limited"
 			}
-			recordCodexHarvestProbe(account, model, result.Kind, nodeName, raw, result.Status, length, blocks, expectedLength, expectedBlocks)
+			recordCodexHarvestProbe(account, model, result.Kind, nodeName, raw, result.Status, length, blocks, expectedLength, expectedBlocks, result.ProbeVerified)
 
 			if result.Kind == "success" {
 				consecutiveFails = 0
@@ -389,7 +403,7 @@ func waitManualHarvest(ctx context.Context, seconds int) error {
 }
 
 func manualHarvestShouldSwitch(rule string, consecutiveFails int, kind string, length, blocks int) bool {
-	degraded := kind == "invalid_state" && (blocks == 11 || blocks == 13 || length == 312 || length == 356)
+	degraded := kind == "probe_reissued" || (kind == "invalid_state" && (blocks == 11 || blocks == 13 || length == 312 || length == 356))
 	switch rule {
 	case ManualHarvestNodeSwitchNever:
 		return false
