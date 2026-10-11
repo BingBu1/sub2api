@@ -17,7 +17,7 @@ export default {
     groupsRemoved: 'Left groups',
     chooseSchedulingGroups: 'Select at least one group',
     accountScheduling: 'Account pool scheduling',
-    accountSchedulingHint: 'After a passing target probe with a valid route, group mode joins all selected groups, including groups the account has never joined. Failure, expiry or no route removes those memberships. Other groups stay unchanged. Model and account modes restore only states disabled by this feature. Syncs every second without tests and preserves conflicting manual edits. Changing modes or selected groups first undoes the previous owned action; disabling preserves current state.',
+    accountSchedulingHint: 'Route probes are observational only. Failure, cooldown, unverified or expired routes do not gate production requests or change account, model or group scheduling. Without an available borrowed route, requests use the account’s original configuration.',
     nodeCooldown: "Failed node / host cooldown",
     nodeCooldownHint: "The 3600-second default is a retry policy, not a measured upstream cache lifetime. Skip failed nodes and nodes known to share that host for the same target. Settings saves preserve cooldowns; process restarts clear them. Stop testing when all nodes are cooling; never fall back to direct access.",
     nodeCooldownInvalid: "Cooldown must be an integer from 60 to 86400 seconds.",
