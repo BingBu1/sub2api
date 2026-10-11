@@ -95,7 +95,7 @@ export default {
     sources: 'Source accounts', targets: 'Target accounts', wsAccounts: 'Participating accounts',
     wsTitle: 'Pinned WS sessions',
     wsDescription: 'Start on WebSocket and continue on the same connection with a response ID.',
-    cookieHint: 'Prepare a route here, or allow a target request to probe sources on demand. Sources are trusted: a lightweight request acquires a Cookie after a complete Astra response. Targets must pass the shared two-shot state probe. Routes use the configured lifetime cap; targets are rejected when no route is available. Source and target accounts must not overlap.',
+    cookieHint: 'Prepare routes through background collection or explicit diagnostics. Business requests only reuse existing routing material and never start or wait for probes. If no usable borrowed route exists, requests use the original account configuration. Source and target accounts must not overlap.',
     wsHint: 'Saving enables account WSv2, prepares Astra mappings and links the routing pool. Clients must send a stable session identity and an explicit previous_response_id. Sessions are isolated by account, user and thread and last at most one hour. Start a new first turn after a connection fails.',
     savedState: 'Saved configuration', enabled: 'Enabled', disabled: 'Disabled',
     save: 'Save configuration', saving: 'Saving…', unsaved: 'Unsaved changes', discard: 'Discard changes',

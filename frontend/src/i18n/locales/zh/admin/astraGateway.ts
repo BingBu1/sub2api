@@ -95,7 +95,7 @@ export default {
     sources: '来源账号', targets: '目标账号', wsAccounts: '参与账号',
     wsTitle: 'WS 固定会话',
     wsDescription: '首轮使用 WebSocket，后续通过响应 ID 在原连接继续。',
-    cookieHint: '点击获取路由，或在目标请求缺少路由时自动测试来源账号。来源账号默认可信，轻量请求获取 Cookie；仅校验 Astra 响应完整和 Cookie 有效，不测试来源智力；目标须通过两轮门票探针才可用；路由按配置的有效期保留，无候选时拒绝目标请求。来源和目标不能重叠。',
+    cookieHint: '通过后台采集或手动诊断准备路由。业务请求仅复用已有路由材料，不触发或等待探针；没有可用借用路由时，按账号原配置转发。来源和目标不能重叠。',
     wsHint: '保存时自动开启所选账号的 WSv2、补齐 Astra 映射并关联路由池。客户端需提供稳定的会话标识，并显式回传 previous_response_id；同一账号、用户、线程独立隔离，最多保持一小时。连接失效后需新建首轮。',
     savedState: '已保存配置', enabled: '已开启', disabled: '已关闭',
     save: '保存配置', saving: '正在保存…', unsaved: '有未保存修改', discard: '撤销修改',
