@@ -29,8 +29,7 @@ export function parseCacheUsage(protocol: CacheProtocol, value: unknown, previou
     input: nonnegative(usage[chat ? 'prompt_tokens' : 'input_tokens']),
     output: nonnegative(usage[chat ? 'completion_tokens' : 'output_tokens']),
     read: nonnegative(object(usage[chat ? 'prompt_tokens_details' : 'input_tokens_details']).cached_tokens),
-    // OpenAI does not report a separate cache-write counter.
-    write: null
+    write: nonnegative(object(usage[chat ? 'prompt_tokens_details' : 'input_tokens_details']).cache_write_tokens)
   }
 }
 
@@ -93,7 +92,7 @@ export async function probeCacheRound(run: CacheTestRun, round: CacheRound, key:
   const abort = () => controller.abort()
   signal.addEventListener('abort', abort, { once: true })
   if (signal.aborted) controller.abort()
-  let timedOut = false, finishedChoice = false, messageStarted = false
+  let timedOut = false, finishedChoice = false, messageStarted = false, truncated = false
   const timer = setTimeout(() => { timedOut = true; controller.abort() }, run.settings.timeoutMs)
   const started = performance.now()
   const markText = (value: unknown) => {
@@ -114,17 +113,18 @@ export async function probeCacheRound(run: CacheTestRun, round: CacheRound, key:
     if (!response.ok) { await response.body?.cancel(); throw new ProbeError('http') }
     await consumeSSE(response, value => {
       if (value === '[DONE]') {
-        if (protocol !== 'chat' || !finishedChoice) throw new ProbeError('incomplete')
+        if (protocol !== 'chat' || !finishedChoice || truncated) throw new ProbeError('incomplete')
         return true
       }
       const event = object(value)
-      if (event.error || event.type === 'error' || event.type === 'response.failed') throw new ProbeError('http')
+      if (event.error || event.type === 'error') throw new ProbeError('http')
       if (protocol === 'responses') {
         const responseData = object(event.response)
         round.responseModel = text(responseData.model) ?? round.responseModel
         round.serviceTier = text(responseData.service_tier) ?? round.serviceTier
         if (event.type === 'response.output_text.delta') markText(event.delta)
         if (responseData.usage) round.tokens = parseCacheUsage(protocol, responseData.usage, round.tokens)
+        if (event.type === 'response.failed') throw new ProbeError('http')
         if (event.type === 'response.incomplete') throw new ProbeError('incomplete')
         return event.type === 'response.completed' && responseData.status === 'completed'
       }
@@ -150,7 +150,7 @@ export async function probeCacheRound(run: CacheTestRun, round: CacheRound, key:
       if (Array.isArray(event.choices)) for (const choice of event.choices) {
         const item = object(choice)
         markText(object(item.delta).content)
-        if (item.finish_reason === 'length' || item.finish_reason === 'content_filter') throw new ProbeError('incomplete')
+        if (item.finish_reason === 'length' || item.finish_reason === 'content_filter') truncated = true
         if (typeof item.finish_reason === 'string' && item.finish_reason) finishedChoice = true
       }
       return false
@@ -161,6 +161,7 @@ export async function probeCacheRound(run: CacheTestRun, round: CacheRound, key:
     round.status = signal.aborted ? 'stopped' : 'failed'
   } finally {
     round.durationMs = Math.round(performance.now() - started)
+    controller.abort()
     if (!round.requestId) round.billingState = 'unavailable'
     clearTimeout(timer)
     signal.removeEventListener('abort', abort)
@@ -185,6 +186,7 @@ export async function executeCacheRun(run: CacheTestRun, key: string, signal: Ab
     for (let index = 1; index <= run.settings.rounds; index++) {
       if (signal.aborted) break
       if (index > 1) await abortableDelay(run.settings.intervalMs, signal)
+      if (signal.aborted) break
       run.rounds.push(newCacheRound(index))
       changed()
       const round = run.rounds[run.rounds.length - 1]
@@ -206,6 +208,7 @@ export async function reconcileCacheBills(run: CacheTestRun, userId: number, sig
   for (const delay of [0, 1000, 2000, 4000]) {
     if (signal.aborted) return
     try { await abortableDelay(delay, signal) } catch { return }
+    if (signal.aborted) return
     const pending = run.rounds.filter(r => r.requestId && !r.bill)
     if (!pending.length) return
     await Promise.all(pending.map(async round => {
@@ -224,4 +227,3 @@ export async function reconcileCacheBills(run: CacheTestRun, userId: number, sig
     changed()
   }
 }
-

@@ -77,6 +77,10 @@ export const CACHE_ENDPOINTS: Record<CacheProtocol, string> = {
 }
 const efforts = ['', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 const boundedInteger = (n: number, min: number, max: number) => Number.isInteger(n) && n >= min && n <= max
+export function createCacheTestId(): string {
+  // getRandomValues also works on self-hosted HTTP origins where randomUUID is unavailable.
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+}
 export function validCacheSettings(s: CacheTestSettings): boolean {
   return ['responses', 'chat', 'messages'].includes(s.protocol) && typeof s.model === 'string' &&
     s.model.trim().length > 0 && s.model.length <= 200 && boundedInteger(s.rounds, 2, 6) &&
@@ -166,9 +170,28 @@ export function safeCacheRun(run: CacheTestRun): CacheTestRun {
 export function exportCacheRun(run: CacheTestRun): string {
   return JSON.stringify(safeCacheRun(run), null, 2)
 }
-export function loadCacheHistory(userId: number, storage: Storage = localStorage): CacheTestRun[] {
+const nullableNumber = (value: unknown) => value === null || nonnegative(value) !== null
+const nullableText = (value: unknown) => value === null || (typeof value === 'string' && value.length <= 1000)
+function validTokens(value: CacheTokens | null): boolean {
+  return value === null || (!!value && tokenFields.every(field => nullableNumber(value[field])))
+}
+function validStoredRound(round: CacheRound): boolean {
+  if (!round || !boundedInteger(round.index, 1, 6) || typeof round.startedAt !== 'string' ||
+    !['running', 'completed', 'stopped', 'failed'].includes(round.status) ||
+    !['pending', 'matched', 'unavailable', 'error'].includes(round.billingState) ||
+    ![null, 'http', 'network', 'invalid_stream', 'incomplete', 'timeout', 'aborted'].includes(round.error) ||
+    !validTokens(round.tokens) || ![round.requestId, round.responseModel, round.serviceTier].every(nullableText) ||
+    ![round.firstTextMs, round.durationMs, round.httpStatus].every(nullableNumber)) return false
+  const bill = round.bill
+  return bill === null || (!!bill && Number.isInteger(bill.id) && typeof bill.requestId === 'string' &&
+    typeof bill.model === 'string' && !!bill.tokens && validTokens(bill.tokens) &&
+    [bill.groupId, bill.accountId, bill.inputCost, bill.outputCost, bill.readCost, bill.writeCost, bill.totalCost,
+      bill.actualCost, bill.multiplier, bill.firstTokenMs, bill.durationMs].every(nullableNumber) &&
+    [bill.upstreamModel, bill.serviceTier, bill.reasoningEffort].every(nullableText))
+}
+export function loadCacheHistory(userId: number, storage?: Storage): CacheTestRun[] {
   try {
-    const raw = storage.getItem(HISTORY_PREFIX + userId)
+    const raw = (storage ?? localStorage).getItem(HISTORY_PREFIX + userId)
     if (!raw || raw.length > 1000000) return []
     const items = JSON.parse(raw)
     if (!Array.isArray(items)) return []
@@ -177,9 +200,7 @@ export function loadCacheHistory(userId: number, storage: Storage = localStorage
       typeof r.groupName === 'string' && typeof r.keyName === 'string' && Number.isInteger(r.groupId) &&
       Number.isInteger(r.keyId) && r.settings && validCacheSettings(r.settings) &&
       ['running', 'completed', 'stopped', 'failed'].includes(r.status) &&
-      Array.isArray(r.rounds) && r.rounds.length <= 6 && r.rounds.every((round: CacheRound) =>
-        round && typeof round.index === 'number' && ['running', 'completed', 'stopped', 'failed'].includes(round.status) &&
-        (!round.bill || !!round.bill.tokens))
+      Array.isArray(r.rounds) && r.rounds.length <= 6 && r.rounds.every(validStoredRound)
     ).map(r => {
       const safe = safeCacheRun(r)
       if (safe.status === 'running') safe.status = 'stopped'
@@ -188,10 +209,9 @@ export function loadCacheHistory(userId: number, storage: Storage = localStorage
     })
   } catch { return [] }
 }
-export function saveCacheHistory(userId: number, runs: CacheTestRun[], storage: Storage = localStorage): boolean {
+export function saveCacheHistory(userId: number, runs: CacheTestRun[], storage?: Storage): boolean {
   try {
-    storage.setItem(HISTORY_PREFIX + userId, JSON.stringify(runs.slice(0, 20).map(safeCacheRun)))
+    (storage ?? localStorage).setItem(HISTORY_PREFIX + userId, JSON.stringify(runs.slice(0, 20).map(safeCacheRun)))
     return true
   } catch { return false }
 }
-

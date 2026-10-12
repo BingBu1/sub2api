@@ -95,7 +95,7 @@ import { useAuthStore } from '@/stores/auth'
 import * as groupsAPI from '@/api/admin/groups'
 import * as keysAPI from '@/api/keys'
 import { executeCacheRun, reconcileCacheBills } from '@/api/groupCacheTest'
-import { CACHE_ENDPOINTS, DEFAULT_CACHE_SETTINGS, aggregateCacheTokens, buildCachePrefix, cacheHitRate, exportCacheRun, loadCacheHistory, saveCacheHistory, validCacheSettings, type CacheTestRun } from '@/utils/groupCacheTest'
+import { CACHE_ENDPOINTS, DEFAULT_CACHE_SETTINGS, aggregateCacheTokens, buildCachePrefix, cacheHitRate, createCacheTestId, exportCacheRun, loadCacheHistory, saveCacheHistory, validCacheSettings, type CacheTestRun } from '@/utils/groupCacheTest'
 import type { AdminGroup, ApiKey } from '@/types'
 
 const { t } = useI18n(), auth = useAuthStore()
@@ -180,7 +180,7 @@ async function start() {
     if (key.user_id !== userId || key.group_id !== targetGroup.id || key.status !== 'active' || !key.key || (key.expires_at && Date.parse(key.expires_at) <= Date.now()) || (key.quota > 0 && key.quota_used >= key.quota)) {
       error.value = t('admin.groupCacheTest.keyChanged'); return
     }
-    selected.value = { version: 1, id: crypto.randomUUID(), startedAt: new Date().toISOString(), finishedAt: null, groupId: targetGroup.id, groupName: targetGroup.name, keyId: key.id, keyName: key.name, settings: snapshot, status: 'running', rounds: [] }
+    selected.value = { version: 1, id: createCacheTestId(), startedAt: new Date().toISOString(), finishedAt: null, groupId: targetGroup.id, groupName: targetGroup.name, keyId: key.id, keyName: key.name, settings: snapshot, status: 'running', rounds: [] }
     const run = selected.value
     const changed = () => persist(run, userId)
     await executeCacheRun(run, key.key, controller.signal, changed)
@@ -227,4 +227,3 @@ onBeforeUnmount(() => { alive = false; generation++; keysController?.abort(); ru
 .cache-details dt { @apply text-gray-500; }
 .cache-details dd { @apply break-words text-gray-800 dark:text-gray-200; }
 </style>
-
