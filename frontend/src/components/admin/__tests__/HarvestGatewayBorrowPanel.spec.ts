@@ -40,18 +40,15 @@ describe('Astra gateway configuration', () => {
     w.unmount()
   })
 
-  it('requires selected groups and persists each scheduling mode', async () => {
+  it('keeps legacy scheduling settings observational and disables them on save', async () => {
     mocks.get.mockResolvedValue({ ...value(), account_scheduling: true })
     const w = render(); await flushPromises()
-    expect(w.get('[data-testid="scheduling-mode"]').element).toHaveProperty('value', 'account')
-    await w.get('[data-testid="scheduling-mode"]').setValue('groups'); await flushPromises()
-    expect(w.get('[data-testid="save"]').attributes('disabled')).toBeDefined()
-    await w.get('[data-testid="scheduling-groups"] input').setValue(true)
+    expect(w.find('[data-testid="account-scheduling-toggle"]').exists()).toBe(false)
+    expect(w.find('[data-testid="scheduling-mode"]').exists()).toBe(false)
+    expect(w.text()).toContain('admin.astraGateway.accountSchedulingHint')
+    await w.get('[data-testid="cookie-toggle"]').trigger('click')
     await w.get('form').trigger('submit'); await flushPromises()
-    expect(mocks.save).toHaveBeenLastCalledWith(expect.objectContaining({ scheduling_mode: 'groups', scheduling_group_ids: [7] }))
-    await w.get('[data-testid="scheduling-mode"]').setValue('model')
-    await w.get('form').trigger('submit'); await flushPromises()
-    expect(mocks.save).toHaveBeenLastCalledWith(expect.objectContaining({ scheduling_mode: 'model' }))
+    expect(mocks.save).toHaveBeenLastCalledWith(expect.objectContaining({ account_scheduling: false }))
     w.unmount()
   })
   it('shows the latest three scheduling changes from runtime refresh', async () => {
@@ -65,16 +62,6 @@ describe('Astra gateway configuration', () => {
     expect(log.text()).not.toContain('#345')
     expect(log.text()).toContain('admin.astraGateway.enabled')
     expect(log.text()).toContain('admin.astraGateway.disabled')
-    w.unmount()
-  })
-  it('defaults scheduling off and persists it without changing route settings', async () => {
-    const w = render(); await flushPromises()
-    const toggle = w.get('[data-testid="account-scheduling-toggle"]')
-    expect(toggle.attributes('aria-checked')).toBe('false')
-    await toggle.trigger('click')
-    await w.get('form').trigger('submit'); await flushPromises()
-    expect(mocks.save).toHaveBeenLastCalledWith(expect.objectContaining({ account_scheduling: true, cookie_pool: expect.objectContaining({ enabled: false, target_account_ids: [300] }) }))
-    expect(toggle.attributes('aria-checked')).toBe('true')
     w.unmount()
   })
   it('shows joined and removed memberships for group scheduling records', async () => {
