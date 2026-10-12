@@ -194,7 +194,7 @@ it.each([0, 1, 99, 100, 120])('renders exactly 100 enabled-check slots for %i ac
 it('shows each configured model with its own history limit', async () => {
   const { wrapper, row } = hoverFixture()
   const base = row.candy!.results[0]
-  await wrapper.setProps({ items: [{ ...row, candy_checks: [
+  await wrapper.setProps({ now: Date.parse('2026-09-28T01:00:00Z'), items: [{ ...row, candy_checks: [
     { model: 'gpt-a', reasoning_effort: 'medium', interval_minutes: 1, history_limit: 30, results: [{ ...base, verdict: 'incorrect' }] },
     { model: 'gpt-b', reasoning_effort: 'high', interval_minutes: 5, history_limit: 30, results: [{ ...base, verdict: 'correct', checked_at: '2026-09-28T00:58:00Z' }] },
   ] }] })
