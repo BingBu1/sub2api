@@ -468,6 +468,7 @@ type OpenAIGatewayService struct {
 	excelBPSWarmStopped    bool
 	excelBPSImagesMu       sync.Mutex
 	excelBPSImages         *basispoints.ImageRelay
+	excelBPSImageAdmission excelBPSImageAdmission
 	excelBPSAttachments    basispoints.AttachmentCache
 	excelBPSIPPoolMu       sync.Mutex
 	excelBPSIPPoolSyncedAt time.Time
