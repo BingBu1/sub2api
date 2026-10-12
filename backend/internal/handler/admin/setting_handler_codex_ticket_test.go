@@ -145,6 +145,7 @@ func TestSettingsCodexHarvestScopeRoundTripOmissionAndValidation(t *testing.T) {
 		{"mode": "selected", "group_ids": []int64{24, 2, 2}},
 		{"mode": "selected", "group_ids": []int64{}},
 		{"mode": "all", "group_ids": []int64{}},
+		{"mode": "selected_accounts", "group_ids": []int64{}, "account_policy": "prioritize_schedulable"},
 	} {
 		rec := doUpdateSettings(t, h, map[string]any{key: scope}, nil)
 		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())

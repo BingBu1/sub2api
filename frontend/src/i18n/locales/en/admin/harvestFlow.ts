@@ -27,7 +27,8 @@ export default {
     failOpen: 'Fail-open',
     strategy: 'Strategy',
     scope: 'Harvest scope',
-    scopeAll: 'All accounts',
+    scopeAll: 'All OAuth accounts',
+    scopeSelectedAccounts: 'Selected OAuth accounts',
     scopeSelected: 'Selected groups {n}',
     scopeUnavailable: 'Scope unavailable; harvesting paused',
     policySchedulable: 'Schedulable only',
@@ -179,6 +180,7 @@ export default {
       unavailable: 'Select failed'
     },
     reasons: {
+      ticket_ready: 'Ticket ready',
       ticket_unavailable: 'No probe-verified ticket for this model',
       harvest_excluded: 'Out of harvest scope; leftover tickets are not spent',
       unavailable: 'No available account'
