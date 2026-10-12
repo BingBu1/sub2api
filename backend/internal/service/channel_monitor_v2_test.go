@@ -174,7 +174,10 @@ func TestChannelMonitorV2ConfigValidation(t *testing.T) {
 	require.NoError(t, normalizeChannelMonitorV2Config(&cfg))
 	require.Equal(t, 300, cfg.RefreshIntervalSeconds)
 	require.Equal(t, ChannelMonitorV2CandyHistoryDefault, cfg.CandyHistoryLimit)
-	require.Equal(t, "anthropic", cfg.Platforms[0].Platform)
+	require.Equal(t, "openai", cfg.Platforms[0].Platform)
+	require.Equal(t, []string{"gpt-5"}, cfg.Platforms[0].Models)
+	require.Equal(t, "anthropic", cfg.Platforms[1].Platform)
+	require.Equal(t, []string{"grok", "kiro", "gemini", "antigravity"}, platformIDs(cfg.Platforms[2:]))
 	require.Equal(t, []int64{1, 3}, cfg.GroupIDs)
 
 	cfg.RefreshIntervalSeconds = 120
@@ -183,6 +186,43 @@ func TestChannelMonitorV2ConfigValidation(t *testing.T) {
 	cfg.RefreshIntervalSeconds = 60
 	cfg.GroupIDs = []int64{0}
 	require.ErrorIs(t, normalizeChannelMonitorV2Config(&cfg), ErrChannelMonitorV2InvalidConfig)
+}
+
+func platformIDs(items []ChannelMonitorV2PlatformConfig) []string {
+	out := make([]string, len(items))
+	for i, item := range items {
+		out[i] = item.Platform
+	}
+	return out
+}
+
+func TestChannelMonitorV2ConfigKeepsCustomPlatformOrder(t *testing.T) {
+	cfg := ChannelMonitorV2Config{
+		RefreshIntervalSeconds: 60,
+		Platforms: []ChannelMonitorV2PlatformConfig{
+			{Platform: "DeepSeek", Enabled: true},
+			{Platform: "openai", Enabled: false, Models: []string{"gpt-5"}},
+			{Platform: "my_router", Enabled: true},
+			{Platform: "command_code", Enabled: false},
+		},
+	}
+	require.NoError(t, normalizeChannelMonitorV2Config(&cfg))
+	require.Equal(t, []string{"deepseek", "openai", "my_router", "command_code", "anthropic", "grok", "kiro", "gemini", "antigravity"}, platformIDs(cfg.Platforms))
+	require.True(t, cfg.Platforms[0].Enabled)
+	require.Empty(t, cfg.Platforms[0].Models)
+	require.Equal(t, "DeepSeek", ChannelMonitorV2PlatformLabel("deepseek"))
+	require.Equal(t, "Kiro", ChannelMonitorV2PlatformLabel("kiro"))
+	require.Equal(t, "my_router", ChannelMonitorV2PlatformLabel("my_router"))
+	require.Equal(t, 0, ChannelMonitorV2PlatformIndex(cfg, "deepseek"))
+	require.Equal(t, 2, ChannelMonitorV2PlatformIndex(cfg, "my_router"))
+	require.Equal(t, len(cfg.Platforms), ChannelMonitorV2PlatformIndex(cfg, "missing"))
+
+	dup := cfg
+	dup.Platforms = append([]ChannelMonitorV2PlatformConfig{{Platform: "deepseek"}}, dup.Platforms...)
+	require.ErrorIs(t, normalizeChannelMonitorV2Config(&dup), ErrChannelMonitorV2InvalidConfig)
+
+	invalid := ChannelMonitorV2Config{RefreshIntervalSeconds: 60, Platforms: []ChannelMonitorV2PlatformConfig{{Platform: "not a platform"}}}
+	require.ErrorIs(t, normalizeChannelMonitorV2Config(&invalid), ErrChannelMonitorV2InvalidConfig)
 }
 
 func TestChannelMonitorV2UpdateKeepsOmittedCandyHistoryLimit(t *testing.T) {

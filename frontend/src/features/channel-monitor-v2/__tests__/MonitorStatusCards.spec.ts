@@ -5,6 +5,20 @@ import MonitorStatusCards from '../MonitorStatusCards.vue'
 import type { MonitorCoverage, MonitorMatrixRow } from '@/api/channelMonitorV2'
 
 vi.mock('vue-i18n', async (importOriginal) => ({ ...await importOriginal<typeof import('vue-i18n')>(), useI18n: () => ({ t: (key: string, values?: Record<string, unknown>) => key + (values ? ' ' + Object.values(values).join(' ') : ''), locale: ref('zh-CN') }) }))
+it('orders platform sections by the configured display order', () => {
+  const row = (platform: string) => ({
+    platform, group_id: 1, group_name: platform,
+    metrics: { has_samples: false, request_count: 0, cache_rate: 0, error_rate: 0, ttft: { p50_ms: null } },
+    health: { overall: 'unknown' }, buckets: [],
+  }) as MonitorMatrixRow
+  const wrapper = mount(MonitorStatusCards, {
+    props: { items: [row('openai'), row('deepseek'), row('kimi')], platformOrder: ['kimi', 'deepseek', 'openai'], countdown: 1, loading: false, now: Date.now() },
+    global: { stubs: { ProviderIcon: true } },
+  })
+  expect(wrapper.findAll('section').map((section) => section.attributes('data-platform'))).toEqual(['kimi', 'deepseek', 'openai'])
+  wrapper.unmount()
+})
+
 it('renders platform groups, three passive metrics and observed-only candy bars', () => {
   const now = Date.parse('2026-09-28T01:00:00Z')
   const row = { platform: 'openai', group_id: 7, group_name: 'Group One', group_rate_multiplier: 0.2,

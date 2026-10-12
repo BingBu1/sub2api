@@ -4,7 +4,7 @@
       <div v-for="index in 6" :key="index" class="h-72 animate-pulse rounded-3xl bg-gray-100 dark:bg-dark-800" />
     </div>
     <div v-else-if="!items.length" class="card py-16 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('channelMonitorV2.empty.title') }}</div>
-    <section v-for="platform in platforms" :key="platform.name" class="space-y-3">
+    <section v-for="platform in platforms" :key="platform.name" class="space-y-3" :data-platform="platform.name">
       <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
         <span class="grid h-7 w-7 place-items-center rounded-full bg-gray-100 dark:bg-dark-700"><ProviderIcon :provider="platform.name" :size="17" /></span>
         {{ providerLabel(platform.name) }}
@@ -112,7 +112,7 @@ import { useChannelMonitorFormat } from '@/composables/useChannelMonitorFormat'
 import { formatMonitorMs, formatMonitorPercent } from './monitorFormat'
 import { candyDisplayState, candyHistoryLimit, candyHistorySlots, hasMonitorSamples, monitorCandyHistories, monitorCardTimeline } from './monitorCards'
 
-const props = defineProps<{ items: MonitorMatrixRow[]; coverage?: MonitorCoverage; countdown: number; loading: boolean; now: number }>()
+const props = defineProps<{ items: MonitorMatrixRow[]; coverage?: MonitorCoverage; countdown: number; loading: boolean; now: number; platformOrder?: string[] }>()
 const { t, locale } = useI18n()
 type TrafficBar = ReturnType<typeof monitorCardTimeline>[number]
 type CardDetail = { kind: 'traffic'; row: MonitorMatrixRow; bar: TrafficBar } | { kind: 'candy'; row: MonitorMatrixRow; result: MonitorCandyResult; model: string; effort: string }
@@ -208,8 +208,12 @@ const platforms = computed(() => {
     if (!groups.has(row.platform)) groups.set(row.platform, [])
     groups.get(row.platform)!.push(row)
   }
-  const order = ['openai', 'anthropic', 'grok', 'gemini', 'antigravity']
-  return [...groups].map(([name, items]) => ({ name, items })).sort((a, b) => (order.indexOf(a.name) < 0 ? 99 : order.indexOf(a.name)) - (order.indexOf(b.name) < 0 ? 99 : order.indexOf(b.name)))
+  const order = props.platformOrder?.length ? props.platformOrder : ['openai', 'anthropic', 'grok', 'gemini', 'antigravity', 'kiro']
+  const rank = (name: string) => {
+    const index = order.indexOf(name)
+    return index < 0 ? order.length : index
+  }
+  return [...groups].map(([name, items]) => ({ name, items })).sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name))
 })
 const healthBadge = { healthy: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', unknown: 'bg-gray-100 text-gray-500 dark:bg-dark-700 dark:text-gray-400' }
 const healthBar = { healthy: 'h-5 bg-emerald-400', warning: 'h-3 bg-amber-400', critical: 'h-2 bg-red-400', unknown: 'h-1 bg-gray-300 dark:bg-dark-600' }
