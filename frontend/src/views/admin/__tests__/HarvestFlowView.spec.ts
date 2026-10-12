@@ -49,6 +49,25 @@ function response() {
 }
 
 describe('HarvestFlowView nullable API lists', () => {
+  it('shows beta candy outcomes without marking the account unschedulable', async () => {
+    getFlow.mockResolvedValue({ ...response(),
+      stages: [{ id: 'select', status: 'fail', detail: 'candy_incorrect' }],
+      events: [
+        { id: 'candy-fail', stage: 'select', kind: 'candy_fail', reason: 'candy_incorrect', account_id: 1 },
+        { id: 'candy-pass', stage: 'select', kind: 'candy_pass', reason: 'candy_passed', account_id: 1 }
+      ]
+    })
+    const wrapper = mount(HarvestFlowView, { global: { stubs: { Icon: true, LoadingSpinner: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.text()).toContain('candy_incorrect')
+      expect(wrapper.text()).toContain('candy_passed')
+      expect(wrapper.text()).toContain('admin.harvestFlow.schedulable')
+      expect(wrapper.text()).not.toContain('admin.harvestFlow.unschedulable')
+      expect(wrapper.findAll('.bg-emerald-500').length).toBeGreaterThan(0)
+    } finally { wrapper.unmount() }
+  })
+
   it('shows Astra pool scheduling changes in the selection flow filter', async () => {
     const data = response()
     getFlow.mockResolvedValue({ ...data,

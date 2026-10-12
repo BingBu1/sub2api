@@ -1,6 +1,9 @@
 package service
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 func (s *OpenAIGatewayService) SetPluginManager(manager *PluginManager) {
 	s.pluginManager = manager
@@ -11,6 +14,8 @@ func (s *OpenAIGatewayService) SetPluginManager(manager *PluginManager) {
 func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL string, account *Account) (result *http.Response, resultErr error) {
 	request = s.stickBoundCodexTicketRequest(request, account)
 	boundTicket := s.codexTicketRequestBound(request, account)
+	observationTicket := s.boundCodexTicket(request, account)
+	observationHeaders := request.Header.Clone()
 	releaseChat := func() {}
 	if boundTicket {
 		releaseChat = s.holdCodexTicketChat(account)
@@ -21,9 +26,13 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 		return nil, err
 	}
 	defer func() {
+		observe := resultErr == nil && result != nil && result.StatusCode == http.StatusOK
 		result, resultErr = attachCodexTicketEgressRelease(result, resultErr, func() {
 			release()
 			releaseChat()
+			if observe {
+				s.observeScheduledAstraCandy(request.Context(), observationHeaders, account, observationTicket)
+			}
 		})
 	}()
 	defer func() {
@@ -35,6 +44,10 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 				// Timing/fallback layers clone request headers before the routing
 				// adapter installs a newly acquired bundle. Observe the sent copy.
 				observedRequest = result.Request
+			}
+			if ticket := s.boundCodexTicket(observedRequest, account); ticket != nil {
+				observationTicket = ticket
+				observationHeaders = observedRequest.Header.Clone()
 			}
 			responseBound := boundTicket || s.codexTicketRequestBound(observedRequest, account)
 			s.observeCodexTicketResponse(observedRequest, result, account)
@@ -72,6 +85,7 @@ func (s *AccountTestService) doOpenAIAccountTestUpstream(
 		}
 		// This restores the complete cookie/egress bundle, holds it until body close,
 		// observes replacements and enforces the configured strict response policy.
+		request = request.WithContext(context.WithValue(request.Context(), astraCandySkipObservationKey{}, true))
 		return gateway.doOpenAIUpstream(request, proxyURL, account)
 	}
 	if s.pluginManager != nil {

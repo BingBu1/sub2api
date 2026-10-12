@@ -165,6 +165,8 @@ export default {
       idle: 'Idle'
     },
     kinds: {
+      candy_pass: 'Beta candy passed',
+      candy_fail: 'Beta candy failed',
       schedule_join: 'Added to pool',
       schedule_leave: 'Removed from pool',
       schedule_enable: 'Scheduling restored',
@@ -180,6 +182,17 @@ export default {
       unavailable: 'Select failed'
     },
     reasons: {
+      candy_disabled: 'Beta candy observation disabled',
+      candy_passed: 'Beta candy passed (scheduling unchanged)',
+      candy_incorrect: 'Beta candy answer incorrect (scheduling unchanged)',
+      candy_error: 'Beta candy request failed',
+      candy_timeout: 'Beta candy timed out',
+      candy_stale: 'Beta candy skipped: expired ticket or changed account',
+      candy_unavailable: 'Beta candy egress unavailable',
+      candy_route_changed: 'Beta candy route changed',
+      candy_ticket_changed: 'Beta candy ticket reissued',
+      candy_model_mismatch: 'Beta candy response model mismatch',
+
       ticket_ready: 'Ticket ready',
       ticket_unavailable: 'No probe-verified ticket for this model',
       harvest_excluded: 'Out of harvest scope; leftover tickets are not spent',
