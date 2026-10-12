@@ -14,14 +14,14 @@ import (
 
 type candyRepoFake struct {
 	channelMonitorV2RepoStub
-	mu             sync.Mutex
-	claims         map[string]int64
-	results        []ChannelMonitorV2CandyResult
-	history        []ChannelMonitorV2CandyResult
-	historyScopes  []ChannelMonitorV2CandyScope
-	historySince   time.Time
-	historyLimit   int
-	prunes         int
+	mu            sync.Mutex
+	claims        map[string]int64
+	results       []ChannelMonitorV2CandyResult
+	history       []ChannelMonitorV2CandyResult
+	historyScopes []ChannelMonitorV2CandyScope
+	historySince  time.Time
+	historyLimit  int
+	prunes        int
 }
 
 func (r *candyRepoFake) ClaimCandyProbe(_ context.Context, p ChannelMonitorV2CandyProbe, key string, slot time.Time, version int) (int64, error) {

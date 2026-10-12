@@ -456,7 +456,8 @@ async function save() {
     appStore.showError(t('channelMonitorV2.candy.duplicateModel'))
     return
   }
-  if (!Number.isInteger(draft.value.candy_history_limit) || draft.value.candy_history_limit < CANDY_HISTORY_LIMIT_MIN || draft.value.candy_history_limit > CANDY_HISTORY_LIMIT_MAX) {
+  const historyLimit = draft.value.candy_history_limit
+  if (historyLimit == null || !Number.isInteger(historyLimit) || historyLimit < CANDY_HISTORY_LIMIT_MIN || historyLimit > CANDY_HISTORY_LIMIT_MAX) {
     appStore.showError(t('channelMonitorV2.candy.historyLimitInvalid'))
     return
   }

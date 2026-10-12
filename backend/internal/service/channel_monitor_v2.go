@@ -37,7 +37,7 @@ type ChannelMonitorV2PlatformConfig struct {
 }
 
 type ChannelMonitorV2Config struct {
-	CandyProbes            []ChannelMonitorV2CandyProbe     `json:"candy_probes,omitempty"`
+	CandyProbes []ChannelMonitorV2CandyProbe `json:"candy_probes,omitempty"`
 	// CandyHistoryLimit is how many recent checks each model shows on a card.
 	// Zero means the default; stored values are 30–100.
 	CandyHistoryLimit      int                              `json:"candy_history_limit"`
