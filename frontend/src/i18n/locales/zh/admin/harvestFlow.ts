@@ -181,6 +181,7 @@ export default {
       unavailable: '选号失败'
     },
     reasons: {
+      candy_disabled: 'Beta 糖果观测已关闭',
       candy_passed: 'Beta 糖果观测通过（不影响调度）',
       candy_incorrect: 'Beta 糖果答案未通过（不影响调度）',
       candy_error: 'Beta 糖果观测请求失败',

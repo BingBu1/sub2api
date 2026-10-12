@@ -181,6 +181,7 @@ export default {
       unavailable: 'Select failed'
     },
     reasons: {
+      candy_disabled: 'Beta candy observation disabled',
       candy_passed: 'Beta candy passed (scheduling unchanged)',
       candy_incorrect: 'Beta candy answer incorrect (scheduling unchanged)',
       candy_error: 'Beta candy request failed',

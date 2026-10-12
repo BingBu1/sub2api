@@ -16,7 +16,7 @@ import (
 // to routing, ticket observation, account state or scheduling. Capacity pressure
 // drops this optional beta observation instead of delaying a business request.
 func (s *OpenAIGatewayService) observeScheduledAstraCandy(ctx context.Context, headers http.Header, account *Account, ticket *openAICodexTicket) {
-	if account == nil || ticket == nil || ticket.Model != OpenAICodexStateProbeDefaultModel || ticket.Length != 780 || ticket.Transport != "sse" || !ticket.valid(time.Now(), 780) || IsOpenAICodexStateProbeRequest(ctx) {
+	if s.settingService == nil || account == nil || ticket == nil || ticket.Model != OpenAICodexStateProbeDefaultModel || ticket.Length != 780 || ticket.Transport != "sse" || !ticket.valid(time.Now(), 780) || IsOpenAICodexStateProbeRequest(ctx) {
 		return
 	}
 	copy := *ticket
@@ -49,6 +49,12 @@ func (s *OpenAIGatewayService) observeScheduledAstraCandy(ctx context.Context, h
 		defer func() { s.astraCandyMu.Lock(); s.astraCandyRunning--; s.astraCandyMu.Unlock() }()
 		probeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 45*time.Second)
 		defer cancel()
+		if !s.settingService.CodexTicketCandyObservation(probeCtx) {
+			s.astraCandyMu.Lock()
+			delete(s.astraCandySeen, key)
+			s.astraCandyMu.Unlock()
+			return
+		}
 		reason := s.runScheduledAstraCandy(probeCtx, h, id, &copy)
 		kind := "candy_fail"
 		if reason == "candy_passed" {
@@ -62,6 +68,9 @@ func (s *OpenAIGatewayService) observeScheduledAstraCandy(ctx context.Context, h
 // lease for the recorded exit. Never pass the result through ticket response
 // observation, cooldown handling, harvest persistence or failover.
 func (s *OpenAIGatewayService) runScheduledAstraCandy(ctx context.Context, headers http.Header, id int64, ticket *openAICodexTicket) string {
+	if !s.settingService.CodexTicketCandyObservation(ctx) {
+		return "candy_disabled"
+	}
 	if s.accountRepo == nil || s.httpUpstream == nil {
 		return "candy_unavailable"
 	}
@@ -75,6 +84,9 @@ func (s *OpenAIGatewayService) runScheduledAstraCandy(ctx context.Context, heade
 		return "candy_unavailable"
 	}
 	defer release()
+	if !s.settingService.CodexTicketCandyObservation(ctx) {
+		return "candy_disabled"
+	}
 	if !ticket.valid(time.Now(), 780) {
 		return "candy_stale"
 	}

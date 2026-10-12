@@ -70,6 +70,14 @@
             <option value="standby">{{ localText('提前准备备用（默认）', 'Prepare standby (default)') }}</option>
             <option value="fixed">{{ localText('固定主用，失效后再采集', 'Keep primary until invalid') }}</option>
           </select>
+          <div class="mt-3 rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+            <label class="flex items-center gap-2 text-sm" for="codex-ticket-candy-observation">
+              <input id="codex-ticket-candy-observation" type="checkbox" v-model="form.openai_codex_ticket_candy_observation" />
+              <span>{{ localText('启用糖果测试验证使用后的票据', 'Enable candy tests to observe tickets after use') }}</span>
+              <span class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Beta</span>
+            </label>
+            <p class="mt-1 text-xs text-gray-500">{{ localText('默认关闭。SSE Astra 票据用于真实请求后，异步发送一发糖果题并记录结果，额外消耗上游额度。结果不影响调度、票据或账号状态。', 'Off by default. After an SSE Astra ticket serves a real request, asynchronously send one candy question and record the result, using additional upstream quota. Results do not change scheduling, tickets, or account state.') }}</p>
+          </div>
           <label class="mt-3 flex items-center gap-2 text-sm"><input id="codex-ticket-strict" type="checkbox" v-model="form.openai_codex_ticket_strict_response" />{{ localText('严格拦截票据响应不匹配（默认关闭）', 'Reject mismatched ticket responses (off by default)') }}</label>
           <p class="mt-1 text-xs text-gray-500">{{ localText('仅在 HTTP 响应头明确不匹配时拦截正文；当前请求可能已计费，不会自动重放。关闭时只更新后续票据调度。', 'Rejects the body when HTTP response state headers mismatch. The upstream may have charged; the request is not replayed. When off, only future ticket scheduling changes.') }}</p>
           <p class="mt-1 text-xs text-gray-500">{{ localText('切换策略保留有效主备票据和冷却。固定主用可能在失效后短暂等待新票。', 'Switching preserves valid tickets and cooldowns. Fixed primary may briefly wait for a new ticket after expiry.') }}</p>
@@ -126,6 +134,7 @@ function policyOf(settings: SystemSettings) {
     openai_codex_ticket_fail_closed: settings.openai_codex_ticket_fail_closed ?? false,
     openai_codex_ticket_models: [...(settings.openai_codex_ticket_models ?? ['gpt-6-astra', 'gpt-5.6-sol'])],
     openai_codex_ticket_strategy: settings.openai_codex_ticket_strategy || 'standby',
+    openai_codex_ticket_candy_observation: settings.openai_codex_ticket_candy_observation ?? false,
     openai_codex_ticket_strict_response: settings.openai_codex_ticket_strict_response ?? false,
     openai_codex_ticket_harvest_scope: {
       mode: scope?.mode || 'all', group_ids: [...(scope?.group_ids ?? [])],

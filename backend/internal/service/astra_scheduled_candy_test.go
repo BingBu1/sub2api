@@ -24,6 +24,7 @@ func candyStream(answer string) string {
 func candyFixture(t *testing.T) (*OpenAIGatewayService, *astraTicketRepo, *Account, *openAICodexTicket, http.Header) {
 	t.Helper()
 	s, repo, seed := unifiedAstraFixture(t)
+	s.settingService = NewSettingService(&codexTicketSettingRepo{codexPolicyMigrationRepoStub: &codexPolicyMigrationRepoStub{values: map[string]string{SettingKeyOpenAICodexTicketCandyObservation: "true", SettingKeyOpenAICodexTicketEnabled: "true"}}}, s.cfg)
 	a, _ := repo.GetByID(t.Context(), 2)
 	ticket := *seed
 	ticket.AccountID, ticket.Identity = a.ID, ticketIdentity(a)
@@ -201,4 +202,30 @@ func TestScheduledAstraCandyBoundsWorkAndIgnoresNonSSETickets(t *testing.T) {
 	s.observeScheduledAstraCandy(t.Context(), h, a, &third)
 	waitCandy(t, s)
 	require.Equal(t, int32(3), calls.Load())
+}
+
+func TestScheduledAstraCandySwitchDefaultsOffAndCanEnableSameTicket(t *testing.T) {
+	s, _, a, ticket, h := candyFixture(t)
+	repo := &codexTicketSettingRepo{codexPolicyMigrationRepoStub: &codexPolicyMigrationRepoStub{values: map[string]string{SettingKeyOpenAICodexTicketEnabled: "true"}}}
+	s.settingService = NewSettingService(repo, s.cfg)
+	var calls atomic.Int32
+	s.httpUpstream = &harvestProxyUpstream{do: func(_ *http.Request, _ string) (*http.Response, error) {
+		calls.Add(1)
+		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(candyStream("21")))}, nil
+	}}
+	s.observeScheduledAstraCandy(t.Context(), h, a, ticket)
+	waitCandy(t, s)
+	require.Zero(t, calls.Load())
+	repo.values[SettingKeyOpenAICodexTicketCandyObservation] = "true"
+	s.observeScheduledAstraCandy(t.Context(), h, a, ticket)
+	waitCandy(t, s)
+	require.Equal(t, int32(1), calls.Load())
+	repo.values[SettingKeyOpenAICodexTicketCandyObservation] = "false"
+	next := *ticket
+	next.State = mint780State(time.Now().Add(-time.Second))
+	s.observeScheduledAstraCandy(t.Context(), h, a, &next)
+	waitCandy(t, s)
+	require.Equal(t, int32(1), calls.Load())
+	repo.err = errors.New("settings unavailable")
+	require.False(t, s.settingService.CodexTicketCandyObservation(t.Context()))
 }
