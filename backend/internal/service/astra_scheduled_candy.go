@@ -12,10 +12,15 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+type astraCandySkipObservationKey struct{}
+
 // Observe after the business stream releases its exit. No verdict is returned
 // to routing, ticket observation, account state or scheduling. Capacity pressure
 // drops this optional beta observation instead of delaying a business request.
 func (s *OpenAIGatewayService) observeScheduledAstraCandy(ctx context.Context, headers http.Header, account *Account, ticket *openAICodexTicket) {
+	if skip, _ := ctx.Value(astraCandySkipObservationKey{}).(bool); skip {
+		return
+	}
 	if s.settingService == nil || account == nil || ticket == nil || ticket.Model != OpenAICodexStateProbeDefaultModel || ticket.Length != 780 || ticket.Transport != "sse" || !ticket.valid(time.Now(), 780) || IsOpenAICodexStateProbeRequest(ctx) {
 		return
 	}
