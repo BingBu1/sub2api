@@ -229,3 +229,17 @@ func TestScheduledAstraCandySwitchDefaultsOffAndCanEnableSameTicket(t *testing.T
 	repo.err = errors.New("settings unavailable")
 	require.False(t, s.settingService.CodexTicketCandyObservation(t.Context()))
 }
+
+func TestScheduledAstraCandySkipsAdminAccountTests(t *testing.T) {
+	s, _, a, ticket, h := candyFixture(t)
+	s.httpUpstream = &harvestProxyUpstream{do: func(_ *http.Request, _ string) (*http.Response, error) {
+		t.Error("administrative tests must not trigger an extra candy request")
+		return nil, errors.New("unexpected request")
+	}}
+	ctx := context.WithValue(t.Context(), astraCandySkipObservationKey{}, true)
+	s.observeScheduledAstraCandy(ctx, h, a, ticket)
+	s.astraCandyMu.Lock()
+	defer s.astraCandyMu.Unlock()
+	require.Zero(t, s.astraCandyRunning)
+	require.Empty(t, s.astraCandySeen)
+}
