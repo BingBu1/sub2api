@@ -158,8 +158,8 @@ func (h *ModelPlazaHandler) Get(c *gin.Context) {
 
 	visible := filterPlazaVisibleGroups(groups, allowedGroups, restrictPublicGroups)
 
-	// 分组文案随请求语言变化，同时保留用户模型可见性限制。
-	c.Header("Vary", "Accept-Language")
+	// 追加语言缓存维度，保留 CORS 的 Vary: Origin 和用户模型限制。
+	c.Writer.Header().Add("Vary", "Accept-Language")
 	out := toLocalizedModelPlazaGroups(visible, userRates, c.GetHeader("Accept-Language"), deniedModels)
 	response.Success(c, modelPlazaResponse{
 		Description: rt.Description,
