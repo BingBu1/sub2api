@@ -15,7 +15,7 @@ it('orders platform sections by the configured display order', () => {
     props: { items: [row('openai'), row('deepseek'), row('kimi')], platformOrder: ['kimi', 'deepseek', 'openai'], countdown: 1, loading: false, now: Date.now() },
     global: { stubs: { ProviderIcon: true } },
   })
-  expect(wrapper.findAll('section').map((section) => section.attributes('data-platform'))).toEqual(['kimi', 'deepseek', 'openai'])
+  expect(wrapper.findAll('[data-platform]').map((section) => section.attributes('data-platform'))).toEqual(['kimi', 'deepseek', 'openai'])
   wrapper.unmount()
 })
 

@@ -46,6 +46,10 @@ type ChannelMonitorV2PlatformConfig struct {
 	Models   []string `json:"models"`
 }
 
+// ChannelMonitorV2Config is the saved operator document.
+// Platforms keeps submitted array order, which is the display order for filters,
+// cards, and the matrix. Factory platforms are restored if omitted. The model
+// ranking table stays ordered by request volume.
 type ChannelMonitorV2Config struct {
 	CandyProbes []ChannelMonitorV2CandyProbe `json:"candy_probes,omitempty"`
 	// CandyHistoryLimit is how many recent checks each model shows on a card.
@@ -54,9 +58,6 @@ type ChannelMonitorV2Config struct {
 	Version                int                              `json:"version"`
 	Enabled                bool                             `json:"enabled"`
 	RefreshIntervalSeconds int                              `json:"refresh_interval_seconds"`
-	// Platforms is the operator display order for filters, cards, and the matrix.
-	// Array order is preserved on save. Factory platforms are restored if omitted.
-	// The model ranking table stays ordered by request volume.
 	Platforms              []ChannelMonitorV2PlatformConfig `json:"platforms"`
 	GroupIDs               []int64                          `json:"group_ids"`
 	HealthThresholds       ChannelMonitorV2HealthThresholds `json:"health_thresholds"`
