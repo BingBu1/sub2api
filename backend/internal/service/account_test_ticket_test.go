@@ -90,7 +90,7 @@ func TestAccountTestStoredTicketPolicy(t *testing.T) {
 		name                          string
 		closed, wantTicket, wantError bool
 	}{
-		{name: "valid", wantTicket: true}, {name: "persisted", wantTicket: true}, {name: "revoked"}, {name: "unverified"}, {name: "disabled"}, {name: "other_model"}, {name: "api_key"}, {name: "other_endpoint"},
+		{name: "valid", wantTicket: true}, {name: "persisted", wantTicket: true}, {name: "revoked"}, {name: "unverified"}, {name: "acquisition"}, {name: "disabled"}, {name: "other_model"}, {name: "api_key"}, {name: "other_endpoint"},
 		{name: "missing"}, {name: "missing", closed: true, wantError: true},
 		{name: "expired"}, {name: "expired", closed: true, wantError: true},
 		{name: "websocket"}, {name: "websocket", closed: true, wantError: true},
@@ -144,7 +144,11 @@ func TestAccountTestStoredTicketPolicy(t *testing.T) {
 			}}
 			gateway.httpUpstream, svc.httpUpstream = upstream, upstream
 			body := []byte(`{"model":"` + model + `","stream":true}`)
-			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, strings.NewReader(string(body)))
+			ctx := t.Context()
+			if tc.name == "acquisition" {
+				ctx = WithAstraSourceAcquisition(ctx)
+			}
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(string(body)))
 			require.NoError(t, err)
 			resp, err := svc.doOpenAIAccountTestUpstream(req, "http://business.invalid:8080", account, true, body)
 			if tc.wantError {

@@ -64,7 +64,7 @@ func (s *AccountTestService) doOpenAIAccountTestUpstream(
 ) (*http.Response, error) {
 	gateway := s.openaiGatewayService
 	model := extractOpenAICodexTicketModel(body)
-	if gateway != nil && request.URL != nil && request.URL.String() == chatgptCodexAPIURL &&
+	if gateway != nil && !IsAstraSourceAcquisition(request.Context()) && request.URL != nil && request.URL.String() == chatgptCodexAPIURL &&
 		isOpenAICodexTicketAccount(account, model) && gateway.openAICodexTicketEnabledContext(request.Context()) &&
 		gateway.openAICodexTicketGatedModel(model) {
 		if err := gateway.applyOpenAICodexTicket(request.Context(), account, model, request.Header, "sse"); err != nil {
