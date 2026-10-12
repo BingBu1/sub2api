@@ -39,6 +39,17 @@ describe('Astra gateway configuration', () => {
     w.unmount()
   })
 
+  it('preserves the latest ticket scheduling policy when saving borrowing settings', async () => {
+    const w = render(); await flushPromises()
+    expect(w.find('[data-testid="account-scheduling-toggle"]').exists()).toBe(false)
+    expect(w.find('[data-testid="scheduling-records"]').exists()).toBe(false)
+    mocks.get.mockResolvedValue({ ...value(), account_scheduling: false, ticket_pool_scheduling: true, scheduling_mode: 'groups', scheduling_group_ids: [7] })
+    await w.get('[data-testid="cookie-toggle"]').trigger('click')
+    await w.get('form').trigger('submit'); await flushPromises()
+    expect(mocks.save).toHaveBeenLastCalledWith(expect.objectContaining({ account_scheduling: false, ticket_pool_scheduling: true, scheduling_mode: 'groups', scheduling_group_ids: [7] }))
+    w.unmount()
+  })
+
   it('loads disabled defaults and saves independent switches', async () => {
     const w = render(); await flushPromises()
     expect(w.get('[data-testid="cookie-toggle"]').attributes('aria-checked')).toBe('false')
