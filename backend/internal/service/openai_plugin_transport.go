@@ -52,14 +52,28 @@ func (s *OpenAIGatewayService) doOpenAIUpstream(request *http.Request, proxyURL 
 	return s.doUpstreamWithProxyFallback(request.Context(), request, account, proxyURL)
 }
 
-// doOpenAIAccountTestUpstream 让 OpenAI OAuth 账号测试与真实转发使用同一插件路径。
-// API Key 和未命中插件的账号保持各自原有的 HTTPUpstream 行为。
+// doOpenAIAccountTestUpstream applies the same stored ticket and transport lifecycle
+// as production forwarding. Use the final payload model, after mapping/normalization;
+// a self-harvested ticket must not depend on membership in the gateway-reuse target list.
 func (s *AccountTestService) doOpenAIAccountTestUpstream(
 	request *http.Request,
 	proxyURL string,
 	account *Account,
 	useTLSFallback bool,
+	body []byte,
 ) (*http.Response, error) {
+	gateway := s.openaiGatewayService
+	model := extractOpenAICodexTicketModel(body)
+	if gateway != nil && request.URL != nil && request.URL.String() == chatgptCodexAPIURL &&
+		isOpenAICodexTicketAccount(account, model) && gateway.openAICodexTicketEnabledContext(request.Context()) &&
+		gateway.openAICodexTicketGatedModel(model) {
+		if err := gateway.applyOpenAICodexTicket(request.Context(), account, model, request.Header, "sse"); err != nil {
+			return nil, err
+		}
+		// This restores the complete cookie/egress bundle, holds it until body close,
+		// observes replacements and enforces the configured strict response policy.
+		return gateway.doOpenAIUpstream(request, proxyURL, account)
+	}
 	if s.pluginManager != nil {
 		response, handled, err := s.pluginManager.RoundTripOpenAIOAuth(request.Context(), request, proxyURL, account)
 		if handled {
