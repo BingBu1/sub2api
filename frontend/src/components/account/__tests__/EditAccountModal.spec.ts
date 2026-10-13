@@ -2713,28 +2713,6 @@ describe('EditAccountModal gemini explicit cache upstream switch', () => {
     } as any
   }
 
-
-describe('EditAccountModal temp-unschedulable rule scope', () => {
-  function buildAccountWithTempUnschedRules(rules: Array<Record<string, unknown>>) {
-    const account = buildAccount()
-    return {
-      ...account,
-      credentials: {
-        ...account.credentials,
-        temp_unschedulable_enabled: true,
-        temp_unschedulable_rules: rules
-      }
-    } as any
-  }
-
-  const checkedScopes = (wrapper: ReturnType<typeof mountModal>) =>
-    wrapper
-      .findAll('[data-testid^="temp-unsched-scope-"][aria-checked="true"]')
-      .map((radio) => radio.attributes('data-testid'))
-
-  const savedRules = () =>
-    updateAccountMock.mock.calls[0]?.[1]?.credentials?.temp_unschedulable_rules
-
   beforeEach(() => {
     authIsSimpleMode.value = true
     updateAccountMock.mockReset()
@@ -2782,6 +2760,35 @@ describe('EditAccountModal temp-unschedulable rule scope', () => {
     const credentials = updateAccountMock.mock.calls[0]?.[1]?.credentials
     expect(credentials).not.toHaveProperty('explicit_cache_upstream')
     expect(credentials).not.toHaveProperty('explicit_cache_upstream_max_ttl_seconds')
+  })
+})
+
+describe('EditAccountModal temp-unschedulable rule scope', () => {
+  function buildAccountWithTempUnschedRules(rules: Array<Record<string, unknown>>) {
+    const account = buildAccount()
+    return {
+      ...account,
+      credentials: {
+        ...account.credentials,
+        temp_unschedulable_enabled: true,
+        temp_unschedulable_rules: rules
+      }
+    } as any
+  }
+
+  const checkedScopes = (wrapper: ReturnType<typeof mountModal>) =>
+    wrapper
+      .findAll('[data-testid^="temp-unsched-scope-"][aria-checked="true"]')
+      .map((radio) => radio.attributes('data-testid'))
+
+  const savedRules = () =>
+    updateAccountMock.mock.calls[0]?.[1]?.credentials?.temp_unschedulable_rules
+
+  beforeEach(() => {
+    authIsSimpleMode.value = true
+    updateAccountMock.mockReset()
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+  })
 
   it('shows rules without scope the way the backend treats them and keeps that on save', async () => {
     const account = buildAccountWithTempUnschedRules([
