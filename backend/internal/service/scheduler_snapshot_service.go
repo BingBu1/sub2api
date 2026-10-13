@@ -120,6 +120,7 @@ type schedulerActiveGroupIDLister interface {
 }
 
 type SchedulerSnapshotService struct {
+	regionalExportMu             sync.Mutex
 	cache                        SchedulerCache
 	outboxRepo                   SchedulerOutboxRepository
 	accountRepo                  AccountRepository
