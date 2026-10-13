@@ -990,7 +990,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			if isOpenAIRPMError(err) {
 				rpmAdmission.retryAfter(c, err)
 				cls := classifySelectionFailureError(err, noAccountErrorClassification{Status: http.StatusServiceUnavailable, ErrType: "api_error", Message: "OpenAI OAuth RPM protection is temporarily unavailable. Please retry later."})
-				h.handleStreamingAwareError(c, cls.Status, cls.ErrType, cls.Message, streamStarted)
+				h.handleStreamingAwareErrorWithCode(c, cls.Status, cls.ErrType, cls.Code, cls.Message, streamStarted, false)
 				return
 			}
 			reqLog.Warn("openai.account_select_failed",
@@ -1003,12 +1003,12 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "compact_not_supported", "No available accounts support /responses/compact", streamStarted)
 					return
 				}
-				cls := classifyNoAccountErrorFromGin(c, h.gatewayService, apiKey, reqModel, reqModel, requestPlatform)
+				cls := classifyNoAccountErrorFromGin(c, h.gatewayService, apiKey, forwardModel, reqModel, requestPlatform)
 				cls = classifySelectionFailureError(err, cls)
 				if !cls.ModelNotFound {
 					markOpsRoutingCapacityLimitedIfNoAvailable(c, err)
 				}
-				h.handleStreamingAwareError(c, cls.Status, cls.ErrType, cls.Message, streamStarted)
+				h.handleStreamingAwareErrorWithCode(c, cls.Status, cls.ErrType, cls.Code, cls.Message, streamStarted, false)
 				return
 			}
 			if lastAdmissionErr != nil && lastFailoverErr == nil {
@@ -1021,11 +1021,11 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			return
 		}
 		if selection == nil || selection.Account == nil {
-			cls := classifyNoAccountErrorFromGin(c, h.gatewayService, apiKey, reqModel, reqModel, requestPlatform)
+			cls := classifyNoAccountErrorFromGin(c, h.gatewayService, apiKey, forwardModel, reqModel, requestPlatform)
 			if !cls.ModelNotFound {
 				markOpsRoutingCapacityLimited(c)
 			}
-			h.handleStreamingAwareError(c, cls.Status, cls.ErrType, cls.Message, streamStarted)
+			h.handleStreamingAwareErrorWithCode(c, cls.Status, cls.ErrType, cls.Code, cls.Message, streamStarted, false)
 			return
 		}
 		if previousResponseID != "" && selection != nil && selection.Account != nil {
@@ -1087,7 +1087,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		}
 		if rpmErr != nil {
 			cls := classifySelectionFailureError(rpmErr, noAccountErrorClassification{})
-			h.handleStreamingAwareError(c, cls.Status, cls.ErrType, cls.Message, streamStarted)
+			h.handleStreamingAwareErrorWithCode(c, cls.Status, cls.ErrType, cls.Code, cls.Message, streamStarted, false)
 			return
 		}
 
