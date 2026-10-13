@@ -1,3 +1,20 @@
+export type UsageCacheRateAudience = 'admin' | 'user'
+
+export interface UsageCacheRateSettings {
+  usage_show_cache_rate?: boolean
+  usage_show_cache_rate_to_users?: boolean
+}
+
+/** Feature defaults on. End users see it only when that switch is explicitly on. */
+export function showUsageCacheRate(
+  settings: UsageCacheRateSettings | null | undefined,
+  audience: UsageCacheRateAudience,
+): boolean {
+  if (settings?.usage_show_cache_rate === false) return false
+  if (audience === 'admin') return true
+  return settings?.usage_show_cache_rate_to_users === true
+}
+
 export interface UsageCacheRateRow {
   input_tokens?: number | null
   cache_read_tokens?: number | null

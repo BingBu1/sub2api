@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { formatUsageCacheRate, usageCacheRate, usageCacheRateParts } from '../usageCacheRate'
+import { formatUsageCacheRate, showUsageCacheRate, usageCacheRate, usageCacheRateParts } from '../usageCacheRate'
+
+describe('showUsageCacheRate', () => {
+  it('shows the rate to admins by default and hides it from users', () => {
+    expect(showUsageCacheRate(undefined, 'admin')).toBe(true)
+    expect(showUsageCacheRate({}, 'user')).toBe(false)
+  })
+
+  it('hides the rate everywhere when the feature switch is off', () => {
+    expect(showUsageCacheRate({ usage_show_cache_rate: false, usage_show_cache_rate_to_users: true }, 'admin')).toBe(false)
+    expect(showUsageCacheRate({ usage_show_cache_rate: false }, 'user')).toBe(false)
+  })
+
+  it('shows the rate to users only when that switch is on', () => {
+    expect(showUsageCacheRate({ usage_show_cache_rate_to_users: true }, 'user')).toBe(true)
+    expect(showUsageCacheRate({ usage_show_cache_rate: true, usage_show_cache_rate_to_users: false }, 'user')).toBe(false)
+  })
+})
+
 
 describe('usageCacheRate', () => {
   it('uses cache read over input, cache read, and cache write', () => {
