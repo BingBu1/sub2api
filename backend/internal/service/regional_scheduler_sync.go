@@ -82,7 +82,7 @@ func decodeRegionalScheduler(payload []byte) (RegionalSchedulerDocument, error) 
 				return doc, errors.New("invalid or unsupported regional account")
 			}
 			ids[a.ID] = true
-			if a.Platform != b.Platform && !(b.Mode == SchedulerModeMixed && a.Platform == PlatformAntigravity && a.IsMixedSchedulingEnabled()) {
+			if a.Platform != b.Platform && (b.Mode != SchedulerModeMixed || a.Platform != PlatformAntigravity || !a.IsMixedSchedulingEnabled()) {
 				return doc, errors.New("regional account platform mismatch")
 			}
 			if b.GroupID > 0 {
