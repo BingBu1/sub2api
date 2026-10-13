@@ -351,9 +351,8 @@ type SystemSettings struct {
 	// 使用详情中长上下文计费 x2 徽标的展示开关（默认开启）
 	ExcelBPSImageMode             string
 	UsageShowLongContextBadge     bool
-	// 使用记录单条缓存率。功能默认开启；向用户展示默认关闭。
-	UsageShowCacheRate        bool
-	UsageShowCacheRateToUsers bool
+	UsageShowCacheRate            bool
+	UsageShowCacheRateToUsers     bool
 	ExcelBPSImageRelayEnabled     bool
 	ExcelBPSImageBaseURL          string
 	ExcelBPSImageBodyLimitMiB     int
