@@ -14,11 +14,12 @@ const (
 // RuntimeConfig separates the primary's global jobs from request replicas.
 // Empty remains equivalent to full for programmatically constructed configs.
 type RuntimeConfig struct {
-	Role               string `mapstructure:"role"`
-	ServerlessID       string `mapstructure:"serverless_id"`
-	ServerlessEndpoint string `mapstructure:"serverless_endpoint"`
-	ServerlessRegion   string `mapstructure:"serverless_region"`
-	ServerlessSecret   string `mapstructure:"serverless_secret"`
+	RegionalSchedulerFile string `mapstructure:"regional_scheduler_file"`
+	Role                  string `mapstructure:"role"`
+	ServerlessID          string `mapstructure:"serverless_id"`
+	ServerlessEndpoint    string `mapstructure:"serverless_endpoint"`
+	ServerlessRegion      string `mapstructure:"serverless_region"`
+	ServerlessSecret      string `mapstructure:"serverless_secret"`
 }
 
 func (c *Config) RunsBackgroundJobs() bool {

@@ -549,10 +549,26 @@ func ProvideSchedulerSnapshotService(
 	accountRepo AccountRepository,
 	groupRepo GroupRepository,
 	cfg *config.Config,
-) *SchedulerSnapshotService {
+	authority RegionalSchedulerAuthority,
+) (*SchedulerSnapshotService, error) {
 	svc := NewSchedulerSnapshotService(cache, outboxRepo, accountRepo, groupRepo, cfg)
+	if cfg != nil && cfg.Runtime.RegionalSchedulerFile != "" {
+		runtime, err := startRegionalSchedulerRuntime(cfg, authority)
+		if err != nil {
+			return nil, err
+		}
+		svc.regionalRuntime = runtime
+		if runtime.replica != nil {
+			reader, err := NewRegionalSchedulerReader(runtime.replica)
+			if err != nil {
+				runtime.stop()
+				return nil, err
+			}
+			svc.SetLocalSnapshotReader(reader)
+		}
+	}
 	svc.Start()
-	return svc
+	return svc, nil
 }
 
 // ProvideRateLimitService creates RateLimitService with optional dependencies.

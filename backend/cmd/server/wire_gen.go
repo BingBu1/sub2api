@@ -109,7 +109,11 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	usageBillingRepository := repository.NewUsageBillingRepository(client, db)
 	gatewayCache := repository.NewGatewayCache(redisClient)
 	schedulerOutboxRepository := repository.NewSchedulerOutboxRepository(db)
-	schedulerSnapshotService := service.ProvideSchedulerSnapshotService(schedulerCache, schedulerOutboxRepository, accountRepository, groupRepository, configConfig)
+	regionalSchedulerAuthority := repository.NewRegionalSchedulerAuthority(db)
+	schedulerSnapshotService, err := service.ProvideSchedulerSnapshotService(schedulerCache, schedulerOutboxRepository, accountRepository, groupRepository, configConfig, regionalSchedulerAuthority)
+	if err != nil {
+		return nil, err
+	}
 	pricingRemoteClient := repository.ProvidePricingRemoteClient(configConfig)
 	pricingService, err := service.ProvidePricingService(configConfig, pricingRemoteClient)
 	if err != nil {
