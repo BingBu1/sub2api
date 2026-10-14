@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"log"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -123,10 +122,6 @@ func registerRoutes(
 			// are not implemented yet. Keep model admission closed before auth
 			// can touch the primary. Health routes above remain available.
 			r.Use(func(c *gin.Context) {
-				if !strings.HasPrefix(c.Request.URL.Path, "/v1/") {
-					c.Next()
-					return
-				}
 				c.AbortWithStatusJSON(503, gin.H{"error": "regional gateway admission is not enabled"})
 			})
 		}

@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -75,10 +76,14 @@ func runtimeTestConfig(t *testing.T) RegionalSchedulerRuntimeConfig {
 	require.NoError(t, err)
 	leafPin := sha256.Sum256(der)
 	pin := hex.EncodeToString(leafPin[:])
-	c := RegionalSchedulerRuntimeConfig{Mode: "publisher", Policy: regional.Config{RegionID: "us", MaxSnapshotAgeSeconds: 60}, Keys: map[string][]byte{"test": bytes.Repeat([]byte{7}, 32)}, KeyID: "test", TrustedClientCertSHA256: []string{pin}, AllowedIDs: []int64{1}, Buckets: []SchedulerBucket{{Platform: PlatformOpenAI, Mode: SchedulerModeSingle}}, Listen: "127.0.0.1:0", CAFile: filepath.Join(dir, "ca.pem"), CertFile: filepath.Join(dir, "cert.pem"), KeyFile: filepath.Join(dir, "key.pem"), IntervalSeconds: 1, LifetimeSeconds: 30}
+	c := RegionalSchedulerRuntimeConfig{Mode: "publisher", Policy: regional.Config{RegionID: "us", MaxSnapshotAgeSeconds: 60}, Keys: map[string][]byte{"test": bytes.Repeat([]byte{7}, 32)}, KeyID: "test", TrustedClientCertSHA256: []string{pin}, TrustedServerCertSHA256: pin, AllowedIDs: []int64{1}, Buckets: []SchedulerBucket{{Platform: PlatformOpenAI, Mode: SchedulerModeSingle}}, Listen: "127.0.0.1:0", CAFile: filepath.Join(dir, "ca.pem"), CertFile: filepath.Join(dir, "cert.pem"), KeyFile: filepath.Join(dir, "key.pem"), IntervalSeconds: 1, LifetimeSeconds: 30}
 	require.NoError(t, os.WriteFile(c.CAFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER}), 0600))
 	require.NoError(t, os.WriteFile(c.CertFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0600))
 	require.NoError(t, os.WriteFile(c.KeyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0600))
+	leaf.SerialNumber = big.NewInt(3)
+	otherDER, err := x509.CreateCertificate(rand.Reader, leaf, ca, &leafKey.PublicKey, caKey)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "other.pem"), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: otherDER}), 0600))
 	return c
 }
 func writeRuntimeTestConfig(t *testing.T, c RegionalSchedulerRuntimeConfig) *config.Config {
@@ -109,8 +114,21 @@ func TestRegionalRuntimeMTLSPullRestoreAndAdmission(t *testing.T) {
 	unauth := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: pub.transport.TLSClientConfig.RootCAs}}, Timeout: time.Second}
 	_, err = unauth.Get(server.URL + "/internal/regional/scheduler")
 	require.Error(t, err)
+	otherCert, err := tls.LoadX509KeyPair(filepath.Join(filepath.Dir(c.CertFile), "other.pem"), c.KeyFile)
+	require.NoError(t, err)
+	foreignTransport := pub.transport.Clone()
+	foreignTransport.TLSClientConfig.Certificates = []tls.Certificate{otherCert}
+	defer foreignTransport.CloseIdleConnections()
+	_, err = (&http.Client{Transport: foreignTransport, Timeout: time.Second}).Get(server.URL + "/internal/regional/scheduler")
+	require.Error(t, err, "same CA without an allowed fingerprint must be rejected")
+	wrongPublisherTransport := pub.transport.Clone()
+	wrongPublisherTransport.TLSClientConfig.VerifyConnection = func(state tls.ConnectionState) error {
+		return verifyCertificatePin(state.PeerCertificates, strings.Repeat("0", 64))
+	}
+	defer wrongPublisherTransport.CloseIdleConnections()
+	_, err = (&http.Client{Transport: wrongPublisherTransport, Timeout: time.Second}).Get(server.URL + "/internal/regional/scheduler")
+	require.Error(t, err, "unexpected publisher fingerprint must be rejected")
 	c.Mode = "subscriber"
-	c.TrustedServerCertSHA256 = serverCertPin
 	c.Endpoint = server.URL + "/internal/regional/scheduler"
 	c.StateFile = filepath.Join(t.TempDir(), "state")
 	c.Bootstrap = true
