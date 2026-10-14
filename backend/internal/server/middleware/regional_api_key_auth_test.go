@@ -68,3 +68,43 @@ func TestRegionalAuthMiddlewareLocalIdentityAndIP(t *testing.T) {
 		})
 	}
 }
+
+type regionalRevocationStub struct {
+	calls int
+	limit int
+}
+
+func (s *regionalRevocationStub) GetRegionalByKey(context.Context, string) (*service.APIKey, error) {
+	s.calls++
+	if s.calls > 1 {
+		return nil, service.ErrAPIKeyNotFound
+	}
+	return &service.APIKey{ID: 1, UserID: 2, Status: service.StatusAPIKeyActive, ConcurrencyLimit: s.limit, User: &service.User{ID: 2, Status: service.StatusActive}}, nil
+}
+func TestRegionalAuthInstallsLocalTurnRevalidationAndAdmissionOwner(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, tc := range []struct {
+		method, path string
+		limit        int
+	}{{http.MethodGet, "/v1/responses", 0}, {http.MethodPost, "/v1/responses", 2}} {
+		t.Run(tc.method, func(t *testing.T) {
+			auth := &regionalRevocationStub{limit: tc.limit}
+			r := gin.New()
+			r.Use(RegionalAPIKeyAuth(auth, &config.Config{}))
+			r.Handle(tc.method, tc.path, func(c *gin.Context) {
+				require.True(t, service.HasAPIKeyAdmissionOwner(c.Request.Context()))
+				require.True(t, service.HasAPIKeyQueueAuthRevalidator(c.Request.Context()))
+				_, installed, err := (&service.ConcurrencyService{}).RevalidateAPIKeyQueueTurn(c.Request.Context())
+				require.True(t, installed)
+				require.Error(t, err)
+				require.Equal(t, 2, auth.calls)
+				c.Status(http.StatusNoContent)
+			})
+			request := httptest.NewRequest(tc.method, tc.path, nil)
+			request.Header.Set("Authorization", "Bearer fixture")
+			response := httptest.NewRecorder()
+			r.ServeHTTP(response, request)
+			require.Equal(t, http.StatusNoContent, response.Code)
+		})
+	}
+}

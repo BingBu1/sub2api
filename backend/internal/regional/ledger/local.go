@@ -265,7 +265,7 @@ func (l *Local) Pending(ctx context.Context, limit int) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []Event{}
 	for rows.Next() {
 		var raw []byte

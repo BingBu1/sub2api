@@ -856,7 +856,7 @@ func (s *GatewayService) resolveGroupByID(ctx context.Context, groupID int64) (*
 	}
 	var group *Group
 	var err error
-	if s.schedulerSnapshot != nil {
+	if s.schedulerSnapshot != nil && s.schedulerSnapshot.localSnapshotReader != nil {
 		group, err = s.schedulerSnapshot.GetGroupByIDLite(ctx, groupID)
 	} else {
 		group, err = s.groupRepo.GetByIDLite(ctx, groupID)
@@ -1859,7 +1859,7 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 
 	// require_privacy_set: 获取分组配置。GetByID 会聚合账号计数，旧选号路径不能用它。
 	var schedGroup *Group
-	if groupID != nil && (s.schedulerSnapshot != nil || s.groupRepo != nil) {
+	if groupID != nil && (s.groupRepo != nil || (s.schedulerSnapshot != nil && s.schedulerSnapshot.localSnapshotReader != nil)) {
 		var groupErr error
 		schedGroup, groupErr = s.resolveGroupByID(ctx, *groupID)
 		if groupErr != nil && s.schedulerSnapshot != nil && s.schedulerSnapshot.localSnapshotReader != nil {
@@ -2129,7 +2129,7 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 
 	// require_privacy_set: 获取分组配置。GetByID 会聚合账号计数，旧选号路径不能用它。
 	var schedGroup *Group
-	if groupID != nil && (s.schedulerSnapshot != nil || s.groupRepo != nil) {
+	if groupID != nil && (s.groupRepo != nil || (s.schedulerSnapshot != nil && s.schedulerSnapshot.localSnapshotReader != nil)) {
 		var groupErr error
 		schedGroup, groupErr = s.resolveGroupByID(ctx, *groupID)
 		if groupErr != nil && s.schedulerSnapshot != nil && s.schedulerSnapshot.localSnapshotReader != nil {

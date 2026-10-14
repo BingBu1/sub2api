@@ -13,7 +13,8 @@ import (
 )
 
 // RegionalSchedulerDocument is a complete replacement, not a patch. Account
-// ownership is checked against a separately provisioned regional allowlist.
+// catalog access is checked against a separately provisioned regional allowlist.
+// An allowlist does not allocate global concurrency for the shared pool.
 // Full Account JSON is sensitive and must only travel in encrypted snapshots.
 type RegionalSchedulerDocument struct {
 	Version int                       `json:"version"`
@@ -26,8 +27,9 @@ type RegionalSchedulerBucket struct {
 }
 
 // RegionalSchedulerValidator freezes the receiver's assignment policy. Empty
-// assignments allow only empty views. Sharing an account across regions and
-// moving assignments requires an external drain/ownership protocol.
+// assignments allow only empty views. Shared account concurrency requires the
+// separate slot lease authority and local admission; the allowlist alone cannot
+// authorize serving model requests.
 func RegionalSchedulerValidator(allowedIDs []int64) regional.PayloadValidator {
 	allowed := make(map[int64]bool, len(allowedIDs))
 	for _, id := range allowedIDs {
