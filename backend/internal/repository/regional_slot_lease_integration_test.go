@@ -218,11 +218,11 @@ func TestRegionalSlotLeaseConcurrencyCacheAdapter(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, count)
 	// Optional legacy acquisition implementations must not leak through the
-	// embedded auxiliary cache and bypass SQL. HTTP keys use immediate admission.
+	// embedded auxiliary cache and bypass SQL. FIFO/Live now use SQL transactions.
 	_, fifo := local.(service.APIKeySlotQueueCache)
-	require.False(t, fifo)
+	require.True(t, fifo)
 	_, live := local.(service.LiveConcurrencyCache)
-	require.False(t, live)
+	require.True(t, live)
 	_, keys := local.(service.APIKeySlotLeaseCache)
 	require.True(t, keys)
 	_, err = NewRegionalConcurrencyCache(NewConcurrencyCache(rdb, 15, 30), p, l)

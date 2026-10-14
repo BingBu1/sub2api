@@ -3,19 +3,25 @@ package repository
 import (
 	"context"
 	"errors"
+	"github.com/Wei-Shaw/sub2api/internal/regional/control"
+	"net"
+	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/regional/slots"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
-// regionalConcurrencyCache deliberately does not expose the legacy Redis FIFO
-// or Live transfer interfaces: those implementations acquire capacity without
-// checking regional grants. Supported key requests use the immediate SQL path;
-// capacity full retains the existing 429 behavior. Live admission fails closed.
-// This adapter is not wired by default; runtime rollout must drain old owners
-// and bind primary/local databases before any regional grant can be issued.
+// regionalConcurrencyCache keeps admission, FIFO, and Live ownership in SQL.
+// Redis supplies auxiliary waiting statistics and idle ingress leases only.
 type regionalConcurrencyCache struct {
+	runtimeConfig   *RegionalConcurrencyRuntimeConfig
+	runtimeFailed   atomic.Bool
+	controlServer   *http.Server
+	controlListener net.Listener
+	broker          *control.Broker
+	brokerClient    *control.Client
 	service.ConcurrencyCache
 	primary    *slots.Primary
 	local      *slots.Local
@@ -35,6 +41,9 @@ func NewRegionalConcurrencyCache(base service.ConcurrencyCache, p *slots.Primary
 	return c, nil
 }
 func (c *regionalConcurrencyCache) acquire(ctx context.Context, kind string, id int64, request string) (bool, error) {
+	if c.runtimeFailed.Load() {
+		return false, errors.New("regional runtime unavailable")
+	}
 	r := slots.Resource{Kind: kind, ID: id}
 	if c.primary != nil {
 		return c.primary.Acquire(ctx, r, request)
@@ -198,4 +207,38 @@ func (c *regionalConcurrencyCache) GetUsersLoadBatch(ctx context.Context, users 
 		}
 	}
 	return out, nil
+}
+
+// Persistent ownership is never reclaimed by Redis TTL/startup cleanup.
+func (c *regionalConcurrencyCache) CleanupStaleProcessSlots(context.Context, string) error {
+	return nil
+}
+func (c *regionalConcurrencyCache) CleanupExpiredAccountSlots(context.Context, int64) error {
+	return nil
+}
+func (c *regionalConcurrencyCache) CleanupExpiredAccountSlotKeys(context.Context) error { return nil }
+
+// CheckRegionalSlots observes capacity; actual requests must still acquire it
+// transactionally. It never renews a grant or releases an in-flight holder.
+func (c *regionalConcurrencyCache) CheckRegionalSlots(ctx context.Context) error {
+	if c.runtimeConfig == nil || c.runtimeFailed.Load() {
+		return errors.New("regional slots runtime unavailable")
+	}
+	if c.local == nil {
+		return errors.New("regional local slots required")
+	}
+	if len(c.runtimeConfig.Targets) == 0 {
+		return errors.New("regional slots targets missing")
+	}
+	for _, target := range c.runtimeConfig.Targets {
+		var ready bool
+		err := c.database().QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM regional_local_slot_grants WHERE region_id=$1 AND kind=$2 AND resource_id=$3 AND state='open' AND used<slots AND (grant_payload->>'issued_at')::timestamptz<=clock_timestamp() AND (grant_payload->>'expires_at')::timestamptz>clock_timestamp())", c.local.Region, target.Resource.Kind, target.Resource.ID).Scan(&ready)
+		if err != nil {
+			return err
+		}
+		if !ready {
+			return slots.ErrUnavailable
+		}
+	}
+	return nil
 }

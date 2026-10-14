@@ -519,6 +519,9 @@ func ProvideDeferredService(accountRepo AccountRepository, timingWheel *TimingWh
 // ProvideConcurrencyService creates ConcurrencyService and starts slot cleanup worker.
 func ProvideConcurrencyService(cache ConcurrencyCache, accountRepo AccountRepository, cfg *config.Config) *ConcurrencyService {
 	svc := NewConcurrencyService(cache)
+	if runtime, ok := cache.(interface{ RunRegionalRuntime(context.Context) }); ok {
+		go runtime.RunRegionalRuntime(svc.apiKeyQueueStopContext())
+	}
 	if err := svc.CleanupStaleProcessSlots(context.Background()); err != nil {
 		logger.LegacyPrintf("service.concurrency", "Warning: startup cleanup stale process slots failed: %v", err)
 	}
@@ -1229,9 +1232,10 @@ func ProvideChannelMonitorV2Aggregator(repo ChannelMonitorV2Repository, db *sql.
 	return aggregator
 }
 
-func ProvideAccountOpsService(settings SettingRepository, repo AccountOpsRepository, email *EmailService, accounts AccountRepository, groups GroupRepository, cfg *config.Config, encryptor SecretEncryptor, usageCache *UsageCache, usageLogs UsageLogRepository, geminiQuota *GeminiQuotaService) *AccountOpsService {
+func ProvideAccountOpsService(settings SettingRepository, repo AccountOpsRepository, email *EmailService, accounts AccountRepository, groups GroupRepository, cfg *config.Config, encryptor SecretEncryptor, usageCache *UsageCache, usageLogs UsageLogRepository, geminiQuota *GeminiQuotaService, newAPI NewAPIAuthorizationRepository) *AccountOpsService {
 	svc := NewAccountOpsService(settings, repo, email)
 	svc.SetNotificationDependencies(accounts, encryptor, cfg.Totp.EncryptionKeyConfigured, cfg.Timezone)
+	svc.SetNewAPIGroupReader(newAPI)
 	svc.SetNotificationUsageCache(usageCache)
 	svc.SetNotificationQuotaReaders(usageLogs, geminiQuota)
 	svc.autoAccounts, _ = accounts.(AccountConcurrencyRepository)
