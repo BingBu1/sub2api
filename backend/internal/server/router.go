@@ -117,10 +117,13 @@ func registerRoutes(
 	// 通用路由（健康检查、状态等）
 	routes.RegisterCommonRoutes(r)
 	if cfg.Runtime.Role == config.RuntimeRoleGateway {
-		if cfg.Runtime.RegionalSchedulerFile != "" {
-			// Scheduler-only preview: local auth, ownership and quota leases
-			// are not implemented yet. Keep model admission closed before auth
-			// can touch the primary. Health routes above remain available.
+		if cfg.Runtime.RegionalSchedulerFile != "" || cfg.Runtime.RegionalAuthFile != "" {
+			if cfg.Runtime.RegionalAuthFile != "" {
+				r.Use(middleware2.RegionalAPIKeyAuth(apiKeyService, cfg))
+			}
+			// Local auth preview still cannot spend or schedule: account ownership and
+			// quota leases are not implemented. Never enter primary-backed middleware.
+			// Health routes above remain available.
 			r.Use(func(c *gin.Context) {
 				c.AbortWithStatusJSON(503, gin.H{"error": "regional gateway admission is not enabled"})
 			})

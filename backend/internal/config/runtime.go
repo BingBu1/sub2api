@@ -14,6 +14,7 @@ const (
 // RuntimeConfig separates the primary's global jobs from request replicas.
 // Empty remains equivalent to full for programmatically constructed configs.
 type RuntimeConfig struct {
+	RegionalAuthFile      string `mapstructure:"regional_auth_file"`
 	RegionalSchedulerFile string `mapstructure:"regional_scheduler_file"`
 	Role                  string `mapstructure:"role"`
 	ServerlessID          string `mapstructure:"serverless_id"`
