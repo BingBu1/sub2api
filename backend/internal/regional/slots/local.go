@@ -71,14 +71,44 @@ func (l *Local) Install(ctx context.Context, g Grant) error {
 	return tx.Commit()
 }
 func (l *Local) Acquire(ctx context.Context, id, request string) (bool, error) {
-	if !validRequest(request) {
-		return false, errors.New("invalid slot request id")
-	}
 	tx, err := l.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	ok, err := l.AcquireTx(ctx, tx, id, request)
+	if err != nil {
+		return false, err
+	}
+	return ok, tx.Commit()
+}
+func (l *Local) AcquireTx(ctx context.Context, tx *sql.Tx, id, request string) (bool, error) {
+	var resource Resource
+	if err := tx.QueryRowContext(ctx, "SELECT kind,resource_id FROM regional_local_slot_grants WHERE lease_id=$1 AND region_id=$2", id, l.Region).Scan(&resource.Kind, &resource.ID); err != nil {
+		return false, err
+	}
+	if err := lockBudget(ctx, tx, resource); err != nil {
+		return false, err
+	}
+	var cancelled bool
+	if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM regional_slot_cancellations WHERE region_id=$1 AND kind=$2 AND resource_id=$3 AND request_id=$4)", l.Region, resource.Kind, resource.ID, request).Scan(&cancelled); err != nil {
+		return false, err
+	}
+	if cancelled {
+		return false, nil
+	}
+	var prior string
+	err := tx.QueryRowContext(ctx, "SELECT lease_id FROM regional_local_slots WHERE kind=$1 AND resource_id=$2 AND request_id=$3", resource.Kind, resource.ID, request).Scan(&prior)
+	if err == nil && prior != id {
+		return false, ErrConflict
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, err
+	}
+
+	if !validRequest(request) {
+		return false, errors.New("invalid slot request id")
+	}
 	g, used, state, err := localGrant(ctx, tx, id, l.Region)
 	if err != nil {
 		return false, err
@@ -107,7 +137,7 @@ func (l *Local) Acquire(ctx context.Context, id, request string) (bool, error) {
 	if _, err := tx.ExecContext(ctx, `INSERT INTO regional_local_slots(lease_id,request_id,kind,resource_id) VALUES($1,$2,$3,$4)`, id, request, g.Resource.Kind, g.Resource.ID); err != nil {
 		return false, err
 	}
-	return true, tx.Commit()
+	return true, nil
 }
 func (l *Local) Release(ctx context.Context, id, request string) error {
 	tx, err := l.DB.BeginTx(ctx, nil)
@@ -115,6 +145,26 @@ func (l *Local) Release(ctx context.Context, id, request string) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := l.ReleaseTx(ctx, tx, id, request); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+func (l *Local) ReleaseTx(ctx context.Context, tx *sql.Tx, id, request string) error {
+	if !validRequest(request) {
+		return errors.New("invalid slot request id")
+	}
+	var resource Resource
+	if err := tx.QueryRowContext(ctx, "SELECT kind,resource_id FROM regional_local_slot_grants WHERE lease_id=$1 AND region_id=$2", id, l.Region).Scan(&resource.Kind, &resource.ID); err != nil {
+		return err
+	}
+	if err := lockBudget(ctx, tx, resource); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "INSERT INTO regional_slot_cancellations(region_id,kind,resource_id,request_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING", l.Region, resource.Kind, resource.ID, request); err != nil {
+		return err
+	}
+
 	if _, _, _, err := localGrant(ctx, tx, id, l.Region); err != nil {
 		return err
 	}
@@ -131,7 +181,7 @@ func (l *Local) Release(ctx context.Context, id, request string) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 func (l *Local) Drain(ctx context.Context, id string) error {
 	tx, err := l.DB.BeginTx(ctx, nil)
@@ -182,23 +232,46 @@ func (l *Local) Close(ctx context.Context, id string) (DrainReceipt, error) {
 // AcquireResource uses any currently held grant for the dimension. An existing
 // request remains bound to its original grant; it cannot migrate to fresh
 // capacity on a retry after expiry or release.
+// Resource operations serialize the permanent request identity across grants.
 func (l *Local) AcquireResource(ctx context.Context, r Resource, request string) (bool, error) {
-	if err := r.Validate(); err != nil {
+	tx, err := l.DB.BeginTx(ctx, nil)
+	if err != nil {
 		return false, err
 	}
+	defer func() { _ = tx.Rollback() }()
+	ok, err := l.AcquireResourceTx(ctx, tx, r, request)
+	if err != nil {
+		return false, err
+	}
+	return ok, tx.Commit()
+}
+func (l *Local) AcquireResourceTx(ctx context.Context, tx *sql.Tx, r Resource, request string) (bool, error) {
+	if !validRequest(request) {
+		return false, errors.New("invalid slot request id")
+	}
+	if err := lockBudget(ctx, tx, r); err != nil {
+		return false, err
+	}
+	var cancelled bool
+	if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM regional_slot_cancellations WHERE region_id=$1 AND kind=$2 AND resource_id=$3 AND request_id=$4)", l.Region, r.Kind, r.ID, request).Scan(&cancelled); err != nil {
+		return false, err
+	}
+	if cancelled {
+		return false, nil
+	}
 	var existing string
-	err := l.DB.QueryRowContext(ctx, `SELECT s.lease_id FROM regional_local_slots s JOIN regional_local_slot_grants g ON g.lease_id=s.lease_id WHERE s.kind=$1 AND s.resource_id=$2 AND s.request_id=$3 AND g.region_id=$4`, r.Kind, r.ID, request, l.Region).Scan(&existing)
+	err := tx.QueryRowContext(ctx, "SELECT s.lease_id FROM regional_local_slots s JOIN regional_local_slot_grants g ON g.lease_id=s.lease_id WHERE s.kind=$1 AND s.resource_id=$2 AND s.request_id=$3 AND g.region_id=$4", r.Kind, r.ID, request, l.Region).Scan(&existing)
 	if err == nil {
-		return l.Acquire(ctx, existing, request)
+		return l.AcquireTx(ctx, tx, existing, request)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return false, err
 	}
-	rows, err := l.DB.QueryContext(ctx, `SELECT lease_id FROM regional_local_slot_grants WHERE kind=$1 AND resource_id=$2 AND region_id=$3 AND state='open' AND (grant_payload->>'expires_at')::timestamptz>clock_timestamp() ORDER BY lease_id`, r.Kind, r.ID, l.Region)
+	rows, err := tx.QueryContext(ctx, "SELECT lease_id FROM regional_local_slot_grants WHERE kind=$1 AND resource_id=$2 AND region_id=$3 AND state='open' AND (grant_payload->>'expires_at')::timestamptz>clock_timestamp() ORDER BY lease_id", r.Kind, r.ID, l.Region)
 	if err != nil {
 		return false, err
 	}
-	ids := []string{}
+	var ids []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
@@ -212,11 +285,8 @@ func (l *Local) AcquireResource(ctx context.Context, r Resource, request string)
 	if err != nil {
 		return false, err
 	}
-	if len(ids) == 0 {
-		return false, ErrUnavailable
-	}
 	for _, id := range ids {
-		ok, err := l.Acquire(ctx, id, request)
+		ok, err := l.AcquireTx(ctx, tx, id, request)
 		if err != nil {
 			return false, err
 		}
@@ -226,20 +296,39 @@ func (l *Local) AcquireResource(ctx context.Context, r Resource, request string)
 	}
 	return false, nil
 }
+
 func (l *Local) ReleaseResource(ctx context.Context, r Resource, request string) error {
-	if err := r.Validate(); err != nil {
+	tx, err := l.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := l.ReleaseResourceTx(ctx, tx, r, request); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+func (l *Local) ReleaseResourceTx(ctx context.Context, tx *sql.Tx, r Resource, request string) error {
+	if !validRequest(request) {
+		return errors.New("invalid slot request id")
+	}
+	if err := lockBudget(ctx, tx, r); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "INSERT INTO regional_slot_cancellations(region_id,kind,resource_id,request_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING", l.Region, r.Kind, r.ID, request); err != nil {
 		return err
 	}
 	var id string
-	err := l.DB.QueryRowContext(ctx, `SELECT s.lease_id FROM regional_local_slots s JOIN regional_local_slot_grants g ON g.lease_id=s.lease_id WHERE s.kind=$1 AND s.resource_id=$2 AND s.request_id=$3 AND g.region_id=$4`, r.Kind, r.ID, request, l.Region).Scan(&id)
+	err := tx.QueryRowContext(ctx, "SELECT s.lease_id FROM regional_local_slots s JOIN regional_local_slot_grants g ON g.lease_id=s.lease_id WHERE s.kind=$1 AND s.resource_id=$2 AND s.request_id=$3 AND g.region_id=$4", r.Kind, r.ID, request, l.Region).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	return l.Release(ctx, id, request)
+	return l.ReleaseTx(ctx, tx, id, request)
 }
+
 func (l *Local) Count(ctx context.Context, r Resource) (int, error) {
 	var n int
 	err := l.DB.QueryRowContext(ctx, `SELECT COALESCE(SUM(used),0) FROM regional_local_slot_grants WHERE kind=$1 AND resource_id=$2 AND region_id=$3`, r.Kind, r.ID, l.Region).Scan(&n)
