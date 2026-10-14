@@ -302,6 +302,13 @@ func (s *SchedulerSnapshotService) ListSchedulableAccounts(ctx context.Context, 
 }
 
 func (s *SchedulerSnapshotService) GetAccount(ctx context.Context, accountID int64) (*Account, error) {
+	if s.localSnapshotReader != nil {
+		accounts, err := s.GetAccounts(ctx, []int64{accountID})
+		if err != nil {
+			return nil, err
+		}
+		return accounts[accountID], nil
+	}
 	if accountID <= 0 {
 		return nil, nil
 	}
@@ -330,6 +337,13 @@ func (s *SchedulerSnapshotService) GetAccount(ctx context.Context, accountID int
 
 // GetGroupByID 获取分组信息（供调度器使用）
 func (s *SchedulerSnapshotService) GetGroupByID(ctx context.Context, groupID int64) (*Group, error) {
+	if s.localSnapshotReader != nil {
+		reader, ok := s.localSnapshotReader.(LocalSchedulerDetailReader)
+		if !ok {
+			return nil, ErrLocalSchedulerSnapshotUnavailable
+		}
+		return reader.GetLocalGroup(ctx, groupID)
+	}
 	if s.groupRepo == nil {
 		return nil, nil
 	}
@@ -341,6 +355,13 @@ func (s *SchedulerSnapshotService) GetGroupByID(ctx context.Context, groupID int
 // 查询纯属浪费——composite / 模型路由 / fallback 每次装门都要付一次，WS 更是
 // 每个 turn 一次，且发生在「是否启用利润控制」判定之前。
 func (s *SchedulerSnapshotService) GetGroupByIDLite(ctx context.Context, groupID int64) (*Group, error) {
+	if s.localSnapshotReader != nil {
+		reader, ok := s.localSnapshotReader.(LocalSchedulerDetailReader)
+		if !ok {
+			return nil, ErrLocalSchedulerSnapshotUnavailable
+		}
+		return reader.GetLocalGroup(ctx, groupID)
+	}
 	if s.groupRepo == nil {
 		return nil, nil
 	}

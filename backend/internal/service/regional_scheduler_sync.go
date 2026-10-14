@@ -13,11 +13,13 @@ import (
 )
 
 // RegionalSchedulerDocument is a complete replacement, not a patch. Account
-// ownership is checked against a separately provisioned regional allowlist.
+// catalog access is checked against a separately provisioned regional allowlist.
+// An allowlist does not allocate global concurrency for the shared pool.
 // Full Account JSON is sensitive and must only travel in encrypted snapshots.
 type RegionalSchedulerDocument struct {
 	Version int                       `json:"version"`
 	Buckets []RegionalSchedulerBucket `json:"buckets"`
+	Groups  []*Group                  `json:"groups,omitempty"`
 }
 type RegionalSchedulerBucket struct {
 	Bucket   SchedulerBucket `json:"bucket"`
@@ -25,8 +27,9 @@ type RegionalSchedulerBucket struct {
 }
 
 // RegionalSchedulerValidator freezes the receiver's assignment policy. Empty
-// assignments allow only empty views. Sharing an account across regions and
-// moving assignments requires an external drain/ownership protocol.
+// assignments allow only empty views. Shared account concurrency requires the
+// separate slot lease authority and local admission; the allowlist alone cannot
+// authorize serving model requests.
 func RegionalSchedulerValidator(allowedIDs []int64) regional.PayloadValidator {
 	allowed := make(map[int64]bool, len(allowedIDs))
 	for _, id := range allowedIDs {
@@ -66,6 +69,16 @@ func decodeRegionalScheduler(payload []byte) (RegionalSchedulerDocument, error) 
 	if doc.Version != 1 || doc.Buckets == nil || len(doc.Buckets) > 4096 {
 		return doc, errors.New("invalid regional scheduler version or buckets")
 	}
+	groups := make(map[int64]bool, len(doc.Groups))
+	for _, g := range doc.Groups {
+		if g == nil || g.ID <= 0 || groups[g.ID] {
+			return doc, errors.New("invalid regional group")
+		}
+		groups[g.ID] = true
+	}
+	// A repeated account must have identical credentials and policy in every
+	// bucket; otherwise hydration would depend on bucket iteration order.
+	accountViews := make(map[int64][]byte)
 	seen := make(map[SchedulerBucket]bool, len(doc.Buckets))
 	for _, entry := range doc.Buckets {
 		b := entry.Bucket
@@ -76,12 +89,23 @@ func decodeRegionalScheduler(payload []byte) (RegionalSchedulerDocument, error) 
 			return doc, errors.New("unsupported mixed scheduler bucket")
 		}
 		seen[b] = true
+		if b.GroupID > 0 && len(entry.Accounts) > 0 && !groups[b.GroupID] {
+			return doc, errors.New("regional bucket missing group policy")
+		}
 		ids := make(map[int64]bool, len(entry.Accounts))
 		for _, a := range entry.Accounts {
 			if a == nil || a.ID <= 0 || ids[a.ID] || a.ParentAccountID != nil {
 				return doc, errors.New("invalid or unsupported regional account")
 			}
 			ids[a.ID] = true
+			encoded, err := json.Marshal(a)
+			if err != nil {
+				return doc, errors.New("invalid regional account encoding")
+			}
+			if previous, ok := accountViews[a.ID]; ok && !bytes.Equal(previous, encoded) {
+				return doc, errors.New("conflicting regional account views")
+			}
+			accountViews[a.ID] = encoded
 			if a.Platform != b.Platform && (b.Mode != SchedulerModeMixed || a.Platform != PlatformAntigravity || !a.IsMixedSchedulingEnabled()) {
 				return doc, errors.New("regional account platform mismatch")
 			}
@@ -166,6 +190,7 @@ func (s *SchedulerSnapshotService) ExportRegionalScheduler(ctx context.Context, 
 		}
 	}
 	doc := RegionalSchedulerDocument{Version: 1, Buckets: make([]RegionalSchedulerBucket, 0, len(buckets))}
+	seenGroups := make(map[int64]bool)
 	for _, bucket := range buckets {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -178,6 +203,10 @@ func (s *SchedulerSnapshotService) ExportRegionalScheduler(ctx context.Context, 
 			group, err := s.groupRepo.GetByIDLite(ctx, bucket.GroupID)
 			if err != nil {
 				return nil, err
+			}
+			if group != nil && !seenGroups[group.ID] {
+				doc.Groups = append(doc.Groups, group)
+				seenGroups[group.ID] = true
 			}
 			if group == nil || !group.IsActive() {
 				doc.Buckets = append(doc.Buckets, entry)
@@ -253,4 +282,76 @@ func (s *SchedulerSnapshotService) PublishRegionalScheduler(ctx context.Context,
 		return err
 	}
 	return replica.PublishNext(ctx, keyID, lifetime, payload)
+}
+
+// detailView is decoded afresh on every call. Both account and group details
+// share the replica's expiry, revocation and persistence failure boundary.
+func (r *RegionalSchedulerReader) detailView(ctx context.Context) (RegionalSchedulerDocument, time.Time, error) {
+	if err := ctx.Err(); err != nil {
+		return RegionalSchedulerDocument{}, time.Time{}, err
+	}
+	snapshot, err := r.replica.Current()
+	if err != nil {
+		return RegionalSchedulerDocument{}, time.Time{}, err
+	}
+	if snapshot.Kind != regional.SnapshotScheduler {
+		return RegionalSchedulerDocument{}, time.Time{}, ErrLocalSchedulerSnapshotUnavailable
+	}
+	doc, err := decodeRegionalScheduler(snapshot.Payload)
+	return doc, snapshot.ExpiresAt, err
+}
+func regionalReadFinished(ctx context.Context, expiry time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !time.Now().Before(expiry) {
+		return ErrLocalSchedulerSnapshotExpired
+	}
+	return nil
+}
+func (r *RegionalSchedulerReader) GetLocalAccounts(ctx context.Context, ids []int64) (map[int64]*Account, error) {
+	doc, expiry, err := r.detailView(ctx)
+	if err != nil {
+		return nil, err
+	}
+	wanted := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		if id > 0 {
+			wanted[id] = true
+		}
+	}
+	out := make(map[int64]*Account)
+	for _, bucket := range doc.Buckets {
+		for _, a := range bucket.Accounts {
+			if wanted[a.ID] && a.IsSchedulable() {
+				out[a.ID] = a
+			}
+		}
+	}
+	if err := regionalReadFinished(ctx, expiry); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+func (r *RegionalSchedulerReader) GetLocalGroup(ctx context.Context, id int64) (*Group, error) {
+	doc, expiry, err := r.detailView(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out *Group
+	for _, g := range doc.Groups {
+		if g.ID == id && g.IsActive() {
+			out = g
+			break
+		}
+	}
+	if err := regionalReadFinished(ctx, expiry); err != nil {
+		return nil, err
+	}
+	// Missing groups are authoritative denial, including older documents that
+	// predate group projection. Callers must not reconstruct incomplete policy.
+	if out == nil {
+		return nil, ErrLocalSchedulerSnapshotUnavailable
+	}
+	return out, nil
 }

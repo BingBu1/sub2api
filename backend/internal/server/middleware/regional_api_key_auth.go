@@ -66,6 +66,6 @@ func RegionalAPIKeyAuth(svc regionalAPIKeyAuthenticator, cfg *config.Config) gin
 		c.Set(string(ContextKeyUserRole), auth.User.Role)
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.UserID, auth.User.ID))
 		setGroupContext(c, auth.Group)
-		c.Next()
+		nextWithAPIKeyAdmissionLookup(c, svc.GetRegionalByKey, key, ip.GetSecurityClientIP(c, cfg.TrustForwardedIPForAPIKeyACL()), auth, strings.HasPrefix(c.Request.URL.Path, "/v1beta/"))
 	}
 }
