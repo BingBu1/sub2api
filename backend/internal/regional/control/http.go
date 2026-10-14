@@ -112,6 +112,20 @@ func NewHandler(scope Scope, quota *ledger.Primary, capacity *slots.Primary, ver
 	scope.APIKeyIDs = append([]int64(nil), scope.APIKeyIDs...)
 	return &Handler{Scope: scope, Quota: quota, Slots: capacity, Verify: verify}, nil
 }
+
+// NewSlotsHandler exposes only slot operations until a settlement verifier is wired.
+func NewSlotsHandler(scope Scope, capacity *slots.Primary) (http.Handler, error) {
+	if err := scope.Validate(); err != nil {
+		return nil, err
+	}
+	if capacity == nil || capacity.DB == nil || capacity.Limit == nil || capacity.GrantGuard == nil {
+		return nil, errors.New("guarded slot authority required")
+	}
+	scope.UserIDs = append([]int64(nil), scope.UserIDs...)
+	scope.AccountIDs = append([]int64(nil), scope.AccountIDs...)
+	scope.APIKeyIDs = append([]int64(nil), scope.APIKeyIDs...)
+	return &Handler{Scope: scope, Slots: capacity}, nil
+}
 func decode(w http.ResponseWriter, r *http.Request, v any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 	defer func() { _ = r.Body.Close() }()
@@ -134,6 +148,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method != http.MethodPost || r.URL.RawQuery != "" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, Prefix+"/quota/") && (h.Quota == nil || h.Verify == nil) {
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
@@ -214,6 +232,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		switch {
+		case errors.Is(err, slots.ErrExpiredUnissued):
+			w.WriteHeader(http.StatusGone)
 		case errors.Is(err, ledger.ErrConflict), errors.Is(err, slots.ErrConflict):
 			w.WriteHeader(409)
 		case errors.Is(err, ledger.ErrExhausted), errors.Is(err, slots.ErrUnavailable):
@@ -269,6 +289,9 @@ func (c *Client) post(ctx context.Context, path string, payload any) error {
 		return errors.New("regional control transport unavailable")
 	}
 	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode == http.StatusGone {
+		return slots.ErrExpiredUnissued
+	}
 	if response.StatusCode != http.StatusNoContent {
 		return errors.New("regional control operation was not confirmed")
 	}

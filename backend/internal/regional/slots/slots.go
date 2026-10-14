@@ -6,6 +6,7 @@ package slots
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"math"
 	"regexp"
@@ -13,9 +14,10 @@ import (
 )
 
 var (
-	ErrUnavailable = errors.New("regional slot capacity unavailable")
-	ErrConflict    = errors.New("regional slot lease identity conflict")
-	identifier     = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,62}$`)
+	ErrUnavailable     = errors.New("regional slot capacity unavailable")
+	ErrExpiredUnissued = errors.New("regional slot issue permanently rejected before allocation")
+	ErrConflict        = errors.New("regional slot lease identity conflict")
+	identifier         = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,62}$`)
 )
 
 type Resource struct {
@@ -74,8 +76,9 @@ func now(ctx context.Context, tx *sql.Tx) (time.Time, error) {
 // An unlimited dimension need not obtain regional grants at all.
 type LimitReader func(context.Context, *sql.Tx, Resource) (int, error)
 type Primary struct {
-	DB    *sql.DB
-	Limit LimitReader
+	DB         *sql.DB
+	Limit      LimitReader
+	GrantGuard func(context.Context, *sql.Tx) error
 }
 
 func (p *Primary) limit(ctx context.Context, tx *sql.Tx, r Resource) (int, error) {
@@ -99,6 +102,11 @@ func (p *Primary) Issue(ctx context.Context, g Grant) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if p.GrantGuard != nil {
+		if err := p.GrantGuard(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err := lockBudget(ctx, tx, g.Resource); err != nil {
 		return err
 	}
@@ -122,9 +130,38 @@ func (p *Primary) Issue(ctx context.Context, g Grant) error {
 	if err != nil {
 		return err
 	}
-	if n.Before(g.IssuedAt) || !n.Before(g.ExpiresAt) || n.Sub(g.IssuedAt) > 5*time.Second {
+	var rejected bool
+	raw, err := json.Marshal(g)
+	if err != nil {
+		return err
+	}
+	var previous []byte
+	err = tx.QueryRowContext(ctx, "SELECT payload FROM regional_slot_issue_rejections WHERE lease_id=$1", g.LeaseID).Scan(&previous)
+	if err == nil {
+		var prior Grant
+		if json.Unmarshal(previous, &prior) != nil || prior != g {
+			return ErrConflict
+		}
+		rejected = true
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if rejected {
+		return ErrExpiredUnissued
+	}
+	if n.Before(g.IssuedAt) {
 		return ErrUnavailable
 	}
+	if !n.Before(g.ExpiresAt) || n.Sub(g.IssuedAt) > 5*time.Second {
+		if _, err = tx.ExecContext(ctx, "INSERT INTO regional_slot_issue_rejections(lease_id,payload) VALUES($1,$2)", g.LeaseID, string(raw)); err != nil {
+			return err
+		}
+		if err = tx.Commit(); err != nil {
+			return err
+		}
+		return ErrExpiredUnissued
+	}
+
 	limit, err := p.limit(ctx, tx, g.Resource)
 	if err != nil {
 		return err
@@ -154,19 +191,26 @@ func (p *Primary) Issue(ctx context.Context, g Grant) error {
 // broker; they lock the SAME budget row. Do not combine grants with the legacy
 // Redis-only primary acquisition, which is unaware of leased-out capacity.
 func (p *Primary) Acquire(ctx context.Context, r Resource, id string) (bool, error) {
-	if !validRequest(id) {
-		return false, errors.New("invalid slot request id")
-	}
 	tx, err := p.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	ok, err := p.AcquireTx(ctx, tx, r, id)
+	if err != nil {
+		return false, err
+	}
+	return ok, tx.Commit()
+}
+func (p *Primary) AcquireTx(ctx context.Context, tx *sql.Tx, r Resource, id string) (bool, error) {
+	if !validRequest(id) {
+		return false, errors.New("invalid slot request id")
+	}
 	if err := lockBudget(ctx, tx, r); err != nil {
 		return false, err
 	}
 	var released bool
-	err = tx.QueryRowContext(ctx, `SELECT released FROM regional_primary_slots WHERE kind=$1 AND resource_id=$2 AND request_id=$3`, r.Kind, r.ID, id).Scan(&released)
+	err := tx.QueryRowContext(ctx, `SELECT released FROM regional_primary_slots WHERE kind=$1 AND resource_id=$2 AND request_id=$3`, r.Kind, r.ID, id).Scan(&released)
 	if err == nil {
 		return !released, nil
 	}
@@ -194,7 +238,7 @@ func (p *Primary) Acquire(ctx context.Context, r Resource, id string) (bool, err
 	if _, err := tx.ExecContext(ctx, `INSERT INTO regional_primary_slots(kind,resource_id,request_id) VALUES($1,$2,$3)`, r.Kind, r.ID, id); err != nil {
 		return false, err
 	}
-	return true, tx.Commit()
+	return true, nil
 }
 func (p *Primary) Release(ctx context.Context, r Resource, id string) error {
 	tx, err := p.DB.BeginTx(ctx, nil)
@@ -202,6 +246,15 @@ func (p *Primary) Release(ctx context.Context, r Resource, id string) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := p.ReleaseTx(ctx, tx, r, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+func (p *Primary) ReleaseTx(ctx context.Context, tx *sql.Tx, r Resource, id string) error {
+	if !validRequest(id) {
+		return errors.New("invalid slot request id")
+	}
 	if err := lockBudget(ctx, tx, r); err != nil {
 		return err
 	}
@@ -218,7 +271,10 @@ func (p *Primary) Release(ctx context.Context, r Resource, id string) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	if _, err := tx.ExecContext(ctx, "INSERT INTO regional_primary_slots(kind,resource_id,request_id,released) VALUES($1,$2,$3,true) ON CONFLICT DO NOTHING", r.Kind, r.ID, id); err != nil {
+		return err
+	}
+	return nil
 }
 func (p *Primary) Renew(ctx context.Context, g Grant) error {
 	if err := g.Validate(); err != nil {
@@ -229,6 +285,11 @@ func (p *Primary) Renew(ctx context.Context, g Grant) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if p.GrantGuard != nil {
+		if err := p.GrantGuard(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err := lockBudget(ctx, tx, g.Resource); err != nil {
 		return err
 	}
