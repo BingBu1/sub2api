@@ -23,7 +23,7 @@ func NewRegionalFundsAuthorities(db *sql.DB, guard func(context.Context, *sql.Tx
 		if err := guard(ctx, tx); err != nil {
 			return err
 		}
-		return scope.Reserve(ctx, tx, "grant:"+l.LeaseID, l.UserID, l.APIKeyID, l.AccountID, l.Granted)
+		return scope.Reserve(ctx, tx, "grant:"+l.LeaseID, l.UserID, l.APIKeyID, l.AccountID, l.Granted, l.IssuedAt)
 	}
 	primary.CloseScope = func(ctx context.Context, tx *sql.Tx, l regional.Lease, spent regional.Amount) error {
 		return scope.Close(ctx, tx, "grant:"+l.LeaseID, spent)
@@ -40,7 +40,7 @@ func NewRegionalFundsAuthorities(db *sql.DB, guard func(context.Context, *sql.Tx
 		if err := guard(ctx, tx); err != nil {
 			return err
 		}
-		return scope.Reserve(ctx, tx, "request:"+r.RequestID, r.UserID, r.APIKeyID, r.AccountID, r.Maximum)
+		return scope.Reserve(ctx, tx, "request:"+r.RequestID, r.UserID, r.APIKeyID, r.AccountID, r.Maximum, r.AdmittedAt)
 	}
 	holds.SettleScope = ledger.PricingVerifier(func(ctx context.Context, tx *sql.Tx, e ledger.Event) error {
 		id := "request:" + e.Usage.EventID
@@ -57,7 +57,9 @@ func NewRegionalFundsAuthorities(db *sql.DB, guard func(context.Context, *sql.Tx
 
 func regionalBalanceFunding(ctx context.Context, tx *sql.Tx, user, key int64) (bool, error) {
 	var locked int64
-	if err := tx.QueryRowContext(ctx, "SELECT id FROM users WHERE id=$1 AND status='active' AND deleted_at IS NULL FOR UPDATE", user).Scan(&locked); err != nil {
+	// Balance changes never modify a referenced key. NO KEY UPDATE serializes
+	// spendable funds while permitting canonical usage's FK KEY SHARE check.
+	if err := tx.QueryRowContext(ctx, "SELECT id FROM users WHERE id=$1 AND status='active' AND deleted_at IS NULL FOR NO KEY UPDATE", user).Scan(&locked); err != nil {
 		return false, err
 	}
 	var kind string
