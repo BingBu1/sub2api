@@ -179,7 +179,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(400)
 			return
 		}
-		if grant.Region != h.Scope.Region || !h.Scope.resource(grant.Resource) || grant.Slots > h.Scope.MaximumSlots || grant.ExpiresAt.Sub(time.Now()) > h.Scope.MaximumLifetime {
+		if grant.Region != h.Scope.Region || !h.Scope.resource(grant.Resource) || grant.Slots > h.Scope.MaximumSlots || time.Until(grant.ExpiresAt) > h.Scope.MaximumLifetime {
 			w.WriteHeader(403)
 			return
 		}
