@@ -36,23 +36,26 @@ type RegionalSchedulerAuthority interface {
 // One stream per process in this first runtime implementation. No credentials
 // or account data are included in status output or logs.
 type RegionalSchedulerRuntimeConfig struct {
-	Mode                    string            `json:"mode"`
-	Policy                  regional.Config   `json:"policy"`
-	Keys                    map[string][]byte `json:"keys"`
-	KeyID                   string            `json:"key_id"`
-	AllowedIDs              []int64           `json:"allowed_account_ids"`
-	Buckets                 []SchedulerBucket `json:"buckets"`
-	StateFile               string            `json:"state_file"`
-	Bootstrap               bool              `json:"bootstrap"`
-	Endpoint                string            `json:"endpoint"`
-	Listen                  string            `json:"listen"`
-	CAFile                  string            `json:"ca_file"`
-	CertFile                string            `json:"cert_file"`
-	KeyFile                 string            `json:"key_file"`
-	TrustedServerCertSHA256 string            `json:"trusted_server_cert_sha256,omitempty"`
-	TrustedClientCertSHA256 []string          `json:"trusted_client_cert_sha256"`
-	IntervalSeconds         int               `json:"interval_seconds"`
-	LifetimeSeconds         int               `json:"lifetime_seconds"`
+	Kind                    regional.SnapshotKind `json:"snapshot_kind,omitempty"`
+	AuthUserIDs             []int64               `json:"allowed_user_ids,omitempty"`
+	AuthLookupKey           []byte                `json:"auth_lookup_key,omitempty"`
+	Mode                    string                `json:"mode"`
+	Policy                  regional.Config       `json:"policy"`
+	Keys                    map[string][]byte     `json:"keys"`
+	KeyID                   string                `json:"key_id"`
+	AllowedIDs              []int64               `json:"allowed_account_ids"`
+	Buckets                 []SchedulerBucket     `json:"buckets"`
+	StateFile               string                `json:"state_file"`
+	Bootstrap               bool                  `json:"bootstrap"`
+	Endpoint                string                `json:"endpoint"`
+	Listen                  string                `json:"listen"`
+	CAFile                  string                `json:"ca_file"`
+	CertFile                string                `json:"cert_file"`
+	KeyFile                 string                `json:"key_file"`
+	TrustedServerCertSHA256 string                `json:"trusted_server_cert_sha256,omitempty"`
+	TrustedClientCertSHA256 []string              `json:"trusted_client_cert_sha256"`
+	IntervalSeconds         int                   `json:"interval_seconds"`
+	LifetimeSeconds         int                   `json:"lifetime_seconds"`
 }
 
 func readRegionalSchedulerConfig(path string, cfg *config.Config) (RegionalSchedulerRuntimeConfig, error) {
@@ -81,6 +84,23 @@ func readRegionalSchedulerConfig(path string, cfg *config.Config) (RegionalSched
 	return c, nil
 }
 func (c RegionalSchedulerRuntimeConfig) validate(cfg *config.Config) error {
+	if c.Kind != "" && c.Kind != regional.SnapshotScheduler && c.Kind != regional.SnapshotAuth {
+		return errors.New("invalid regional snapshot kind")
+	}
+	if c.Kind == regional.SnapshotAuth {
+		if len(c.AuthLookupKey) != 32 || len(c.AllowedIDs) != 0 || len(c.Buckets) != 0 {
+			return errors.New("auth stream requires lookup key and no scheduler assignment")
+		}
+		seenUsers := map[int64]bool{}
+		for _, id := range c.AuthUserIDs {
+			if id <= 0 || seenUsers[id] {
+				return errors.New("invalid regional user assignment")
+			}
+			seenUsers[id] = true
+		}
+	} else if len(c.AuthUserIDs) != 0 || len(c.AuthLookupKey) != 0 {
+		return errors.New("auth assignment on scheduler stream")
+	}
 	if err := c.Policy.Validate(); err != nil {
 		return err
 	}
@@ -171,26 +191,48 @@ type regionalSchedulerStatus struct {
 }
 
 type regionalSchedulerRuntime struct {
-	cfg       RegionalSchedulerRuntimeConfig
-	codec     *regional.Codec
-	replica   *regional.Replica
-	authority RegionalSchedulerAuthority
-	appConfig *config.Config
-	mu        sync.RWMutex
-	wire      []byte
-	status    regionalSchedulerStatus
-	cancel    context.CancelFunc
-	done      chan struct{}
-	server    *http.Server
-	transport *http.Transport
-	stateLock *statelock.Lock
-	stopOnce  sync.Once
+	cfg           RegionalSchedulerRuntimeConfig
+	codec         *regional.Codec
+	replica       *regional.Replica
+	authority     RegionalSchedulerAuthority
+	authAuthority RegionalAuthAuthority
+	appConfig     *config.Config
+	mu            sync.RWMutex
+	wire          []byte
+	status        regionalSchedulerStatus
+	cancel        context.CancelFunc
+	done          chan struct{}
+	server        *http.Server
+	transport     *http.Transport
+	stateLock     *statelock.Lock
+	stopOnce      sync.Once
 }
 
 func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedulerAuthority) (*regionalSchedulerRuntime, error) {
-	c, err := readRegionalSchedulerConfig(cfg.Runtime.RegionalSchedulerFile, cfg)
+	return startRegionalRuntime(cfg, authority, nil, cfg.Runtime.RegionalSchedulerFile, regional.SnapshotScheduler)
+}
+func startRegionalAuthRuntime(cfg *config.Config, authority RegionalAuthAuthority) (*regionalSchedulerRuntime, error) {
+	return startRegionalRuntime(cfg, nil, authority, cfg.Runtime.RegionalAuthFile, regional.SnapshotAuth)
+}
+func (c RegionalSchedulerRuntimeConfig) snapshotKind() regional.SnapshotKind {
+	if c.Kind == "" {
+		return regional.SnapshotScheduler
+	}
+	return c.Kind
+}
+func (c RegionalSchedulerRuntimeConfig) validator() regional.PayloadValidator {
+	if c.snapshotKind() == regional.SnapshotAuth {
+		return RegionalAuthValidator(c.AuthUserIDs)
+	}
+	return RegionalSchedulerValidator(c.AllowedIDs)
+}
+func startRegionalRuntime(cfg *config.Config, authority RegionalSchedulerAuthority, authAuthority RegionalAuthAuthority, path string, kind regional.SnapshotKind) (*regionalSchedulerRuntime, error) {
+	c, err := readRegionalSchedulerConfig(path, cfg)
 	if err != nil {
 		return nil, err
+	}
+	if c.snapshotKind() != kind {
+		return nil, errors.New("regional runtime snapshot kind mismatch")
 	}
 	codec, err := regional.NewCodec(c.Keys)
 	if err != nil {
@@ -205,7 +247,7 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 	if err != nil || !roots.AppendCertsFromPEM(ca) {
 		return nil, errors.New("cannot load regional TLS CA")
 	}
-	r := &regionalSchedulerRuntime{cfg: c, codec: codec, authority: authority, appConfig: cfg, done: make(chan struct{}), status: regionalSchedulerStatus{Mode: c.Mode}}
+	r := &regionalSchedulerRuntime{cfg: c, codec: codec, authority: authority, authAuthority: authAuthority, appConfig: cfg, done: make(chan struct{}), status: regionalSchedulerStatus{Mode: c.Mode}}
 	r.transport = &http.Transport{Proxy: nil, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{cert}, VerifyConnection: func(state tls.ConnectionState) error {
 		return verifyCertificatePin(state.PeerCertificates, c.TrustedServerCertSHA256)
 	}}}
@@ -215,17 +257,23 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 		if lockErr != nil || !locked {
 			return nil, errors.New("regional subscriber state already owned or inaccessible")
 		}
-		r.replica, err = regional.OpenReplica(c.StateFile, c.Policy, regional.SnapshotScheduler, codec, RegionalSchedulerValidator(c.AllowedIDs), c.Bootstrap)
+		r.replica, err = regional.OpenReplica(c.StateFile, c.Policy, kind, codec, c.validator(), c.Bootstrap)
 		if err != nil {
 			_ = r.stateLock.Unlock()
 			return nil, err
 		}
 	} else {
-		if authority == nil {
+		if (kind == regional.SnapshotScheduler && authority == nil) || (kind == regional.SnapshotAuth && authAuthority == nil) {
 			return nil, errors.New("regional publisher authority required")
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		wire, loadErr := authority.Restore(ctx, c.Policy.RegionID, c.Bootstrap)
+		var wire []byte
+		var loadErr error
+		if kind == regional.SnapshotAuth {
+			wire, loadErr = authAuthority.Restore(ctx, c.Policy.RegionID, c.Bootstrap)
+		} else {
+			wire, loadErr = authority.Restore(ctx, c.Policy.RegionID, c.Bootstrap)
+		}
 		cancel()
 		if loadErr != nil {
 			return nil, errors.New("cannot restore regional publisher")
@@ -234,10 +282,10 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 			// Keep expired state for observability; it is never served. The durable DB
 			// revision remains authoritative even if assignments change on restart.
 			snapshot, openErr := codec.Open(wire)
-			if openErr != nil || snapshot.Validate(c.Policy, regional.SnapshotScheduler, 0, snapshot.IssuedAt) != nil {
+			if openErr != nil || snapshot.Validate(c.Policy, kind, 0, snapshot.IssuedAt) != nil {
 				return nil, errors.New("invalid regional publisher state")
 			}
-			if err := RegionalSchedulerValidator(c.AllowedIDs)(snapshot.Payload); err != nil {
+			if err := c.validator()(snapshot.Payload); err != nil {
 				return nil, errors.New("persisted publisher snapshot outside regional assignment")
 			}
 			r.wire = wire
@@ -251,9 +299,10 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 		return nil, errors.New("cannot bind regional listener")
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /internal/regional/scheduler/status", r.serveStatus)
+	route := "/internal/regional/" + string(kind)
+	mux.HandleFunc("GET "+route+"/status", r.serveStatus)
 	if c.Mode == "publisher" {
-		mux.HandleFunc("GET /internal/regional/scheduler", r.serveSnapshot)
+		mux.HandleFunc("GET "+route, r.serveSnapshot)
 	}
 	r.server = &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{cert}, ClientCAs: roots, ClientAuth: tls.RequireAndVerifyClientCert, VerifyConnection: func(state tls.ConnectionState) error {
 		return verifyAnyCertificatePin(state.PeerCertificates, c.TrustedClientCertSHA256)
@@ -262,7 +311,7 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 	r.cancel = cancel
 	go func() {
 		if err := r.server.Serve(tls.NewListener(listener, r.server.TLSConfig)); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("regional scheduler listener stopped")
+			slog.Error("regional snapshot listener stopped", "kind", kind)
 			cancel()
 		}
 	}()
@@ -274,20 +323,26 @@ func (r *regionalSchedulerRuntime) tick(ctx context.Context) error {
 	if r.replica != nil {
 		return r.replica.Pull(ctx, r.cfg.Endpoint, r.transport)
 	}
-	wire, err := r.authority.Publish(ctx, r.cfg.Policy.RegionID, func(ctx context.Context, revision uint64, accounts AccountRepository, groups GroupRepository) ([]byte, error) {
-		exporter := NewSchedulerSnapshotService(nil, nil, accounts, groups, r.appConfig)
-		payload, err := exporter.ExportRegionalScheduler(ctx, r.cfg.Buckets, r.cfg.AllowedIDs)
-		if err != nil {
-			return nil, err
-		}
-		sum := sha256.Sum256(payload)
-		now := time.Now()
-		snapshot := regional.Snapshot{SchemaVersion: regional.SchemaVersion, RegionID: r.cfg.Policy.RegionID, Kind: regional.SnapshotScheduler, Revision: revision, IssuedAt: now, ExpiresAt: now.Add(time.Duration(r.cfg.LifetimeSeconds) * time.Second), Payload: payload, PayloadSHA256: hex.EncodeToString(sum[:])}
-		if err := snapshot.Validate(r.cfg.Policy, regional.SnapshotScheduler, 0, now); err != nil {
-			return nil, err
-		}
-		return r.codec.Seal(r.cfg.KeyID, snapshot)
-	})
+	var wire []byte
+	var err error
+	if r.cfg.snapshotKind() == regional.SnapshotAuth {
+		wire, err = r.authAuthority.Publish(ctx, r.cfg.Policy.RegionID, func(ctx context.Context, revision uint64, source RegionalAuthSource) ([]byte, error) {
+			payload, err := ExportRegionalAuth(ctx, source, r.cfg.AuthUserIDs, r.cfg.AuthLookupKey)
+			if err != nil {
+				return nil, err
+			}
+			return r.sealSnapshot(payload, revision)
+		})
+	} else {
+		wire, err = r.authority.Publish(ctx, r.cfg.Policy.RegionID, func(ctx context.Context, revision uint64, accounts AccountRepository, groups GroupRepository) ([]byte, error) {
+			exporter := NewSchedulerSnapshotService(nil, nil, accounts, groups, r.appConfig)
+			payload, err := exporter.ExportRegionalScheduler(ctx, r.cfg.Buckets, r.cfg.AllowedIDs)
+			if err != nil {
+				return nil, err
+			}
+			return r.sealSnapshot(payload, revision)
+		})
+	}
 	if err != nil {
 		return err
 	}
@@ -295,6 +350,15 @@ func (r *regionalSchedulerRuntime) tick(ctx context.Context) error {
 	r.wire = wire
 	r.mu.Unlock()
 	return nil
+}
+func (r *regionalSchedulerRuntime) sealSnapshot(payload []byte, revision uint64) ([]byte, error) {
+	sum := sha256.Sum256(payload)
+	now := time.Now()
+	snapshot := regional.Snapshot{SchemaVersion: regional.SchemaVersion, RegionID: r.cfg.Policy.RegionID, Kind: r.cfg.snapshotKind(), Revision: revision, IssuedAt: now, ExpiresAt: now.Add(time.Duration(r.cfg.LifetimeSeconds) * time.Second), Payload: payload, PayloadSHA256: hex.EncodeToString(sum[:])}
+	if err := snapshot.Validate(r.cfg.Policy, r.cfg.snapshotKind(), 0, now); err != nil {
+		return nil, err
+	}
+	return r.codec.Seal(r.cfg.KeyID, snapshot)
 }
 func (r *regionalSchedulerRuntime) run(ctx context.Context) {
 	defer close(r.done)
@@ -314,7 +378,7 @@ func (r *regionalSchedulerRuntime) run(ctx context.Context) {
 		r.mu.Unlock()
 		if err != nil {
 			delay = min(delay*2, 5*time.Minute)
-			slog.Warn("regional scheduler synchronization failed", "mode", r.cfg.Mode, "region", r.cfg.Policy.RegionID)
+			slog.Warn("regional snapshot synchronization failed", "kind", r.cfg.snapshotKind(), "mode", r.cfg.Mode, "region", r.cfg.Policy.RegionID)
 		} else {
 			delay = interval
 		}
@@ -337,7 +401,7 @@ func (r *regionalSchedulerRuntime) snapshot() (regional.Snapshot, []byte, error)
 	r.mu.RUnlock()
 	s, err := r.codec.Open(wire)
 	if err == nil {
-		err = s.Validate(r.cfg.Policy, regional.SnapshotScheduler, 0, time.Now())
+		err = s.Validate(r.cfg.Policy, r.cfg.snapshotKind(), 0, time.Now())
 	}
 	return s, wire, err
 }
