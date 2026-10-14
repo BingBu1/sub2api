@@ -204,6 +204,15 @@ func ProvideRegionalMetering(db *sql.DB, cfg *config.Config, cache service.Concu
 		if stoppedFlag.Load() {
 			return errors.New("funds runtime stopped")
 		}
+		if c.Mode == "primary" {
+			var unattributed bool
+			if err := db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM regional_budget_allocations WHERE state='held' AND group_id IS NULL)").Scan(&unattributed); err != nil {
+				return err
+			}
+			if unattributed {
+				return errors.New("legacy held allocation requires billing attribution drain")
+			}
+		}
 		if capacity.runtimeFailed.Load() {
 			return errors.New("capacity runtime failed")
 		}

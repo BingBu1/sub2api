@@ -34,6 +34,13 @@ func (s RegionalBudgetScope) Reserve(ctx context.Context, tx *sql.Tx, id string,
 	if !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
+	var unattributed bool
+	if err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM regional_budget_allocations WHERE state='held' AND group_id IS NULL)").Scan(&unattributed); err != nil {
+		return err
+	}
+	if unattributed {
+		return errors.New("legacy held allocation requires billing attribution drain")
+	}
 	if err = regionalKeyWindows(ctx, tx, key, admitted); err != nil {
 		return err
 	}
@@ -136,7 +143,7 @@ func (s RegionalBudgetScope) Reserve(ctx context.Context, tx *sql.Tx, id string,
 			}
 		}
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO regional_budget_allocations(allocation_id,user_id,api_key_id,account_id,subscription_id,platform,maximum) VALUES($1,$2,$3,$4,$5,$6,$7)", id, user, key, account, subscription, platform, int64(maximum))
+	_, err = tx.ExecContext(ctx, "INSERT INTO regional_budget_allocations(allocation_id,user_id,api_key_id,account_id,subscription_id,platform,maximum,group_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", id, user, key, account, subscription, platform, int64(maximum), group)
 	return err
 }
 
