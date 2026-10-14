@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
@@ -35,21 +36,23 @@ type RegionalSchedulerAuthority interface {
 // One stream per process in this first runtime implementation. No credentials
 // or account data are included in status output or logs.
 type RegionalSchedulerRuntimeConfig struct {
-	Mode            string            `json:"mode"`
-	Policy          regional.Config   `json:"policy"`
-	Keys            map[string][]byte `json:"keys"`
-	KeyID           string            `json:"key_id"`
-	AllowedIDs      []int64           `json:"allowed_account_ids"`
-	Buckets         []SchedulerBucket `json:"buckets"`
-	StateFile       string            `json:"state_file"`
-	Bootstrap       bool              `json:"bootstrap"`
-	Endpoint        string            `json:"endpoint"`
-	Listen          string            `json:"listen"`
-	CAFile          string            `json:"ca_file"`
-	CertFile        string            `json:"cert_file"`
-	KeyFile         string            `json:"key_file"`
-	IntervalSeconds int               `json:"interval_seconds"`
-	LifetimeSeconds int               `json:"lifetime_seconds"`
+	Mode                    string            `json:"mode"`
+	Policy                  regional.Config   `json:"policy"`
+	Keys                    map[string][]byte `json:"keys"`
+	KeyID                   string            `json:"key_id"`
+	AllowedIDs              []int64           `json:"allowed_account_ids"`
+	Buckets                 []SchedulerBucket `json:"buckets"`
+	StateFile               string            `json:"state_file"`
+	Bootstrap               bool              `json:"bootstrap"`
+	Endpoint                string            `json:"endpoint"`
+	Listen                  string            `json:"listen"`
+	CAFile                  string            `json:"ca_file"`
+	CertFile                string            `json:"cert_file"`
+	KeyFile                 string            `json:"key_file"`
+	TrustedServerCertSHA256 string            `json:"trusted_server_cert_sha256,omitempty"`
+	TrustedClientCertSHA256 []string          `json:"trusted_client_cert_sha256"`
+	IntervalSeconds         int               `json:"interval_seconds"`
+	LifetimeSeconds         int               `json:"lifetime_seconds"`
 }
 
 func readRegionalSchedulerConfig(path string, cfg *config.Config) (RegionalSchedulerRuntimeConfig, error) {
@@ -90,8 +93,16 @@ func (c RegionalSchedulerRuntimeConfig) validate(cfg *config.Config) error {
 	if c.IntervalSeconds < 1 || c.IntervalSeconds > 300 || c.LifetimeSeconds <= c.IntervalSeconds || int64(c.LifetimeSeconds) > c.Policy.MaxSnapshotAgeSeconds {
 		return errors.New("invalid regional scheduler interval or lifetime")
 	}
-	if c.Listen == "" || c.CAFile == "" || c.CertFile == "" || c.KeyFile == "" || len(c.Keys[c.KeyID]) != 32 {
+	if c.Listen == "" || c.CAFile == "" || c.CertFile == "" || c.KeyFile == "" || len(c.Keys[c.KeyID]) != 32 || len(c.TrustedClientCertSHA256) == 0 {
 		return errors.New("regional TLS and encryption configuration required")
+	}
+	for _, pin := range c.TrustedClientCertSHA256 {
+		if !validCertificatePin(pin) {
+			return errors.New("invalid trusted client certificate fingerprint")
+		}
+	}
+	if c.Mode == "subscriber" && !validCertificatePin(c.TrustedServerCertSHA256) {
+		return errors.New("subscriber requires publisher certificate fingerprint")
 	}
 	seen := map[int64]bool{}
 	for _, id := range c.AllowedIDs {
@@ -115,6 +126,38 @@ func (c RegionalSchedulerRuntimeConfig) validate(cfg *config.Config) error {
 		}
 	}
 	return nil
+}
+
+func validCertificatePin(pin string) bool {
+	if len(pin) != 64 {
+		return false
+	}
+	decoded, err := hex.DecodeString(pin)
+	return err == nil && len(decoded) == sha256.Size
+}
+func verifyCertificatePin(certificates []*x509.Certificate, pin string) error {
+	if len(certificates) == 0 || !validCertificatePin(pin) {
+		return errors.New("untrusted regional peer certificate")
+	}
+	sum := sha256.Sum256(certificates[0].Raw)
+	expected, _ := hex.DecodeString(pin)
+	if subtle.ConstantTimeCompare(sum[:], expected) != 1 {
+		return errors.New("untrusted regional peer certificate")
+	}
+	return nil
+}
+func verifyAnyCertificatePin(certificates []*x509.Certificate, pins []string) error {
+	if len(certificates) == 0 {
+		return errors.New("missing regional peer certificate")
+	}
+	sum := sha256.Sum256(certificates[0].Raw)
+	for _, pin := range pins {
+		expected, err := hex.DecodeString(pin)
+		if err == nil && subtle.ConstantTimeCompare(sum[:], expected) == 1 {
+			return nil
+		}
+	}
+	return errors.New("untrusted regional peer certificate")
 }
 
 type regionalSchedulerStatus struct {
@@ -163,7 +206,9 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 		return nil, errors.New("cannot load regional TLS CA")
 	}
 	r := &regionalSchedulerRuntime{cfg: c, codec: codec, authority: authority, appConfig: cfg, done: make(chan struct{}), status: regionalSchedulerStatus{Mode: c.Mode}}
-	r.transport = &http.Transport{Proxy: nil, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{cert}}}
+	r.transport = &http.Transport{Proxy: nil, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{cert}, VerifyConnection: func(state tls.ConnectionState) error {
+		return verifyCertificatePin(state.PeerCertificates, c.TrustedServerCertSHA256)
+	}}}
 	if c.Mode == "subscriber" {
 		r.stateLock = statelock.New(c.StateFile + ".lock")
 		locked, lockErr := r.stateLock.TryLock()
@@ -192,9 +237,10 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 			if openErr != nil || snapshot.Validate(c.Policy, regional.SnapshotScheduler, 0, snapshot.IssuedAt) != nil {
 				return nil, errors.New("invalid regional publisher state")
 			}
-			if RegionalSchedulerValidator(c.AllowedIDs)(snapshot.Payload) == nil {
-				r.wire = wire
+			if err := RegionalSchedulerValidator(c.AllowedIDs)(snapshot.Payload); err != nil {
+				return nil, errors.New("persisted publisher snapshot outside regional assignment")
 			}
+			r.wire = wire
 		}
 	}
 	listener, err := net.Listen("tcp", c.Listen)
@@ -209,7 +255,9 @@ func startRegionalSchedulerRuntime(cfg *config.Config, authority RegionalSchedul
 	if c.Mode == "publisher" {
 		mux.HandleFunc("GET /internal/regional/scheduler", r.serveSnapshot)
 	}
-	r.server = &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{cert}, ClientCAs: roots, ClientAuth: tls.RequireAndVerifyClientCert}}
+	r.server = &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{cert}, ClientCAs: roots, ClientAuth: tls.RequireAndVerifyClientCert, VerifyConnection: func(state tls.ConnectionState) error {
+		return verifyAnyCertificatePin(state.PeerCertificates, c.TrustedClientCertSHA256)
+	}}}
 	ctx, cancel := context.WithCancel(context.Background())
 	r.cancel = cancel
 	go func() {

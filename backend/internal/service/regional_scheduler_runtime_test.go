@@ -8,9 +8,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -71,7 +73,9 @@ func runtimeTestConfig(t *testing.T) RegionalSchedulerRuntimeConfig {
 	require.NoError(t, err)
 	keyDER, err := x509.MarshalPKCS8PrivateKey(leafKey)
 	require.NoError(t, err)
-	c := RegionalSchedulerRuntimeConfig{Mode: "publisher", Policy: regional.Config{RegionID: "us", MaxSnapshotAgeSeconds: 60}, Keys: map[string][]byte{"test": bytes.Repeat([]byte{7}, 32)}, KeyID: "test", AllowedIDs: []int64{1}, Buckets: []SchedulerBucket{{Platform: PlatformOpenAI, Mode: SchedulerModeSingle}}, Listen: "127.0.0.1:0", CAFile: filepath.Join(dir, "ca.pem"), CertFile: filepath.Join(dir, "cert.pem"), KeyFile: filepath.Join(dir, "key.pem"), IntervalSeconds: 1, LifetimeSeconds: 30}
+	leafPin := sha256.Sum256(der)
+	pin := hex.EncodeToString(leafPin[:])
+	c := RegionalSchedulerRuntimeConfig{Mode: "publisher", Policy: regional.Config{RegionID: "us", MaxSnapshotAgeSeconds: 60}, Keys: map[string][]byte{"test": bytes.Repeat([]byte{7}, 32)}, KeyID: "test", TrustedClientCertSHA256: []string{pin}, AllowedIDs: []int64{1}, Buckets: []SchedulerBucket{{Platform: PlatformOpenAI, Mode: SchedulerModeSingle}}, Listen: "127.0.0.1:0", CAFile: filepath.Join(dir, "ca.pem"), CertFile: filepath.Join(dir, "cert.pem"), KeyFile: filepath.Join(dir, "key.pem"), IntervalSeconds: 1, LifetimeSeconds: 30}
 	require.NoError(t, os.WriteFile(c.CAFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER}), 0600))
 	require.NoError(t, os.WriteFile(c.CertFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0600))
 	require.NoError(t, os.WriteFile(c.KeyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0600))
@@ -106,6 +110,7 @@ func TestRegionalRuntimeMTLSPullRestoreAndAdmission(t *testing.T) {
 	_, err = unauth.Get(server.URL + "/internal/regional/scheduler")
 	require.Error(t, err)
 	c.Mode = "subscriber"
+	c.TrustedServerCertSHA256 = serverCertPin
 	c.Endpoint = server.URL + "/internal/regional/scheduler"
 	c.StateFile = filepath.Join(t.TempDir(), "state")
 	c.Bootstrap = true

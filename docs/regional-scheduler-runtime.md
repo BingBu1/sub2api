@@ -21,6 +21,8 @@
   "ca_file": "/run/secrets/us-sync-ca.pem",
   "cert_file": "/run/secrets/sync-identity.pem",
   "key_file": "/run/secrets/sync-identity-key.pem",
+  "trusted_server_cert_sha256": "<仅订阅端配置：发布服务器叶证书 SHA-256 hex>",
+  "trusted_client_cert_sha256": ["<获准拉取或查询状态的客户端叶证书 SHA-256 hex>"],
   "interval_seconds": 5,
   "lifetime_seconds": 60
 }
@@ -28,7 +30,7 @@
 
 订阅端设置 `mode=subscriber`，另填 `endpoint=https://<主站内部域名>:9443/internal/regional/scheduler` 和 `state_file=/var/lib/sub2api/regional/us-scheduler.packet`。父目录须已存在且仅服务身份可写。订阅端的 `buckets` 不参与选择；完整替换文档中的缺失桶是权威空结果。两端的 region、分配账号和密钥必须一致。第一次创建流/本地文件时才显式设置 `bootstrap=true`；成功同步后改回 false。bootstrap 不是丢失版本历史后的修复方法。
 
-内部监听器强制 TLS 1.3 和客户端证书验证，不信任转发头、不使用环境 HTTP 代理、不跟随重定向。使用**仅签发给该区域同步发布/订阅进程的专用 CA**；该 CA 下的任意客户端证书均具有读取此流的权限，不应共用组织通用 CA。身份文件需包含 serverAuth/clientAuth 用途，服务证书 SAN 必须匹配 endpoint。每个区域使用独立加密密钥和 CA 信任域。密钥轮换时，保留恢复已落盘密文所需的旧 key ID；仅在新密钥完成发布和各订阅节点落盘后移除旧密钥。
+内部监听器强制 TLS 1.3 和客户端证书验证，不信任转发头、不使用环境 HTTP 代理、不跟随重定向。客户端证书除链校验外还按叶证书 SHA-256 指纹精确匹配 allowlist，订阅端另对发布服务器证书做指纹校验；仅共享 CA 不会自动获准读取流。身份文件需包含 serverAuth/clientAuth 用途，服务证书 SAN 必须匹配 endpoint。每个区域使用独立加密密钥和 CA 信任域。密钥轮换时，保留恢复已落盘密文所需的旧 key ID；仅在新密钥完成发布和各订阅节点落盘后移除旧密钥。
 
 后台任务启动即尝试同步，单次限时 15 秒，失败指数退避至 5 分钟。关闭时取消同步、关闭内部监听、等待 worker 退出并释放文件锁；本地候选读不调用同步任务。订阅模式不启动 SchedulerSnapshotService 的 Redis 重建/outbox worker。应用其他服务仍有数据库/Redis 初始化及后台访问，因此这也不是独立离线启动能力。
 
