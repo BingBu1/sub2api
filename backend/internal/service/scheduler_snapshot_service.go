@@ -120,6 +120,7 @@ type schedulerActiveGroupIDLister interface {
 }
 
 type SchedulerSnapshotService struct {
+	regionalRuntime              *regionalSchedulerRuntime
 	regionalExportMu             sync.Mutex
 	cache                        SchedulerCache
 	outboxRepo                   SchedulerOutboxRepository
@@ -182,7 +183,7 @@ func (s *SchedulerSnapshotService) SetLocalSnapshotReader(reader LocalSchedulerS
 }
 
 func (s *SchedulerSnapshotService) Start() {
-	if s == nil || s.cache == nil {
+	if s == nil || s.cache == nil || s.localSnapshotReader != nil {
 		return
 	}
 
@@ -216,6 +217,7 @@ func (s *SchedulerSnapshotService) Stop() {
 		return
 	}
 	s.stopOnce.Do(func() {
+		s.regionalRuntime.stop()
 		close(s.stopCh)
 	})
 	s.wg.Wait()
