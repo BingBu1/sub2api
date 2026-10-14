@@ -111,7 +111,7 @@ func TestRegionalSlotLeaseSharedPoolPrimaryAndUSCannotOversubscribe(t *testing.T
 func TestRegionalSlotLeaseRenewalConflictAndExpiry(t *testing.T) {
 	ctx := context.Background()
 	p, l, g := slotLeaseFixture(t)
-	g.ExpiresAt = time.Now().UTC().Add(250 * time.Millisecond).Truncate(time.Microsecond)
+	g.ExpiresAt = time.Now().UTC().Add(10 * time.Second).Truncate(time.Microsecond)
 	require.NoError(t, p.Issue(ctx, g))
 	require.NoError(t, l.Install(ctx, g))
 	conflict := g

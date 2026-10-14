@@ -57,23 +57,6 @@ func nextWithAPIKeyAdmissionLookup(c *gin.Context, lookup func(context.Context, 
 	}
 }
 
-// newAPIKeyQueueAuthRevalidator re-reads the authenticated key through the
-// existing auth cache (L1, then L2, with at most one database read after an
-// invalidation) and re-applies the same gates as initial authentication,
-// including the captured trusted client IP and the permissions this request
-// actually still needs. The stable key/group identity is captured by value at
-// installation time so a benign group edit (name, pricing, routing, nil vs
-// empty collections) never aborts the wait. A definite rejection stops the
-// queue wait with the same application error the middleware would return; any
-// other failure is classified by the queue as a service error.
-func newAPIKeyQueueAuthRevalidator(apiKeyService *service.APIKeyService, credential string, trustedClientIP string, initial *service.APIKey) service.APIKeyQueueAuthRevalidator {
-	var lookup func(context.Context, string) (*service.APIKey, error)
-	if apiKeyService != nil {
-		lookup = apiKeyService.GetByKey
-	}
-	return newAPIKeyAuthRevalidator(lookup, credential, trustedClientIP, initial)
-}
-
 // Share all identity, permission and expiry gates between cached HTTP queue
 // revalidation and authoritative WS turn revalidation.
 func newAPIKeyAuthRevalidator(lookup func(context.Context, string) (*service.APIKey, error), credential string, trustedClientIP string, initial *service.APIKey) service.APIKeyQueueAuthRevalidator {
