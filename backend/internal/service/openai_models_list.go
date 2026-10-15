@@ -179,6 +179,11 @@ func projectAccountModelsBody(body []byte, account *Account, group *Group, codex
 	if group != nil {
 		groupID = &group.ID
 	}
+	filtered, _, err := filterRetiredOpenAIModelsBody(body, []Account{*account}, codex)
+	if err != nil {
+		return nil, err
+	}
+	body = filtered
 	field, idField := "data", "id"
 	if codex {
 		field, idField = "models", "slug"
