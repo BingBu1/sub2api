@@ -40,6 +40,8 @@ Linux amd64 / arm64 上，账密 / TOTP 重登由主程序自动管理。保存�
 
 显式配置 OPENAI_REAUTH_WORKER_TOKEN 的部署保留独立 Worker 模式，主程序不会再启动第二个托管消费者。原来的 Worker API、Turb 邮箱 OTP 模式和自定义 toSub2 路径继续兼容。页面显示独立服务是否已经连接；配置过短时明确报告不可用。
 
+只使用密码/TOTP 的旧 systemd Worker 可通过 [一次迁移入口](../deploy/MANAGED_WORKER.md) 转为自动管理：排空任务后运行 `install.sh manage-worker --data-dir <实际持久目录> --drained`。工具固定当前 Release 并校验运行包，保留恢复日志及 key，失败恢复旧服务；切换需要重启一次主 API。迁移完成后，网页升级或安装器升级主程序都会按应用版本选择对应 Worker，无须另行更新 sidecar。
+
 内置运行包仅提供本次验证的 password_totp 模式。邮箱 OTP URL 模式仍由原有独立 Worker 执行；内置消费者只领取密码模式任务，不能误领取或失败掉已有邮箱任务。内置模式下请求邮箱重登会立即返回不支持错误。
 
 ### 秘密与验证
