@@ -261,8 +261,13 @@ func (s *AccountRepoSuite) TestUpdateCredentials_SyncsSnapshotAndDurableOutbox()
 func (s *AccountRepoSuite) TestDelete() {
 	account := mustCreateAccount(s.T(), s.client, &service.Account{Name: "to-delete"})
 
+	_, saveErr := integrationDB.ExecContext(s.ctx, "INSERT INTO openai_session_cookies (account_id, cookie_ciphertext) VALUES ($1, $2)", account.ID, "encrypted-fixture")
+	s.Require().NoError(saveErr)
 	err := s.repo.Delete(s.ctx, account.ID)
 	s.Require().NoError(err, "Delete")
+	var count int
+	s.Require().NoError(integrationDB.QueryRowContext(s.ctx, "SELECT count(*) FROM openai_session_cookies WHERE account_id = $1", account.ID).Scan(&count))
+	s.Require().Zero(count)
 
 	_, err = s.repo.GetByID(s.ctx, account.ID)
 	s.Require().Error(err, "expected error after delete")
