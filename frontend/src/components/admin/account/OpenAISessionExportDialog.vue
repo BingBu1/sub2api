@@ -23,7 +23,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
-import { useStepUp, isStepUpCancelled, isStepUpBlocked, stepUpBlockReason } from '@/composables/useStepUp'
+import { useStepUp, StepUpCancelledError, isStepUpCancelled, isStepUpBlocked, stepUpBlockReason } from '@/composables/useStepUp'
 import { exportOpenAISession } from '@/api/admin/accounts'
 import type { Account } from '@/types'
 
@@ -42,9 +42,15 @@ async function exportSession() {
   const id = props.account.id, current = generation, loginCookie = cookie.value.trim()
   busy.value = true; error.value = ''
   try {
-    const session = await stepUp.run(() => {
-      if (current !== generation) return Promise.reject(new Error('Session export dialog closed'))
-      return exportOpenAISession(id, loginCookie)
+    const session = await stepUp.run(async () => {
+      if (current !== generation) throw new StepUpCancelledError()
+      try {
+        return await exportOpenAISession(id, loginCookie)
+      } catch (err) {
+        // Ignore stale errors before useStepUp can open a verification prompt.
+        if (current !== generation) throw new StepUpCancelledError()
+        throw err
+      }
     })
     if (current !== generation) return
     const url = URL.createObjectURL(new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' }))

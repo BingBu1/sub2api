@@ -7,9 +7,13 @@
 3. 在账号管理中打开该账号的“更多操作 → 导出 ChatGPT Session”，粘贴 Cookie，然后点击“请求并下载 Session”。启用敏感操作二次验证时，按提示完成验证。
 4. 服务端使用该账号配置的代理向 `https://chatgpt.com/api/auth/session` 发送 GET 请求。成功后下载 `chatgpt-session-<账号ID>.json`，保留上游响应字段。
 
+直接在已登录的浏览器打开上述地址时，浏览器会自动发送 ChatGPT Cookie，因此无需手动输入；这不代表接口无需登录态。Sub2API 服务端无法使用用户浏览器的 ChatGPT Cookie，Sub2API 页面也不能直接读取另一个站点的 Session 响应。当前功能仍需提供 Cookie，不支持仅凭已保存的 OAuth token 一键导出。
+
 Cookie 只用于本次请求，不保存到账号配置或审计日志。导出的 Session 文件包含登录凭据，应按敏感文件保管，不要提交到 Git 或公开附件中。OAuth access/refresh token 不能代替网页登录 Cookie；没有 Cookie 时不会合成或下载 Session。
 
 支持持有独立凭据的 OpenAI OAuth 账号；API Key 账号和 Spark 影子账号不支持。系统会优先比对 `user.id` 与账号的 `chatgpt_user_id`，后者缺失时比对邮箱；无法确认身份或身份不一致时拒绝导出。此校验确认用户身份，不保证 Session 属于某个特定工作区。缺少账号身份元数据时，需要先完善账号身份信息。
+
+关闭导出窗口、切换账号或离开页面后，晚到的响应和二次验证要求都会被丢弃，不再弹出验证框或下载文件。
 
 Cookie 过期、未登录、ChatGPT 安全验证、代理不可用、请求超时、上游重定向或无效响应都会明确报错，不会生成文件。代理查询失败时不会改走直连。单次上游请求超时为 20 秒，响应上限为 1 MiB，不跟随重定向。
 
