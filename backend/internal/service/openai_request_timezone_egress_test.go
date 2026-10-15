@@ -180,7 +180,7 @@ func TestRequestTimezoneEgressWebSocketFrames(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.CloseNow()
+		defer func() { _ = conn.CloseNow() }()
 		for i := 0; i < 2; i++ {
 			_, payload, err := conn.Read(r.Context())
 			if err != nil {
@@ -199,11 +199,14 @@ func TestRequestTimezoneEgressWebSocketFrames(t *testing.T) {
 	defer cancel()
 	conn, _, _, err := newDefaultOpenAIWSClientDialer().Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), http.Header{"X-Timezone": []string{"Asia/Shanghai"}}, "")
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	require.Equal(t, "Asia/Tokyo", (<-headers).Get("X-Timezone"))
 	body := localeTestBody([]string{"<environment_context><current_date>2001-01-01</current_date><timezone>Asia/Shanghai</timezone></environment_context>"}, nil)
 	require.NoError(t, conn.WriteJSON(ctx, json.RawMessage(body)))
-	require.NoError(t, conn.(*coderOpenAIWSClientConn).WriteFrame(ctx, coderws.MessageText, body))
+	client, ok := conn.(*coderOpenAIWSClientConn)
+	require.True(t, ok)
+	err = client.WriteFrame(ctx, coderws.MessageText, body)
+	require.NoError(t, err)
 	for i := 0; i < 2; i++ {
 		select {
 		case data := <-received:
