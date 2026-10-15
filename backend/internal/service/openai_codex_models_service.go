@@ -216,7 +216,7 @@ func (s *OpenAIGatewayService) MergeGroupConfiguredCodexModels(
 		return fmt.Errorf("restrict group BPS capabilities: %w", err)
 	}
 	changed = changed || restricted
-	filtered, retired, err := filterRetiredOpenAIModelsBody(body, catalog, true)
+	filtered, retired, err := filterRetiredOpenAIPublicModelsBody(body, catalog, true)
 	if err != nil {
 		return fmt.Errorf("filter retired Codex models: %w", err)
 	}
