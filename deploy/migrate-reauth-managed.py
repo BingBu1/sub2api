@@ -22,6 +22,7 @@ import uuid
 
 SYSTEMD_DIR = Path("/etc/systemd/system")
 BACKUP_DIR = Path("/var/backups/sub2api-worker")
+PROC_DIR = Path("/proc")
 
 
 def command(*args):
@@ -48,6 +49,17 @@ def application_data_dir(pid, environment):
 
 def property_value(service, name):
     return command("systemctl", "show", service, "--property", name, "--value")
+
+
+def process_children(pid):
+    # Go can start the child from any OS thread, not just the main thread.
+    children = set()
+    for path in (PROC_DIR / pid / "task").glob("*/children"):
+        try:
+            children.update(path.read_text().split())
+        except FileNotFoundError:
+            pass
+    return children
 
 
 def download(url, limit):
@@ -112,10 +124,9 @@ def wait_ready(service, root, started):
             logs = command("journalctl", "-u", service, "--since", "@" + str(started), "-n", "5000", "-o", "cat", "--no-pager")
             if any('"/api/v1/internal/openai-reauth/totp-claim"' in line and
                    '"status_code": 200' in line for line in logs.splitlines()):
-                children = Path("/proc") / pid / "task" / pid / "children"
-                for child in children.read_text().split():
+                for child in process_children(pid):
                     try:
-                        cmd = (Path("/proc") / child / "cmdline").read_bytes()
+                        cmd = (PROC_DIR / child / "cmdline").read_bytes()
                         if str(root).encode() in cmd and b"worker.py" in cmd:
                             return
                     except FileNotFoundError:
