@@ -102,9 +102,11 @@ func TestOpsMonitorCapabilityRejectionsAndForwardedDuplicates(t *testing.T) {
 	}
 	result, err = ops.ListErrorLogs(ctx, &service.OpsErrorLogFilter{StartTime: &start, EndTime: &end, Model: model, View: "errors"})
 	require.NoError(t, err)
-	require.EqualValues(t, 7, result.Total)
+	require.EqualValues(t, 8, result.Total, "raw history retains both forwarded error records; SLA counts one outcome")
 	var capacityCount int
+	var errorRequestIDs []string
 	for _, item := range result.Errors {
+		errorRequestIDs = append(errorRequestIDs, item.RequestID)
 		if item.RequestID == "monitor-reg-capacity-503" || item.RequestID == "monitor-reg-capacity-429" {
 			capacityCount++
 			detail, err := ops.GetErrorLogByID(ctx, item.ID)
@@ -114,6 +116,11 @@ func TestOpsMonitorCapabilityRejectionsAndForwardedDuplicates(t *testing.T) {
 			require.Equal(t, "routing", detail.Phase)
 		}
 	}
+	require.ElementsMatch(t, []string{
+		"monitor-reg-capacity-503", "monitor-reg-capacity-429", "monitor-reg-supplier",
+		"monitor-reg-auth", "monitor-reg-validation", "monitor-reg-pod",
+		"monitor-reg-duplicate", "monitor-reg-duplicate",
+	}, errorRequestIDs)
 	require.Equal(t, 2, capacityCount)
 	var raw int
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT count(*) FROM ops_error_logs WHERE model=$1", model).Scan(&raw))
