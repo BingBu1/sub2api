@@ -22,7 +22,9 @@ func TestQualityPersistentIsolationSharesTransitionWithoutNativeCooldownOrConcur
 	require.True(t, a.IsQualityModelIsolated("sol"))
 	require.True(t, a.IsSchedulableForModel("astra"))
 	require.Equal(t, 20, a.Concurrency)
-	require.Equal(t, native, a.Extra["model_rate_limits"].(map[string]any)["sol"])
+	nativeLimits, ok := a.Extra["model_rate_limits"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, native, nativeLimits["sol"])
 	// Advancing wall time must not clear a persistent restriction.
 	pruneExpiredQualityModels(a, state, now.Add(365*24*time.Hour))
 	require.True(t, a.IsQualityModelIsolated("sol"))
@@ -35,7 +37,9 @@ func TestQualityPersistentIsolationSharesTransitionWithoutNativeCooldownOrConcur
 	_, _, err = transitionQualityModelRound(a, state, 7, []string{"sol-alias"}, map[string]string{"sol-alias": "passed"}, time.Time{}, true, now, true)
 	require.NoError(t, err)
 	require.False(t, a.IsQualityModelIsolated("sol"))
-	require.Equal(t, native, a.Extra["model_rate_limits"].(map[string]any)["sol"], "quality recovery must preserve native cooldowns")
+	nativeLimits, ok = a.Extra["model_rate_limits"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, native, nativeLimits["sol"], "quality recovery must preserve native cooldowns")
 }
 
 func TestQualityModelAliasesCannotUndoFailedOrUnknownPeer(t *testing.T) {
@@ -47,7 +51,8 @@ func TestQualityModelAliasesCannotUndoFailedOrUnknownPeer(t *testing.T) {
 			require.NoError(t, err)
 			_, _, err = transitionQualityModelRound(a, state, 7, []string{"alias", "upstream"}, map[string]string{"alias": "passed", "upstream": peer}, time.Now().Add(time.Hour), true, time.Now(), true)
 			require.NoError(t, err)
-			entries := a.Extra[qualityModelStorage(state)].(map[string]any)
+			entries, ok := a.Extra[qualityModelStorage(state)].(map[string]any)
+			require.True(t, ok)
 			require.Contains(t, entries, "upstream", peer)
 		}
 	}
@@ -61,10 +66,13 @@ func TestQualityIsolationSchedulerProjectionAndManualConflict(t *testing.T) {
 	a.Extra = filterSchedulerExtra(a.Extra)
 	require.False(t, a.IsSchedulableForModel("sol"), "candidate snapshots must retain persistent blocks")
 	require.True(t, a.IsSchedulableForModel("astra"))
-	entries := a.Extra[service.QualityModelIsolationKey].(map[string]any)
+	entries, ok := a.Extra[service.QualityModelIsolationKey].(map[string]any)
+	require.True(t, ok)
 	entries["sol"] = map[string]any{"reason": "manual"}
 	action, err := transitionQualityModels(a, state, 9, []string{"sol"}, time.Time{}, "passed", true, time.Now())
 	require.NoError(t, err)
 	require.Equal(t, "restore_conflict", action)
-	require.Equal(t, "manual", entries["sol"].(map[string]any)["reason"])
+	entry, ok := entries["sol"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "manual", entry["reason"])
 }

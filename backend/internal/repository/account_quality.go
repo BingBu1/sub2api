@@ -92,16 +92,6 @@ func (r *scheduledTestPlanRepository) ApplyQualityOutcome(ctx context.Context, p
 		return "", err
 	}
 
-	var version time.Time
-	var schedulable bool
-	var status string
-	err = tx.QueryRowContext(ctx, `SELECT updated_at, schedulable, status FROM accounts WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, plan.AccountID).Scan(&version, &schedulable, &status)
-	if err == sql.ErrNoRows {
-		return "account_deleted", nil
-	}
-	if err != nil {
-		return "", err
-	}
 	var raw []byte
 	err = tx.QueryRowContext(ctx, `SELECT state FROM account_quality_states WHERE plan_id=$1`, plan.ID).Scan(&raw)
 	if err != nil && err != sql.ErrNoRows {
@@ -114,6 +104,10 @@ func (r *scheduledTestPlanRepository) ApplyQualityOutcome(ctx context.Context, p
 		}
 	}
 
+	if err = checkQualityIsolationScope(plan, &state); err != nil {
+		return "action_conflict", nil
+	}
+
 	if plan.PelicanConfig.Quality.Action == service.QualityActionObserveOnly && state.Action != service.QualityActionIsolateModels {
 		// Relinquish any former action without restoring or changing account
 		// settings; observation leaves BPS lifecycle to independent policies.
@@ -124,6 +118,16 @@ func (r *scheduledTestPlanRepository) ApplyQualityOutcome(ctx context.Context, p
 			return "", err
 		}
 		return "observed", nil
+	}
+	var version time.Time
+	var schedulable bool
+	var status string
+	err = tx.QueryRowContext(ctx, `SELECT updated_at, schedulable, status FROM accounts WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, plan.AccountID).Scan(&version, &schedulable, &status)
+	if err == sql.ErrNoRows {
+		return "account_deleted", nil
+	}
+	if err != nil {
+		return "", err
 	}
 	// Checked under the same account/plan locks as restoration. A 5xx that
 	// arrives during a probe invalidates that probe even across replicas.

@@ -331,7 +331,7 @@ func applyQualityModelOutcome(ctx context.Context, tx *sql.Tx, plan *service.Sch
 	}
 	beforeConcurrency := account.Concurrency
 	restore := plan.PelicanConfig.Quality.AutoRestore || plan.PelicanConfig.Quality.TriggerOnUpstream5xx
-	action := "inconclusive"
+	var action string
 	modelActions := map[string]string{}
 	if plan.QualityModelOutcomes == nil {
 		action, err = transitionQualityModels(account, &state, plan.ID, plan.PelicanConfig.Quality.RemoveModels, schedule.Next(now), outcome, restore, now)

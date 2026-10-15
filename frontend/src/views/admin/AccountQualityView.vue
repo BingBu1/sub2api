@@ -377,7 +377,7 @@ function modelVerdictLabel(model: string) {
 function modelCooldownLabel(model: string) {
   if (detailAction.value === 'action_error') return t('qualityOps.cooldownUnconfirmed')
   const actions = detailOperation.value?.pelican_config?.quality_model_actions
-  const action = actions?.[model]
+  const action = actions?.[model] ?? ''
   if (detailModelIsolation.value && actions) {
     if (['models_cooled', 'model_cooldown_refreshed'].includes(action)) return t('qualityOps.modelIsolated')
     if (['restored', 'models_partially_restored'].includes(action)) return t('qualityOps.modelRestored')
@@ -632,8 +632,9 @@ function payload() {
   }
   if (nextQuality.action === 'isolate_models' && isProbe.value) throw new Error(t('qualityOps.isolationRequiresCandy'))
   if (!isProbe.value) return { ...form.value, max_results, pelican_config: { ...form.value.pelican_config, model_ids, quality: nextQuality } }
-  return { ...form.value, pelican_config: { ...form.value.pelican_config, model_ids, prompt: '', parallel_count: 1,
-    quality: { ...nextQuality, expected_answer: '', judge: undefined } } }
+  nextQuality.expected_answer = ''
+  delete nextQuality.judge
+  return { ...form.value, pelican_config: { ...form.value.pelican_config, model_ids, prompt: '', parallel_count: 1, quality: nextQuality } }
 }
 async function save() {
   if (busy.value || selectingAccounts.value) return
