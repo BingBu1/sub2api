@@ -29,12 +29,12 @@ Cookie 过期、未登录、ChatGPT 安全验证、代理不可用、请求超�
 
 修改前：
 
-![修改前的 OpenAI 账号菜单](images/openai-session-export-before.png)
+[修改前的 OpenAI 账号菜单](https://github.com/ranxi2001/sub2api/blob/297e9201a2f6d6fe70073b370a5b71f49579accf/docs/images/openai-session-export-before.png)
 
 修改后：
 
-![新增 Session 导出入口](images/openai-session-export-menu.png)
+[新增 Session 导出入口](https://github.com/ranxi2001/sub2api/blob/297e9201a2f6d6fe70073b370a5b71f49579accf/docs/images/openai-session-export-menu.png)
 
 导出弹窗：
 
-![Session 导出弹窗](images/openai-session-export-dialog.png)
+[Session 导出弹窗](https://github.com/ranxi2001/sub2api/blob/297e9201a2f6d6fe70073b370a5b71f49579accf/docs/images/openai-session-export-dialog.png)
