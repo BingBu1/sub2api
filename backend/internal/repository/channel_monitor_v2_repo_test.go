@@ -99,6 +99,21 @@ func TestChannelMonitorV2MetricIncludesSuccessRate(t *testing.T) {
 	require.NotNil(t, adminMetric.UpstreamAffectedRequests)
 }
 
+func TestChannelMonitorV2WhereOmitsSoftDeletedGroups(t *testing.T) {
+	filter := service.ChannelMonitorV2Filter{Start: time.Unix(1, 0), End: time.Unix(2, 0)}
+	cfg := service.ChannelMonitorV2Config{
+		Platforms: []service.ChannelMonitorV2PlatformConfig{{Platform: "openai", Enabled: true}},
+		GroupIDs:  []int64{7},
+	}
+	where, _ := channelMonitorV2Where(filter, cfg, "m")
+	require.Contains(t, where, "(m.group_id <= 0 OR m.group_id IN (SELECT id FROM groups WHERE deleted_at IS NULL))")
+
+	emptyScope := service.ChannelMonitorV2Filter{Start: filter.Start, End: filter.End, RestrictGroups: true}
+	where, _ = channelMonitorV2Where(emptyScope, cfg, "h")
+	require.Contains(t, where, "FALSE")
+	require.Contains(t, where, "(h.group_id <= 0 OR h.group_id IN (SELECT id FROM groups WHERE deleted_at IS NULL))")
+}
+
 func TestChannelMonitorV2WhereUsesConfiguredScopeAndEmptyFilterMeansAllConfigured(t *testing.T) {
 	filter := service.ChannelMonitorV2Filter{Start: time.Unix(1, 0), End: time.Unix(2, 0)}
 	cfg := service.ChannelMonitorV2Config{
