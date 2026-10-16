@@ -516,6 +516,11 @@ func (r *channelMonitorV2Repository) GetMatrix(ctx context.Context, filter servi
 		}
 		return a.Model < b.Model
 	})
+	if filter.IncludeRecentSamples && groupBy == service.ChannelMonitorV2GroupByPlatformGroup {
+		if err := r.attachRecentSampleBuckets(ctx, result, filter, cfg, admin); err != nil {
+			return nil, err
+		}
+	}
 	return result, nil
 }
 
