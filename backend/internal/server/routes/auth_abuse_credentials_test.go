@@ -30,6 +30,11 @@ func newAuthCredentialFixture(t *testing.T) *handler.Handlers {
 	db, err := sql.Open("sqlite", "file:"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&cache=shared")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
+	// SQLite pragmas are connection-scoped. Keep the fixture on the same
+	// connection so both Ent schema setup and handler queries enforce FKs.
+	db.SetMaxOpenConns(1)
+	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
+	require.NoError(t, err)
 	client := enttest.NewClient(t, enttest.WithOptions(dbent.Driver(entsql.OpenDB(dialect.SQLite, db))))
 	_, err = service.NewAuthPendingIdentityService(client).CreatePendingSession(context.Background(), service.CreatePendingAuthSessionInput{
 		SessionToken: "test-pending-session", Intent: "login",
