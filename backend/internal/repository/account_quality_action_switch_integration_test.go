@@ -48,7 +48,9 @@ func TestQualityIsolationSwitchRestoresLegacyAccountActionAtomically(t *testing.
 			require.NoError(t, err)
 			require.Equal(t, service.QualityActionIsolateModels, updated.PelicanConfig.Quality.Action)
 			require.False(t, updated.PelicanConfig.Quality.AutoRestore)
-			require.Zero(t, f.count(`SELECT count(*) FROM account_quality_states WHERE plan_id=`+qualityIsolationID(plan.ID)))
+			var remainingStates int
+			require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT count(*) FROM account_quality_states WHERE plan_id=$1`, plan.ID).Scan(&remainingStates))
+			require.Zero(t, remainingStates)
 			require.Equal(t, 2, f.count(`SELECT count(*) FROM account_groups WHERE account_id=$1`))
 			var priority, concurrency int
 			var allowed string
