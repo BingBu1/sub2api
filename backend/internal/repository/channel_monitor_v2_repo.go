@@ -1206,6 +1206,10 @@ func channelMonitorV2Where(filter service.ChannelMonitorV2Filter, cfg service.Ch
 		args = append(args, pq.Array(groups))
 		conditions = append(conditions, fmt.Sprintf("%s.group_id = ANY($%d)", alias, len(args)))
 	}
+	// Historical rollups keep a deleted group's id and name. The settings page
+	// only lists live groups, so status queries must drop soft-deleted ones too.
+	// group_id 0 is a platform-level row and has no groups record.
+	conditions = append(conditions, fmt.Sprintf("(%s.group_id <= 0 OR %s.group_id IN (SELECT id FROM groups WHERE deleted_at IS NULL))", alias, alias))
 	return "WHERE " + strings.Join(conditions, " AND "), args
 }
 
