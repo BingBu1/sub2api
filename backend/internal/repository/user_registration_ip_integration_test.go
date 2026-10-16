@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/authguard"
@@ -97,4 +98,18 @@ func (s *UserRepoSuite) TestRegistrationIPInjectedTransactionAndInvalidIP() {
 	s.Require().Zero(count)
 	ctx = authguard.WithRegistrationIP(s.ctx, "invalid")
 	s.Require().ErrorIs(s.repo.Create(ctx, registrationIPTestUser("invalid-ip@example.com")), service.ErrServiceUnavailable)
+}
+
+func (s *UserRepoSuite) TestRegistrationIPv6PrefixQuotaAndTimestamp() {
+	first := authguard.WithRegistrationIP(s.ctx, "2001:db8:2::1")
+	rotated := authguard.WithRegistrationIP(s.ctx, "2001:db8:2::abcd")
+	s.Require().NoError(s.repo.Create(first, registrationIPTestUser("ipv6-first@example.com")))
+	s.Require().NoError(s.repo.Create(rotated, registrationIPTestUser("ipv6-second@example.com")))
+	s.Require().ErrorIs(s.repo.Create(rotated, registrationIPTestUser("ipv6-third@example.com")), service.ErrRegistrationIPLimit)
+	otherPrefix := authguard.WithRegistrationIP(s.ctx, "2001:db8:2:1::1")
+	s.Require().NoError(s.repo.Create(otherPrefix, registrationIPTestUser("ipv6-independent@example.com")))
+	var createdAt time.Time
+	err := integrationDB.QueryRowContext(s.ctx, "SELECT created_at FROM registration_ip_quotas WHERE ip_hash = $1", authguard.IPKey("2001:db8:2::1")).Scan(&createdAt)
+	s.Require().NoError(err)
+	s.Require().False(createdAt.IsZero(), "quota age is observable but never used to refund signup slots")
 }

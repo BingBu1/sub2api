@@ -12,6 +12,8 @@ func TestRegistrationOriginNormalization(t *testing.T) {
 	require.Len(t, key, 64)
 	require.Equal(t, key, IPKey("::ffff:192.0.2.1"))
 	require.Equal(t, IPKey("2001:db8::1"), IPKey("2001:0db8:0:0::1"))
+	require.Equal(t, IPKey("2001:db8::1"), IPKey("2001:db8::ffff:ffff:ffff:ffff"), "IPv6 host rotation shares /64 quota and bans")
+	require.NotEqual(t, IPKey("2001:db8::1"), IPKey("2001:db8:0:1::1"), "different /64 networks remain independent")
 	require.NotEqual(t, key, IPKey("192.0.2.2"))
 	for _, address := range []string{"", "unknown", "192.0.2.1:1234", "fe80::1%eth0"} {
 		require.Empty(t, IPKey(address))

@@ -11,14 +11,20 @@ import (
 
 type registrationIPKey struct{}
 
-// IPKey canonicalizes addresses (including IPv4-mapped IPv6) before hashing.
+// IPKey canonicalizes IPv4 (including mapped addresses) and aggregates native
+// IPv6 to /64 before hashing, preventing quota evasion by rotating host bits.
 // Invalid addresses have no key and must not bypass an enabled guard.
 func IPKey(address string) string {
 	ip, err := netip.ParseAddr(strings.TrimSpace(address))
 	if err != nil || ip.Zone() != "" {
 		return ""
 	}
-	sum := sha256.Sum256([]byte(ip.Unmap().String()))
+	ip = ip.Unmap()
+	origin := ip.String()
+	if ip.Is6() {
+		origin = netip.PrefixFrom(ip, 64).Masked().String()
+	}
+	sum := sha256.Sum256([]byte(origin))
 	return hex.EncodeToString(sum[:])
 }
 

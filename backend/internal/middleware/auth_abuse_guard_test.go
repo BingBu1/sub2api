@@ -9,6 +9,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/authguard"
 	ippkg "github.com/Wei-Shaw/sub2api/internal/pkg/ip"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -24,12 +25,18 @@ func newAbuseTestRouter(t *testing.T, client *redis.Client, status *int) *gin.En
 	// spoofed headers when the peer is not a configured trusted proxy.
 	router.Use(func(c *gin.Context) { ippkg.SetLegacyForwardedIPTrust(c, true) })
 	router.Use(AuthAbuseGuard(client))
-	for _, path := range []string{"/auth/login", "/auth/login/2fa", "/auth/oauth/pending/bind-login", "/auth/passkey/login/finish", "/auth/register"} {
+	for _, path := range []string{"/auth/login", "/auth/login/2fa", "/auth/oauth/pending/bind-login", "/auth/passkey/login/finish", "/auth/register", "/auth/refresh", "/auth/logout"} {
 		router.POST(path, func(c *gin.Context) {
 			key, enabled := authguard.RegistrationIP(c.Request.Context())
-			require.True(t, enabled)
-			require.Equal(t, authguard.IPKey(c.ClientIP()), key)
-			c.Status(*status)
+			require.Equal(t, c.FullPath() != "/auth/refresh" && c.FullPath() != "/auth/logout", enabled)
+			if enabled {
+				require.Equal(t, authguard.IPKey(c.ClientIP()), key)
+			}
+			reason := ""
+			if *status == http.StatusUnauthorized {
+				reason = "INVALID_CREDENTIALS"
+			}
+			response.ErrorWithDetails(c, *status, "test response", reason, nil)
 		})
 	}
 	return router
@@ -65,7 +72,7 @@ func TestAuthAbuseBanAcrossCredentialsAndInstances(t *testing.T) {
 			status = http.StatusOK
 			require.Equal(t, status, abuseRequest(router, "192.0.2.1:1234", "/auth/login").Code)
 		}
-		status = http.StatusBadRequest // includes malformed/captcha/TOTP failures
+		status = http.StatusUnauthorized
 		require.Equal(t, status, abuseRequest(router, "192.0.2.1:1234", paths[i%len(paths)]).Code)
 	}
 	status = http.StatusOK
@@ -92,6 +99,7 @@ func TestAuthAbuseWindowAndNonCredentialErrors(t *testing.T) {
 	for i := 0; i < authFailureLimit; i++ {
 		require.Equal(t, status, abuseRequest(router, "192.0.2.1:1234", "/auth/register").Code)
 	}
+	status = http.StatusUnauthorized
 	for i := 0; i < authFailureLimit-1; i++ {
 		require.Equal(t, status, abuseRequest(router, "192.0.2.1:1234", "/auth/login").Code)
 	}
@@ -99,6 +107,74 @@ func TestAuthAbuseWindowAndNonCredentialErrors(t *testing.T) {
 	require.Equal(t, status, abuseRequest(router, "192.0.2.1:1234", "/auth/login").Code)
 	status = http.StatusOK
 	require.Equal(t, status, abuseRequest(router, "192.0.2.1:1234", "/auth/login").Code)
+}
+
+func TestAuthAbuseOnlyCountsCredentialReasons(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		reason string
+		banned bool
+	}{
+		{"password", 401, "INVALID_CREDENTIALS", true},
+		{"totp", 400, "TOTP_INVALID_CODE", true},
+		{"passkey", 401, "PASSKEY_VERIFICATION_FAILED", true},
+		{"malformed", 400, "", false},
+		{"captcha", 400, "TURNSTILE_INVALID_TOKEN", false},
+		{"disabled account", 403, "USER_NOT_ACTIVE", false},
+		{"backend mode", 403, "BACKEND_MODE_ADMIN_ONLY", false},
+		{"expired oauth state", 401, "PENDING_AUTH_SESSION_EXPIRED", false},
+		{"throttled", 429, "TOTP_TOO_MANY_ATTEMPTS", false},
+		{"server error", 500, "INVALID_CREDENTIALS", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, client := newAbuseTestRedis(t)
+			router := gin.New()
+			require.NoError(t, router.SetTrustedProxies(nil))
+			router.Use(AuthAbuseGuard(client))
+			router.POST("/auth/login", func(c *gin.Context) {
+				response.ErrorWithDetails(c, tc.status, "test failure", tc.reason, nil)
+			})
+			for i := 0; i < authFailureLimit; i++ {
+				require.Equal(t, tc.status, abuseRequest(router, "192.0.2.1:1234", "/auth/login").Code)
+			}
+			want := tc.status
+			if tc.banned {
+				want = http.StatusTooManyRequests
+			}
+			require.Equal(t, want, abuseRequest(router, "192.0.2.1:1234", "/auth/login").Code)
+		})
+	}
+}
+
+func TestAuthAbuseSessionMaintenanceBypassesGuard(t *testing.T) {
+	mr, client := newAbuseTestRedis(t)
+	_, err := runAuthAbuse(context.Background(), client, authguard.IPKey("192.0.2.1"), "check")
+	require.NoError(t, err)
+	require.NoError(t, mr.Set("auth_abuse:{"+authguard.IPKey("192.0.2.1")+"}:banned", "1"))
+	status := http.StatusOK
+	router := newAbuseTestRouter(t, client, &status)
+	for _, path := range []string{"/auth/refresh", "/auth/logout"} {
+		require.Equal(t, status, abuseRequest(router, "192.0.2.1:1234", path).Code)
+	}
+	mr.SetError("unavailable")
+	for _, path := range []string{"/auth/refresh", "/auth/logout"} {
+		require.Equal(t, status, abuseRequest(router, "invalid", path).Code)
+	}
+	router = newAbuseTestRouter(t, nil, &status)
+	require.Equal(t, status, abuseRequest(router, "invalid", "/auth/logout").Code)
+}
+
+func TestAuthAbuseIPv6RotationSharesBan(t *testing.T) {
+	_, client := newAbuseTestRedis(t)
+	status := http.StatusUnauthorized
+	router := newAbuseTestRouter(t, client, &status)
+	for i := 0; i < authFailureLimit; i++ {
+		require.Equal(t, status, abuseRequest(router, "[2001:db8::1]:1234", "/auth/login").Code)
+	}
+	require.Equal(t, http.StatusTooManyRequests, abuseRequest(router, "[2001:db8::abcd]:1234", "/auth/login").Code)
+	status = http.StatusOK
+	require.Equal(t, status, abuseRequest(router, "[2001:db8:0:1::1]:1234", "/auth/login").Code)
 }
 
 func TestAuthAbuseRedisFailureAndInvalidOriginFailClosed(t *testing.T) {
