@@ -14,8 +14,8 @@ import (
 )
 
 // Pelican group tests ask a group the Pelican question on a schedule. For every sample
-// the gateway scheduler picks the account exactly as it would for a user request to the
-// group, so the showcase reflects the group rather than one hand-picked account.
+// the gateway scheduler picks an account from the group, additionally respecting any
+// configured account model allowlist so unselected models do not enter the showcase.
 
 const (
 	// PelicanGroupTestMaxAttempts bounds the accounts one sample may try, including
@@ -578,7 +578,25 @@ type gatewayPelicanGroupRouter struct {
 	slotWait    time.Duration
 }
 
+type pelicanGroupTestRoutingKey struct{}
+
+// pelicanGroupTestModelAllowed keeps a non-empty account mapping authoritative for
+// group tests, even when alias mode or passthrough permits other models in user traffic.
+// An empty mapping retains the existing unrestricted behavior. Check this before
+// ranking/acquiring slots so ineligible accounts cannot crowd out eligible candidates.
+func pelicanGroupTestModelAllowed(ctx context.Context, account *Account, model string) bool {
+	if enabled, _ := ctx.Value(pelicanGroupTestRoutingKey{}).(bool); !enabled {
+		return true
+	}
+	if len(account.GetModelMapping()) == 0 {
+		return true
+	}
+	_, matched := account.ResolveMappedModel(model)
+	return matched
+}
+
 func (r *gatewayPelicanGroupRouter) route(ctx context.Context, group *Group, model string, excluded map[int64]struct{}) (*pelicanGroupRoute, error) {
+	ctx = context.WithValue(ctx, pelicanGroupTestRoutingKey{}, true)
 	platform, upstreamModel := group.Platform, model
 	if platform == PlatformComposite {
 		decision, matched, err := r.gateway.resolveCompositeRouteDecision(ctx, group, model, CompositeRouteEndpointAny)
