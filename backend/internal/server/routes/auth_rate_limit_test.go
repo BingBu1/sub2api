@@ -9,6 +9,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	servermiddleware "github.com/Wei-Shaw/sub2api/internal/server/middleware"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -70,4 +71,27 @@ func TestAuthRoutesRateLimitFailCloseWhenRedisUnavailable(t *testing.T) {
 		require.Equal(t, http.StatusTooManyRequests, w.Code, "path=%s", path)
 		require.Contains(t, w.Body.String(), "rate limit exceeded", "path=%s", path)
 	}
+}
+
+func TestAuthRoutesBanLoginSprayBeforeRegisterHandler(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	router := newAuthRoutesTestRouter(rdb)
+	require.NoError(t, router.SetTrustedProxies(nil))
+	request := func(address, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = address
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+	for i := 0; i < 10; i++ {
+		require.Equal(t, http.StatusBadRequest, request("192.0.2.1:1234", "/api/v1/auth/login").Code)
+	}
+	w := request("192.0.2.1:1234", "/api/v1/auth/register")
+	require.Equal(t, http.StatusTooManyRequests, w.Code)
+	require.Equal(t, "3600", w.Header().Get("Retry-After"))
+	require.Equal(t, http.StatusBadRequest, request("192.0.2.2:1234", "/api/v1/auth/register").Code)
 }
