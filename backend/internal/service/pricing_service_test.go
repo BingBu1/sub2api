@@ -851,7 +851,7 @@ func TestBillingService_Gemini4ArgonFallbacksAreBillable(t *testing.T) {
 	}
 }
 
-func TestDefaultPricingIncludesGemini4ArgonRates(t *testing.T) {
+func TestDefaultPricingIncludesGemini4ArgonCyberAndPriorityRates(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
 	require.NoError(t, err)
 
