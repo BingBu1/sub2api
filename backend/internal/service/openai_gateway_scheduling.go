@@ -444,6 +444,9 @@ func openAICompatibleAccountEligibilityFailureReasonBeforeProfit(ctx context.Con
 	if requestedModel != "" && !account.IsModelSupported(requestedModel) {
 		return "model_not_supported"
 	}
+	if requestedModel != "" && !pelicanGroupTestModelAllowed(ctx, account, requestedModel) {
+		return "model_not_selected_for_pelican"
+	}
 	if requestedModel != "" && !account.IsModelAllowedInGroup(groupID, requestedModel) {
 		return "model_not_allowed_in_group"
 	}
