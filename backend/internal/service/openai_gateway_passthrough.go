@@ -2420,7 +2420,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithImage(
 			// does not authorize replay, account cooldown or a fabricated success.
 			stopKeepalive()
 			if !clientDisconnected {
-				_, writeErr := fmt.Fprint(w, buildOpenAIResponseFailedSSE(responseID, originalModel, nil, "Upstream stream timed out"))
+				_, writeErr := fmt.Fprint(w, buildOpenAIResponseFailedSSE(responseID, originalModel, createdAtTracker.Value(), nil, "Upstream stream timed out"))
 				if writeErr == nil {
 					flusher.Flush()
 					// The timeout event is the terminal response. Tell the
