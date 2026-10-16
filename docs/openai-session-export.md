@@ -37,16 +37,16 @@ Cookie 以 AES-GCM 密文保存在独立的 `openai_session_cookies` 表中，�
 
 修改前：
 
-![修改前的 OpenAI 账号菜单](images/openai-session-export-before.png)
+[修改前的 OpenAI 账号菜单](https://github.com/ranxi2001/sub2api/blob/297e9201a2f6d6fe70073b370a5b71f49579accf/docs/images/openai-session-export-before.png)
 
 新增导出与设置入口：
 
-![Session 菜单](images/openai-session-export-menu.png)
+[新增 Session 导出与设置入口](https://github.com/ambi-vip/sub2api/blob/c0f49b8b3fe190d75ce506e33ff0448d9805bc9c/docs/images/openai-session-export-menu.png)
 
 首次配置：
 
-![Session 首次配置](images/openai-session-export-dialog.png)
+[Session 首次配置](https://github.com/ambi-vip/sub2api/blob/c0f49b8b3fe190d75ce506e33ff0448d9805bc9c/docs/images/openai-session-export-dialog.png)
 
 已保存凭据的管理界面：
 
-![Session 登录设置](images/openai-session-export-saved.png)
+[Session 登录设置](https://github.com/ambi-vip/sub2api/blob/c0f49b8b3fe190d75ce506e33ff0448d9805bc9c/docs/images/openai-session-export-saved.png)
