@@ -151,10 +151,10 @@ func solveQualityPath(p qualityPathProblem) qualityPathAnswer {
 	var first strings.Builder
 	for state.X != p.Width || state.Y != p.Height {
 		if right := next(state, 1); count(right) > 0 {
-			first.WriteByte('R')
+			_ = first.WriteByte('R')
 			state = right
 		} else {
-			first.WriteByte('U')
+			_ = first.WriteByte('U')
 			state = next(state, 2)
 		}
 	}
@@ -253,7 +253,7 @@ func generateQualityXORQuestion(rng *mathrand.Rand) (string, any, error) {
 			continue
 		}
 		var prompt strings.Builder
-		prompt.WriteString("寄存器A,B,C,D,E,F各取0或1。以下观测可能有误，XOR为异或，即各位之和模2。总代价为所有不成立观测的违背代价之和；不限制错误条数，不是让错误条数最少。\n")
+		_, _ = prompt.WriteString("寄存器A,B,C,D,E,F各取0或1。以下观测可能有误，XOR为异或，即各位之和模2。总代价为所有不成立观测的违背代价之和；不限制错误条数，不是让错误条数最少。\n")
 		for i, row := range rows {
 			members := make([]string, len(row.Indices))
 			for j, index := range row.Indices {
@@ -261,7 +261,7 @@ func generateQualityXORQuestion(rng *mathrand.Rand) (string, any, error) {
 			}
 			fmt.Fprintf(&prompt, "%d. %s = %d；违背代价%d\n", i+1, strings.Join(members, " XOR "), row.Value, row.Weight)
 		}
-		prompt.WriteString("求最小总代价及所有最优赋值。只输出JSON对象，字段penalty为整数，assignments为六位01字符串数组，从左至右对应ABCDEF，按字典序升序。不加解释或代码块。")
+		_, _ = prompt.WriteString("求最小总代价及所有最优赋值。只输出JSON对象，字段penalty为整数，assignments为六位01字符串数组，从左至右对应ABCDEF，按字典序升序。不加解释或代码块。")
 		return prompt.String(), answer, nil
 	}
 	return "", nil, fmt.Errorf("random XOR question unavailable")

@@ -55,10 +55,10 @@ func TestRandomQualityPathOracleAgainstWalkEnumeration(t *testing.T) {
 			for i := 0; i < 7; i++ {
 				if mask>>i&1 != 0 {
 					x++
-					word.WriteByte('R')
+					_ = word.WriteByte('R')
 				} else {
 					y++
-					word.WriteByte('U')
+					_ = word.WriteByte('U')
 				}
 				for _, point := range p.Blocked {
 					if point == (qualityGridPoint{x, y}) {
@@ -103,7 +103,8 @@ func TestRandomQualityXOROracleFindsAllMinimumWeightRepairs(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		_, reference, err := generateQualityXORQuestion(rng)
 		require.NoError(t, err)
-		value := reference.(qualityXORAnswer)
+		value, ok := reference.(qualityXORAnswer)
+		require.True(t, ok)
 		require.Positive(t, value.Penalty)
 		require.NotEmpty(t, value.Assignments)
 		require.LessOrEqual(t, len(value.Assignments), 4)
@@ -163,9 +164,10 @@ func TestRandomQualityRoundSharesQuestionsAndPreservesUnknownVerdicts(t *testing
 				require.Equal(t, references["model-a"], references["model-b"])
 			}
 			expected := "inconclusive"
-			if verdict == "correct" {
+			switch verdict {
+			case "correct":
 				expected = "passed"
-			} else if verdict == "incorrect" {
+			case "incorrect":
 				expected = "failed"
 			}
 			require.Equal(t, []string{expected}, plans.outcomes)
