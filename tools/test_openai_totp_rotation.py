@@ -111,6 +111,19 @@ class RotationTests(unittest.TestCase):
             with self.assertRaisesRegex(RotationError, 'verification_failed'):
                 login_web(self.api.config, self.claim, OLD)
 
+    def test_runner_password_rejection_has_a_specific_error_code(self):
+        with patch('tools.openai_totp_rotation.subprocess.run', return_value=SimpleNamespace(
+            returncode=1, stdout='[warn] Password was rejected. Enter it again.', stderr='')):
+            with self.assertRaisesRegex(RotationError, 'password_rejected'):
+                login_web(self.api.config, self.claim, OLD)
+
+    def test_runner_proxy_failure_has_a_specific_error_code(self):
+        claim = dict(self.claim, proxy_url='socks5h://127.0.0.1:7890')
+        with patch('tools.openai_totp_rotation.subprocess.run', return_value=SimpleNamespace(
+            returncode=1, stdout='', stderr='connect ECONNREFUSED 127.0.0.1:7890')):
+            with self.assertRaisesRegex(RotationError, 'proxy_unavailable'):
+                login_web(self.api.config, claim, OLD)
+
     def test_runner_secrets_are_not_process_arguments(self):
         with patch('tools.openai_totp_rotation.subprocess.run', return_value=SimpleNamespace(returncode=1, stdout='', stderr='')) as run:
             with self.assertRaises(RotationError): login_web(self.api.config, self.claim, OLD)
