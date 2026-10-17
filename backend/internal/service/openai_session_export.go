@@ -272,14 +272,15 @@ func (s *OpenAIOAuthReauthService) SubmitSessionExport(ctx context.Context, task
 		return s.failSessionExport(ctx, taskID, workerID, "invalid_response")
 	}
 	var session struct {
-		AccessToken string `json:"accessToken"`
-		Expires     string `json:"expires"`
-		User        struct {
+		AccessToken  string `json:"accessToken"`
+		SessionToken string `json:"sessionToken"`
+		Expires      string `json:"expires"`
+		User         struct {
 			ID    string `json:"id"`
 			Email string `json:"email"`
 		} `json:"user"`
 	}
-	if json.Unmarshal(body, &session) != nil || strings.TrimSpace(session.AccessToken) == "" {
+	if json.Unmarshal(body, &session) != nil || strings.TrimSpace(session.AccessToken) == "" || strings.TrimSpace(session.SessionToken) == "" {
 		return s.failSessionExport(ctx, taskID, workerID, "invalid_response")
 	}
 	expires, err := time.Parse(time.RFC3339, session.Expires)
@@ -312,11 +313,24 @@ func (s *OpenAIOAuthReauthService) SubmitSessionExport(ctx context.Context, task
 	if s.sessionExportResults == nil {
 		s.sessionExportResults = newSessionExportResultStore()
 	}
-	// Preserve the complete JSON returned by ChatGPT's
-	// /api/auth/session endpoint. The struct above is used only for validation;
-	// no fields are reconstructed or discarded before the one-shot download.
-	s.sessionExportResults.put(taskID, body)
+	// Validate the upstream response above, then expose only the two credentials
+	// consumed by the Session importer.
+	compactBody, err := compactSessionExportPayload(session.AccessToken, session.SessionToken)
+	if err != nil {
+		return s.failSessionExport(ctx, taskID, workerID, "invalid_response")
+	}
+	s.sessionExportResults.put(taskID, compactBody)
 	return s.sessionExportRepo.FinishSessionExportTask(ctx, taskID, workerID, OpenAISessionExportStatusSucceeded, "")
+}
+
+func compactSessionExportPayload(accessToken, sessionToken string) (json.RawMessage, error) {
+	return json.Marshal(struct {
+		AccessToken  string `json:"accessToken"`
+		SessionToken string `json:"sessionToken"`
+	}{
+		AccessToken:  accessToken,
+		SessionToken: sessionToken,
+	})
 }
 
 func (s *OpenAIOAuthReauthService) FailSessionExport(ctx context.Context, taskID int64, workerID, code string) error {
@@ -331,7 +345,7 @@ func (s *OpenAIOAuthReauthService) failSessionExport(ctx context.Context, taskID
 
 func normalizeSessionExportErrorCode(code string) string {
 	switch strings.TrimSpace(code) {
-	case "password_rejected", "totp_rejected", "identity_mismatch", "upstream_rejected", "worker_timeout", "worker_offline", "credentials_required", "account_invalid", "config_required", "password_unavailable", "totp_unavailable", "proxy_unavailable", "credentials_changed", "invalid_response", "session_expired":
+	case "password_rejected", "totp_rejected", "identity_mismatch", "upstream_rejected", "worker_timeout", "worker_offline", "credentials_required", "account_invalid", "config_required", "password_unavailable", "totp_unavailable", "proxy_unavailable", "credentials_changed", "invalid_response", "session_expired", "session_token_missing":
 		return strings.TrimSpace(code)
 	default:
 		return "worker_failed"

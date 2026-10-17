@@ -43,6 +43,7 @@ sessionExport: {
           worker_timeout: "本地 Worker 执行超时。",
           worker_offline: "没有可用的本地 Worker。",
           proxy_unavailable: "账号代理不可用，请启动 127.0.0.1:7890 的代理或更新账号代理配置。",
+          session_token_missing: "ChatGPT 没有返回可用的 Web Session Token。",
           OPENAI_SESSION_EXPORT_CONFIG_REQUIRED: "账号尚未配置邮箱、密码和 TOTP。",
           OPENAI_REAUTH_WORKER_UNAVAILABLE: "没有可用的本地 Worker。",
           OPENAI_SESSION_EXPORT_ACCOUNT_INVALID: "仅支持独立的 OpenAI OAuth 父账号。",

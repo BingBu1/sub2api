@@ -92,7 +92,14 @@ async function poll(id: number, taskId: number, current: number, delay = 1000, e
   if (next.status === 'succeeded') {
     const session = await runCurrent(current, () => downloadChatGPTSession(id, taskId))
     if (current !== generation) return
-    const url = URL.createObjectURL(new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' }))
+    const compactSession = {
+      accessToken: typeof session.accessToken === 'string' ? session.accessToken : '',
+      sessionToken: typeof session.sessionToken === 'string' ? session.sessionToken : ''
+    }
+    if (!compactSession.accessToken || !compactSession.sessionToken) {
+      throw Object.assign(new Error('session_token_missing'), { reason: 'session_token_missing' })
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(compactSession, null, 2)], { type: 'application/json' }))
     const link = document.createElement('a')
     link.href = url; link.download = `chatgpt-session-${id}.json`; document.body.appendChild(link); link.click(); link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 0)

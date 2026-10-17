@@ -14,7 +14,7 @@ async function open() {
   wrapper = mount(OpenAITOTPDialog, { props: { accountId: 42, accountName: 'Test account', configured: true }, global: { stubs: { BaseDialog: dialog } } })
   await wrapper.get('[data-testid="totp-manage"]').trigger('click'); await flushPromises()
 }
-beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); api.status.mockResolvedValue(null); api.export.mockResolvedValue(exported); api.session.mockResolvedValue({ id: 9, account_id: 42, status: 'queued', stage: 'queued', attempt: 1 }); api.sessionStatus.mockResolvedValue({ id: 9, account_id: 42, status: 'succeeded', stage: 'succeeded', attempt: 1 }); api.sessionDownload.mockResolvedValue({ accessToken: 'token', expires: '2099-01-01T00:00:00Z', user: { email: 'owner@example.test' } }) })
+beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); api.status.mockResolvedValue(null); api.export.mockResolvedValue(exported); api.session.mockResolvedValue({ id: 9, account_id: 42, status: 'queued', stage: 'queued', attempt: 1 }); api.sessionStatus.mockResolvedValue({ id: 9, account_id: 42, status: 'succeeded', stage: 'succeeded', attempt: 1 }); api.sessionDownload.mockResolvedValue({ accessToken: 'token', sessionToken: 'session' }) })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('2FA rotation and credential export', () => {

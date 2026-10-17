@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
+from tools.openai_oauth_reauth_worker import _extract_chatgpt_session_token
 from tools.openai_totp_rotation import RotationError, login_web, rotate, totp, verify_pair
 
 OLD = 'JBSWY3DPEHPK3PXP'
@@ -130,6 +131,31 @@ class RotationTests(unittest.TestCase):
             self.assertNotIn(OLD, str(run.call_args.args))
             self.assertNotIn(self.claim['password'], str(run.call_args.args))
             self.assertNotIn('OPENAI_REAUTH_WORKER_TOKEN', run.call_args.kwargs['env'])
+
+    def test_session_token_extracts_single_cookie(self):
+        self.assertEqual(
+            _extract_chatgpt_session_token([
+                {'name': '__Secure-next-auth.session-token', 'value': 'session-value'},
+            ]),
+            'session-value',
+        )
+
+    def test_session_token_joins_contiguous_chunks(self):
+        self.assertEqual(
+            _extract_chatgpt_session_token([
+                {'name': '__Secure-next-auth.session-token.1', 'value': 'part-b'},
+                {'name': '__Secure-next-auth.session-token.0', 'value': 'part-a'},
+            ]),
+            'part-apart-b',
+        )
+
+    def test_session_token_rejects_missing_chunk(self):
+        self.assertEqual(
+            _extract_chatgpt_session_token([
+                {'name': '__Secure-next-auth.session-token.1', 'value': 'part-b'},
+            ]),
+            '',
+        )
 
 
 if __name__ == '__main__':

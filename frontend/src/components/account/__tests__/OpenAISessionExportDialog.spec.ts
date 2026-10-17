@@ -13,7 +13,7 @@ beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers()
   createTask.mockResolvedValue({ id: 9, account_id: 7, status: 'queued', stage: 'queued', attempt: 1 })
   getTask.mockResolvedValue({ id: 9, account_id: 7, status: 'succeeded', stage: 'succeeded', attempt: 1 })
-  download.mockResolvedValue({ accessToken: 'token', expires: '2099-01-01T00:00:00Z', user: { id: 'u' } })
+  download.mockResolvedValue({ accessToken: 'token', sessionToken: 'session' })
   vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:session'), revokeObjectURL: vi.fn() })
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { filename = this.download })
   filename = undefined

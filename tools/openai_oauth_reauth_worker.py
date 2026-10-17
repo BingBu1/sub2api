@@ -49,6 +49,7 @@ SENSITIVE_JSON_RE = re.compile(
 EMAIL_RE = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
 JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]*)?\b")
 BEARER_RE = re.compile(r"(?i)\bBearer\s+\S+")
+CHATGPT_SESSION_COOKIE = "__Secure-next-auth.session-token"
 CONTEXT_CODE_RE = re.compile(
     r"(?i)(?:verification|verify|login|temporary|验证码|登录代码|認証|code)"
     r"[^0-9]{0,80}(\d{6})"
@@ -718,6 +719,30 @@ def sanitize_error(value: str) -> str:
     return (text or "automatic re-login failed")[:500]
 
 
+def _extract_chatgpt_session_token(cookies: Any) -> str:
+    """Return the Web session cookie, joining NextAuth chunked cookies safely."""
+    base = ""
+    chunks: dict[int, str] = {}
+    prefix = CHATGPT_SESSION_COOKIE + "."
+    for cookie in cookies if isinstance(cookies, list) else []:
+        if not isinstance(cookie, dict):
+            continue
+        name = str(cookie.get("name") or "")
+        value = str(cookie.get("value") or "")
+        if name == CHATGPT_SESSION_COOKIE:
+            base = value
+        elif name.startswith(prefix):
+            suffix = name[len(prefix):]
+            if suffix.isdigit() and value:
+                chunks[int(suffix)] = value
+    if chunks:
+        indexes = sorted(chunks)
+        if indexes != list(range(indexes[-1] + 1)):
+            return ""
+        return "".join(chunks[index] for index in indexes)
+    return base
+
+
 def _close_protocol_session(session: Any) -> None:
     raw_session = getattr(session, "session", None)
     close = getattr(raw_session, "close", None)
@@ -1273,6 +1298,12 @@ def process_session_export_claim(api: WorkerAPI, claim: dict[str, Any]) -> None:
             raise WorkerError("ChatGPT Session identity mismatch")
         if not str(payload.get("accessToken") or "").strip() or not str(payload.get("expires") or "").strip():
             raise WorkerError("ChatGPT returned an incomplete Session")
+        session_token = _extract_chatgpt_session_token(data.get("cookies"))
+        if not session_token:
+            raise WorkerError("ChatGPT returned no session token")
+        # Keep upstream fields internally for identity and expiry checks. The
+        # API compacts the downloadable result to accessToken/sessionToken.
+        payload = {**payload, "sessionToken": session_token}
         _best_effort_session_progress(api, task_id, "identity_verification")
         api.session_export_result(task_id, payload)
     finally:
@@ -1295,6 +1326,8 @@ def session_export_error_code(exc: BaseException) -> str:
     text = sanitize_error(str(exc)).lower()
     if "credentials are incomplete" in text:
         return "credentials_required"
+    if "no session token" in text:
+        return "session_token_missing"
     if "tosub2_root" in text or ("worker" in text and "required" in text):
         return "worker_offline"
     if "proxy_unavailable" in text or "proxy" in text and "unavailable" in text:

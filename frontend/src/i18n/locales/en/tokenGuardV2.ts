@@ -43,6 +43,7 @@ sessionExport: {
           worker_timeout: "The local Worker timed out.",
           worker_offline: "No local Worker is available.",
           proxy_unavailable: "The account proxy is unavailable. Start the configured proxy or update the account proxy settings.",
+          session_token_missing: "ChatGPT did not return a usable Web session token.",
           OPENAI_SESSION_EXPORT_CONFIG_REQUIRED: "The account has no usable email, password, and TOTP configuration.",
           OPENAI_REAUTH_WORKER_UNAVAILABLE: "No local Worker is available.",
           OPENAI_SESSION_EXPORT_ACCOUNT_INVALID: "Only an independent OpenAI OAuth parent account is supported.",

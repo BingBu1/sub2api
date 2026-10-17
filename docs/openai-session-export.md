@@ -16,7 +16,7 @@
 
 Worker claim 请求必须声明 `chatgpt_session_export` 能力。旧版 Worker 不会领取这类任务，仍可继续处理 OAuth 重登任务。新 Worker 通过已认证的 Worker 通道接收短时明文凭据，密码和 TOTP 只通过子进程环境传给登录程序，不出现在命令行、日志或错误回传中。
 
-Worker 必须使用账号配置的代理并禁止自动切换出口。登录完成后必须确认 `web.mfaVerified == true`，Session 响应必须包含未来的 `expires`、`accessToken`，且邮箱及（如果配置）`chatgpt_user_id` 与托管账号一致。只允许回传白名单字段 `accessToken`、`expires` 和 `user`。
+Worker 必须使用账号配置的代理并禁止自动切换出口。登录完成后必须确认 `web.mfaVerified == true`，Session 响应必须包含未来的 `expires`、`accessToken`，且邮箱及（如果配置）`chatgpt_user_id` 与托管账号一致。导出的 JSON 只保留 `accessToken` 和从 `__Secure-next-auth.session-token`（含分片 Cookie）提取出的 `sessionToken`，其他上游字段全部删除。
 
 ## 错误处理
 
