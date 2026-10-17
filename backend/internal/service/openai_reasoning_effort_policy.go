@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -25,7 +26,7 @@ const (
 	ReasoningEffortMappingDeny = "deny"
 )
 
-var openAIReasoningEffortValues = []string{"minimal", "low", "medium", "high", "xhigh", "max"}
+var openAIReasoningEffortValues = []string{"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
 var anthropicReasoningEffortValues = []string{"low", "medium", "high", "xhigh", "max"}
 
 func normalizeReasoningEffortMappingSource(raw string) string {
@@ -131,6 +132,8 @@ func NormalizeMaxReasoningEffort(raw string) string {
 		return "xhigh"
 	case "max":
 		return "max"
+	case "ultra":
+		return "ultra"
 	default:
 		return ""
 	}
@@ -227,6 +230,8 @@ func reasoningEffortRank(raw string) (int, bool) {
 		return 5, true
 	case "max":
 		return 6, true
+	case "ultra":
+		return 7, true
 	default:
 		return 0, false
 	}
@@ -567,5 +572,31 @@ func applyOpenAIWSReasoningEffortPolicy(payload []byte, hooks *OpenAIWSIngressHo
 
 // ApplyOpenAIReasoningEffortPolicy is retained for OpenAI forwarding callers.
 func ApplyOpenAIReasoningEffortPolicy(body []byte, maxEffort string, mappings []ReasoningEffortMapping, overLimit string) ([]byte, bool, error) {
-	return ApplyReasoningEffortPolicy(body, maxEffort, mappings, overLimit)
+	if maxEffort == "" && len(mappings) == 0 {
+		return body, false, nil
+	}
+	view := openAIRequestPayloadView(body)
+	payload := []byte(view.Raw)
+	// A model's explicit ultra suffix must not escape a ceiling simply because
+	// the client omitted the separate effort field. Ordinary omitted defaults
+	// remain untouched.
+	if explicitRequestedReasoningEffortFromBody(payload) == "" && canonicalReasoningEffortFromModelSuffix(view.Get("model").String()) == "ultra" {
+		var err error
+		payload, err = sjson.SetBytes(payload, "reasoning.effort", "ultra")
+		if err != nil {
+			return body, false, err
+		}
+	}
+	updated, changed, err := ApplyReasoningEffortPolicy(payload, maxEffort, mappings, overLimit)
+	if err != nil || !changed {
+		return body, false, err
+	}
+	root := gjson.ParseBytes(body)
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(root.Get("type").String())), "response.") && root.Get("response").IsObject() {
+		updated, err = sjson.SetBytes(body, "response", json.RawMessage(updated))
+		if err != nil {
+			return body, false, err
+		}
+	}
+	return updated, true, nil
 }

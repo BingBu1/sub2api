@@ -91,6 +91,8 @@ func RegisterGatewayRoutes(
 	}
 	// 分组「仅允许流式请求」准入：挂在模型白名单之后，同样早于合成路由改写与调度。
 	groupStreamOnly := middleware.GroupStreamOnly()
+	groupCodexCLIOnly := middleware.GroupCodexCLIOnly(settingService)
+	groupBlockSubagents := middleware.GroupBlockSubagents()
 
 	isOpenAIResponsesCompatibleGatewayPlatform := func(c *gin.Context) bool {
 		// openai、grok 与多协议 API Key 供应商经 OpenAI 网关转发（平台清单）。
@@ -233,6 +235,7 @@ func RegisterGatewayRoutes(
 	gateway.Use(imageAdmission)
 	gateway.GET("/sub2api/billing", h.Gateway.KeyBillingInfo)
 	gateway.Use(groupModelAllowlist)
+	gateway.Use(groupCodexCLIOnly, groupBlockSubagents)
 	gateway.Use(groupStreamOnly)
 	gateway.Use(podRoute)
 	gateway.Use(compositeTarget)
@@ -393,6 +396,7 @@ func RegisterGatewayRoutes(
 	gemini.Use(middleware.APIKeyAuthWithSubscriptionGoogle(apiKeyService, subscriptionService, cfg))
 	gemini.Use(captureTraffic)
 	gemini.Use(groupModelAllowlist)
+	gemini.Use(groupCodexCLIOnly, groupBlockSubagents)
 	gemini.Use(groupStreamOnly)
 	gemini.Use(compositeGeminiTarget)
 	gemini.Use(requireGroupGoogle)
@@ -420,7 +424,7 @@ func RegisterGatewayRoutes(
 	// 根路径别名共用中间件链：白名单准入在 apiKeyAuth 之后、compositeTarget
 	// 之前，避免逐条路由手工维护链导致漏挂。
 	rootRoute := func(method, path string, limit gin.HandlerFunc, handler gin.HandlerFunc) {
-		r.Handle(method, path, limit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), captureTraffic, imageAdmission, groupModelAllowlist, groupStreamOnly, podRoute, compositeTarget, requireGroupAnthropic, handler)
+		r.Handle(method, path, limit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), captureTraffic, imageAdmission, groupModelAllowlist, groupCodexCLIOnly, groupBlockSubagents, groupStreamOnly, podRoute, compositeTarget, requireGroupAnthropic, handler)
 	}
 	for _, prefix := range []string{"/api/v3", "/v3", "/v1", ""} {
 		rootRoute(http.MethodPost, prefix+"/contents/generations/tasks", bodyLimit, h.OpenAIGateway.SeedanceTasks)
@@ -437,7 +441,7 @@ func RegisterGatewayRoutes(
 	rootRoute(http.MethodGet, "/models/:model", bodyLimit, h.Gateway.Models)
 	rootRoute(http.MethodPost, "/messages/count_tokens", bodyLimit, countTokensHandler)
 	codexDirect := r.Group("/backend-api/codex")
-	codexDirect.Use(bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), captureTraffic, imageAdmission, groupModelAllowlist, groupStreamOnly, podRoute, compositeTarget, requireGroupAnthropic)
+	codexDirect.Use(bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), captureTraffic, imageAdmission, groupModelAllowlist, groupCodexCLIOnly, groupBlockSubagents, groupStreamOnly, podRoute, compositeTarget, requireGroupAnthropic)
 	{
 		codexDirect.POST("/realtime/calls", h.OpenAIGateway.Live)
 		codexDirect.GET("/:call_id", h.OpenAIGateway.LiveSideband)
@@ -552,6 +556,7 @@ func RegisterGatewayRoutes(
 	antigravityV1.Use(gin.HandlerFunc(apiKeyAuth))
 	antigravityV1.Use(captureTraffic)
 	antigravityV1.Use(groupModelAllowlist)
+	antigravityV1.Use(groupCodexCLIOnly, groupBlockSubagents)
 	antigravityV1.Use(groupStreamOnly)
 	antigravityV1.Use(requireGroupAnthropic)
 	{
@@ -570,6 +575,7 @@ func RegisterGatewayRoutes(
 	antigravityV1Beta.Use(middleware.APIKeyAuthWithSubscriptionGoogle(apiKeyService, subscriptionService, cfg))
 	antigravityV1Beta.Use(captureTraffic)
 	antigravityV1Beta.Use(groupModelAllowlist)
+	antigravityV1Beta.Use(groupCodexCLIOnly, groupBlockSubagents)
 	antigravityV1Beta.Use(groupStreamOnly)
 	antigravityV1Beta.Use(requireGroupGoogle)
 	{

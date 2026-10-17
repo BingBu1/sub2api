@@ -248,6 +248,15 @@ func TestAnthropicCompositePolicyClampsUnsupportedMinimalToLow(t *testing.T) {
 	require.Equal(t, []service.ReasoningEffortMapping{{From: "max", To: "low"}}, mappings)
 }
 
+func TestAnthropicCompositePolicyDoesNotEmitUltra(t *testing.T) {
+	input := []service.ReasoningEffortMapping{{From: "high", To: "ultra"}, {From: "ultra", To: "deny"}}
+	maxEffort, mappings := anthropicCompatibleReasoningEffortPolicy("ultra", input)
+	require.Equal(t, "max", maxEffort)
+	require.Equal(t, "max", mappings[0].To)
+	require.Equal(t, "deny", mappings[1].To)
+	require.Equal(t, "ultra", input[0].To, "platform adaptation must not mutate the group policy")
+}
+
 func TestClientRequestedModelUsesCompositePublicModel(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())

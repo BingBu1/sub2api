@@ -95,11 +95,15 @@ func anthropicReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.AP
 func anthropicCompatibleReasoningEffortPolicy(maxEffort string, mappings []service.ReasoningEffortMapping) (string, []service.ReasoningEffortMapping) {
 	if service.NormalizeMaxReasoningEffort(maxEffort) == "minimal" {
 		maxEffort = "low"
+	} else if service.NormalizeMaxReasoningEffort(maxEffort) == "ultra" {
+		maxEffort = "max"
 	}
 	normalizedMappings := append([]service.ReasoningEffortMapping(nil), mappings...)
 	for i := range normalizedMappings {
 		if service.NormalizeMaxReasoningEffort(normalizedMappings[i].To) == "minimal" {
 			normalizedMappings[i].To = "low"
+		} else if service.NormalizeMaxReasoningEffort(normalizedMappings[i].To) == "ultra" {
+			normalizedMappings[i].To = "max"
 		}
 	}
 	return maxEffort, normalizedMappings
