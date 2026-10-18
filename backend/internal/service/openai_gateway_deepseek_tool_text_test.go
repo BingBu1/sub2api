@@ -48,12 +48,12 @@ func TestResponsesDeepSeekTextTools(t *testing.T) {
 					// frame is independently valid while all delimiters are split.
 					for _, part := range strings.Split(tc.text, "") {
 						encoded, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"index": 0, "delta": map[string]any{"content": part}}}})
-						fmt.Fprintf(&upstreamBody, "data: %s\n\n", encoded)
+						_, _ = fmt.Fprintf(&upstreamBody, "data: %s\n\n", encoded)
 					}
-					upstreamBody.WriteString("data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5}}\n\ndata: [DONE]\n\n")
+					_, _ = upstreamBody.WriteString("data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5}}\n\ndata: [DONE]\n\n")
 				} else {
 					encoded, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{"message": map[string]any{"role": "assistant", "content": tc.text}, "finish_reason": "stop"}}, "usage": map[string]any{"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}})
-					upstreamBody.Write(encoded)
+					_, _ = upstreamBody.Write(encoded)
 				}
 				rec := httptest.NewRecorder()
 				c, _ := gin.CreateTestContext(rec)

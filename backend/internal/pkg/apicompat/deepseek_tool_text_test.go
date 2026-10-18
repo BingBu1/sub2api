@@ -101,12 +101,12 @@ func TestDeepSeekToolTextPreservesExamplesAndNativeCalls(t *testing.T) {
 		// A tag may arrive in any chunk, including split Markdown fences.
 		for _, part := range strings.Split(text, "") {
 			chunk := d.Push(&ChatCompletionsChunk{Choices: []ChatChunkChoice{{Delta: ChatDelta{Content: &part}}}})
-			emitted.WriteString(*chunk.Choices[0].Delta.Content)
+			_, _ = emitted.WriteString(*chunk.Choices[0].Delta.Content)
 		}
 		chunk, err := d.Finish("stop")
 		require.NoError(t, err)
 		if chunk != nil {
-			emitted.WriteString(*chunk.Choices[0].Delta.Content)
+			_, _ = emitted.WriteString(*chunk.Choices[0].Delta.Content)
 			require.Empty(t, chunk.Choices[0].Delta.ToolCalls)
 		}
 		require.Equal(t, text, emitted.String())
