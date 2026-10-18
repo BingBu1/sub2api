@@ -10,6 +10,27 @@ function render(prices: Record<string, Record<string, number>> = {}) {
 }
 
 describe('MiniMax-H3 video pricing', () => {
+  it.each(['per_second', 'request_5s'])('keeps decimal input editable and saves numeric prices for %s', async (key) => {
+    const existing = { 'grok-imagine-video': { '720p': 0.09 } }
+    const wrapper = render({ ...existing, 'minimax-h3': { [key]: 0 } })
+    const input = wrapper.get('input[min="0"]')
+
+    for (const value of ['0.0', '0.07', '0.005', '0', '']) {
+      await input.setValue(value)
+      const next = wrapper.emitted('update:modelValue')!.at(-1)![0] as ReturnType<typeof createVideoModelPricesForm>
+      await wrapper.setProps({ modelValue: next })
+      expect((input.element as HTMLInputElement).value).toBe(value)
+      const saved = serializeVideoModelPrices(next)
+      expect(saved['grok-imagine-video']).toEqual(existing['grok-imagine-video'])
+      expect(saved['minimax-h3']).toEqual(value === '' ? undefined : { [key]: Number(value) })
+      if (value === '0.07') {
+        const reloaded = render(saved)
+        expect((reloaded.get('input[min="0"]').element as HTMLInputElement).value).toBe('0.07')
+        reloaded.unmount()
+      }
+    }
+  })
+
   it('does not enable video or change existing Grok prices by default', async () => {
     const existing = { 'grok-imagine-video': { '720p': 0.07 } }
     const wrapper = render(existing)

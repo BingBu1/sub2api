@@ -65,6 +65,7 @@ function changeSeconds(event: Event) {
 }
 function changePrice(event: Event) {
   const raw = (event.target as HTMLInputElement).value
-  update(tariffKey.value, raw === '' ? null : Number(raw))
+  // Keep intermediate decimal input such as "0." intact until serialization.
+  update(tariffKey.value, raw === '' ? null : raw)
 }
 </script>
