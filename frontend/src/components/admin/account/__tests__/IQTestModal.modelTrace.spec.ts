@@ -3,11 +3,15 @@ import { flushPromises, mount } from '@vue/test-utils'
 import type { Account } from '@/types'
 import IQTestModal from '../IQTestModal.vue'
 
-vi.mock('@/api/admin/accounts', () => ({
-  getAvailableModels: vi.fn().mockResolvedValue([]),
-  getModelReasoning: vi.fn().mockResolvedValue({ supported_reasoning_levels: [], default_reasoning_level: '' }),
-  probeOpenAICodexState: vi.fn()
-}))
+vi.mock('@/api/admin/accounts', async () => {
+  const actual = await vi.importActual<typeof import('@/api/admin/accounts')>('@/api/admin/accounts')
+  return {
+    ...actual,
+    getAvailableModels: vi.fn().mockResolvedValue([]),
+    getModelReasoning: vi.fn().mockResolvedValue({ supported_reasoning_levels: [], default_reasoning_level: '' }),
+    probeOpenAICodexState: vi.fn()
+  }
+})
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   return { ...actual, useI18n: () => ({ t: (key: string) => key }) }
