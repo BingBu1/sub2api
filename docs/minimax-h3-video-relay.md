@@ -13,6 +13,8 @@
 
 ## 请求与结果
 
+视频使用 Sub2API 入站端点 `/v1/videos`，创建请求为 `POST /v1/videos`。下游客户端应请求 Sub2API 站点地址，并使用绑定 MiniMax 分组的下游密钥。
+
 使用绑定该分组的下游密钥，提交 JSON：
 
 ```http

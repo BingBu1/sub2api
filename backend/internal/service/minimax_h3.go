@@ -206,7 +206,8 @@ func (s *OpenAIGatewayService) ForwardMiniMaxH3(ctx context.Context, c *gin.Cont
 	if !gjson.ValidBytes(responseBody) || !gjson.ParseBytes(responseBody).IsObject() {
 		return nil, fmt.Errorf("invalid MiniMax-H3 response")
 	}
-	if endpoint == MiniMaxH3EndpointCreate {
+	switch endpoint {
+	case MiniMaxH3EndpointCreate:
 		id := gjson.GetBytes(responseBody, "id").String()
 		if id == "" {
 			id = gjson.GetBytes(responseBody, "task_id").String()
@@ -215,7 +216,7 @@ func (s *OpenAIGatewayService) ForwardMiniMaxH3(ctx context.Context, c *gin.Cont
 			return nil, err
 		}
 		result.ResponseID = MiniMaxH3TaskKey(id)
-	} else if endpoint == MiniMaxH3EndpointStatus {
+	case MiniMaxH3EndpointStatus:
 		if gjson.GetBytes(responseBody, "status").String() == "completed" && validMiniMaxH3OutputURL(gjson.GetBytes(responseBody, "metadata.url").String()) {
 			result.VideoCount = 1
 		}
