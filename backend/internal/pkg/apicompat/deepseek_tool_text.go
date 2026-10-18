@@ -52,11 +52,11 @@ func (d *DeepSeekToolTextDecoder) Push(chunk *ChatCompletionsChunk) *ChatComplet
 		if !d.holding {
 			if idx := strings.IndexByte(text, '<'); idx >= 0 {
 				d.holding = true
-				d.prefix.WriteString(text[:idx])
+				_, _ = d.prefix.WriteString(text[:idx])
 				d.appendPending(text[idx:])
 				text = text[:idx]
 			} else {
-				d.prefix.WriteString(text)
+				_, _ = d.prefix.WriteString(text)
 			}
 		} else {
 			d.appendPending(text)
@@ -76,7 +76,7 @@ func (d *DeepSeekToolTextDecoder) appendPending(text string) {
 		d.pending.Reset()
 		return
 	}
-	d.pending.WriteString(text)
+	_, _ = d.pending.WriteString(text)
 }
 
 // Finish returns only content not already emitted by Push, plus recovered calls.
