@@ -41,7 +41,10 @@ func safeSchemaName(value string) string {
 	// Names are identifiers, not arbitrary strings. Reject URL/query/control
 	// characters rather than quoting potentially sensitive caller text.
 	for _, char := range value {
-		if !(char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9' || strings.ContainsRune("_.-$~/", char)) {
+		switch {
+		case char >= 'a' && char <= 'z', char >= 'A' && char <= 'Z', char >= '0' && char <= '9', strings.ContainsRune("_.-$~/", char):
+			continue
+		default:
 			return "[redacted]"
 		}
 	}
@@ -57,12 +60,12 @@ func schemaPointer(path []string, safe bool) string {
 		if safe {
 			part = safeSchemaName(part)
 			if pointer.Len()+len(part) > 768 {
-				pointer.WriteString("/[truncated]")
+				_, _ = pointer.WriteString("/[truncated]")
 				break
 			}
 		}
-		pointer.WriteByte('/')
-		pointer.WriteString(strings.ReplaceAll(strings.ReplaceAll(part, "~", "~0"), "/", "~1"))
+		_ = pointer.WriteByte('/')
+		_, _ = pointer.WriteString(strings.ReplaceAll(strings.ReplaceAll(part, "~", "~0"), "/", "~1"))
 	}
 	return pointer.String()
 }
