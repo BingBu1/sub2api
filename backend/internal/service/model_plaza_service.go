@@ -289,7 +289,18 @@ func (s *ModelPlazaService) accountModels(ctx context.Context, g *Group) ([]Supp
 			ids = g.ModelAllowlist.FilterForListing(source)
 		}
 		for _, id := range ids {
-			out = append(out, SupportedModel{Name: id, Platform: platform})
+			// 默认目录及白名单展开仍须有账号能够在本分组服务该模型，
+			// 不能把空枚举或平台默认值当成账号分组限制的豁免。
+			for i := range accounts {
+				account := &accounts[i]
+				if account.Platform != platform && (!mixedListingAccountAllowed(platform, account) || !mixedListingModelAllowed(platform, id)) {
+					continue
+				}
+				if account.IsModelSupportedInGroup(&g.ID, id) {
+					out = append(out, SupportedModel{Name: id, Platform: platform})
+					break
+				}
+			}
 		}
 	}
 	return out, nil

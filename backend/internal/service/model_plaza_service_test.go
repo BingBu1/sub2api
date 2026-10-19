@@ -631,3 +631,75 @@ func TestListPlazaGroups_MixedGeminiAccounts(t *testing.T) {
 		})
 	}
 }
+
+func TestListPlazaGroups_DefaultCatalogHonorsAccountGroupLimits(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		platform       string
+		allowed        []string
+		groupAllowlist GroupModelAllowlist
+		wantEmpty      bool
+	}{
+		{name: "wildcard restriction", platform: PlatformAnthropic, allowed: []string{"claude-haiku-*"}},
+		{name: "composite restriction", platform: PlatformComposite, allowed: []string{"claude-haiku-*"}},
+		{
+			name: "group allowlist cannot restore blocked models", platform: PlatformAnthropic,
+			allowed:        []string{"claude-haiku-*"},
+			groupAllowlist: GroupModelAllowlist{Enabled: true, Models: []string{"claude-haiku-4-5-20251001", "claude-opus-4-8"}},
+		},
+		{name: "no matching defaults", platform: PlatformAnthropic, allowed: []string{"unknown-*"}, wantEmpty: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := Group{ID: 10, Platform: tc.platform, ModelAllowlist: tc.groupAllowlist}
+			svc := newPlazaService(nil, []Group{g}, nil)
+			svc.gatewayService = &GatewayService{accountRepo: &modelsListAccountRepoStub{byGroup: map[int64][]Account{
+				10: {{ID: 1, Platform: PlatformAnthropic, AccountGroups: []AccountGroup{{GroupID: 10, AllowedModels: tc.allowed}}}},
+			}}}
+			out, err := svc.ListGroups(context.Background())
+			require.NoError(t, err)
+			if tc.wantEmpty {
+				require.Empty(t, out)
+				return
+			}
+			require.Len(t, out, 1)
+			models := plazaModelsByName(out[0].Models)
+			require.Contains(t, models, "claude-haiku-4-5-20251001")
+			require.NotContains(t, models, "claude-opus-4-8")
+			require.NotContains(t, models, "claude-sonnet-4-6")
+			for _, model := range out[0].Models {
+				require.Contains(t, model.Name, "claude-haiku-")
+				require.Equal(t, PlatformAnthropic, model.Platform)
+			}
+		})
+	}
+}
+
+func TestListPlazaGroups_AccountGroupLimitsPreserveOtherAccountsAndChannels(t *testing.T) {
+	g := Group{ID: 10, Platform: PlatformAnthropic, ModelAllowlist: GroupModelAllowlist{Enabled: true, Models: []string{"claude-*", "channel-only"}}}
+	ch := plazaPricedChannel(1, "channel", []int64{10}, PlatformAnthropic, "channel-only")
+	svc := newPlazaService([]Channel{ch}, []Group{g}, nil)
+	svc.gatewayService = &GatewayService{accountRepo: &modelsListAccountRepoStub{byGroup: map[int64][]Account{
+		10: {
+			{
+				ID: 1, Platform: PlatformAnthropic,
+				Credentials:   map[string]any{"model_mapping": map[string]any{"claude-haiku-4-5-20251001": "upstream"}},
+				AccountGroups: []AccountGroup{{GroupID: 10, AllowedModels: []string{"claude-haiku-*"}}},
+			},
+			{
+				ID: 2, Platform: PlatformAnthropic,
+				Credentials:   map[string]any{"model_mapping": map[string]any{"claude-sonnet-4-6": "upstream"}},
+				AccountGroups: []AccountGroup{{GroupID: 10, AllowedModels: []string{"claude-sonnet-*"}}},
+			},
+			{ID: 3, Platform: PlatformOpenAI}, // another platform cannot authorize Claude defaults
+		},
+	}}}
+	out, err := svc.ListGroups(context.Background())
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	models := plazaModelsByName(out[0].Models)
+	require.Len(t, models, 3)
+	require.Contains(t, models, "claude-haiku-4-5-20251001")
+	require.Contains(t, models, "claude-sonnet-4-6")
+	require.Contains(t, models, "channel-only")
+	require.NotContains(t, models, "claude-opus-4-8")
+}
