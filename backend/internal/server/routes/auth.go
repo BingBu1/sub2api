@@ -28,8 +28,10 @@ func RegisterAuthRoutes(
 	// including when Redis is unavailable. No process cache delays a toggle.
 	loginRateLimitEnabled := func(c *gin.Context) bool {
 		const contextKey = "auth.login_rate_limit_enabled"
-		if enabled, exists := c.Get(contextKey); exists {
-			return enabled.(bool)
+		if cached, exists := c.Get(contextKey); exists {
+			if enabled, ok := cached.(bool); ok {
+				return enabled
+			}
 		}
 		enabled := settingService.IsLoginRateLimitEnabled(c.Request.Context())
 		c.Set(contextKey, enabled)
