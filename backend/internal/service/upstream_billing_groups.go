@@ -43,7 +43,7 @@ func parseMultiGroupUpstreamBillingResponse(body []byte) (map[string]any, error)
 		if err := json.Unmarshal(raw, &identity); err != nil {
 			return nil, err
 		}
-		if identity.GroupID <= 0 || seen[identity.GroupID] || len(identity.GroupName) > 1024 || len(identity.Platform) > 64 || identity.SchemaVersion != 1 || (identity.Status != StatusActive && identity.Status != StatusInactive) {
+		if identity.GroupID <= 0 || seen[identity.GroupID] || len(identity.GroupName) > 1024 || len(identity.Platform) > 64 || identity.SchemaVersion != 1 || (identity.Status != StatusActive && identity.Status != "inactive") {
 			return nil, fmt.Errorf("invalid multi-group billing entry")
 		}
 		seen[identity.GroupID] = true

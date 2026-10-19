@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,5 +90,22 @@ func TestMultiGroupUpstreamDeclarationRejectsInvalidAndDuplicateGroups(t *testin
 		require.NoError(t, err)
 		_, err = parseUpstreamBillingProbeResponse(body)
 		require.Error(t, err)
+	}
+}
+
+func TestMultiGroupUpstreamDeclarationPreservesGroupStatus(t *testing.T) {
+	for _, status := range []string{StatusActive, "inactive", StatusDisabled, "unknown"} {
+		t.Run(status, func(t *testing.T) {
+			body := strings.Replace(string(multiGroupBillingBody(t)), `"status":"active"`, `"status":"`+status+`"`, 1)
+			data, err := parseUpstreamBillingProbeResponse([]byte(body))
+			if status != StatusActive && status != "inactive" {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			groups, ok := data["groups"].([]map[string]any)
+			require.True(t, ok)
+			require.Equal(t, status, groups[0]["status"])
+		})
 	}
 }
