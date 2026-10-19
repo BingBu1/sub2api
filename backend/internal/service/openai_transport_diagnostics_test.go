@@ -25,9 +25,10 @@ func TestHTTPWSRouteDiagnosticsFollowActualDispatch(t *testing.T) {
 			ctx := requesttiming.With(c.Request.Context(), collector)
 			c.Request = c.Request.WithContext(ctx)
 			d := &wsSSETestDialer{conn: &openAIWSCaptureConn{}}
-			if scenario == "handshake_fallback" {
+			switch scenario {
+			case "handshake_fallback":
 				d.conn, d.status, d.err = nil, 426, errors.New("SECRET_DIAL_DETAIL")
-			} else if scenario == "success" {
+			case "success":
 				d.conn = &openAIWSCaptureConn{events: [][]byte{
 					[]byte(`{"type":"response.created","response":{"id":"resp_test"}}`),
 					[]byte(`{"type":"response.output_text.delta","delta":"hello"}`),
