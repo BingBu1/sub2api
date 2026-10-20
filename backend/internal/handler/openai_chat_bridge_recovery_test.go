@@ -3,6 +3,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -68,6 +69,7 @@ func TestChatBridgeHandlerRecoveryAndOpsOutcome(t *testing.T) {
 					Credentials: map[string]any{"access_token": "mock-token"}},
 			}
 			cfg := &config.Config{RunMode: config.RunModeSimple}
+			cfg.Ops.Enabled = true
 			cfg.Default.RateMultiplier = 1
 			cfg.Gateway.MaxAccountSwitches = 1
 			repo := &openAIWSFailoverHandlerAccountRepoStub{accounts: accounts}
@@ -83,6 +85,7 @@ func TestChatBridgeHandlerRecoveryAndOpsOutcome(t *testing.T) {
 			h.maxAccountSwitches = 1
 			opsRepo := &ingressRejectOpsRepo{}
 			ops := service.NewOpsService(opsRepo, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
+			require.True(t, ops.IsMonitoringEnabled(context.Background()), "Ops must be enabled for outcome assertions")
 			router := gin.New()
 			router.Use(OpsErrorLoggerMiddleware(ops))
 			router.Use(func(c *gin.Context) {
