@@ -134,6 +134,7 @@ deploy/docker-compose.override.yml
 .gocache/
 vite.config.js
 docs/*
+!docs/ip-risk-control.md
 !docs/openai-ws-sse-acceleration.md
 !docs/openai-outbound-identity.md
 !docs/openai-2fa-dual-oauth.md
