@@ -91,6 +91,7 @@ func prismBrowserResponsesURL(baseURL string) string {
 
 // Forward forwards request to OpenAI API
 func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, account *Account, body []byte) (result *OpenAIForwardResult, resultErr error) {
+	ctx = s.withOpenAIHTTPBudget(ctx, c)
 	var finishMeter func(*OpenAIForwardResult, error) error
 	var meterErr error
 	ctx, finishMeter, meterErr = s.beginRegionalMeter(ctx, c, account, body)
@@ -1319,6 +1320,14 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		upstreamStart := time.Now()
 		resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)
 		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
+		var phaseTimeout *openAIHTTPPhaseTimeout
+		if errors.As(err, &phaseTimeout) {
+			if headerGuard != nil {
+				headerGuard.close()
+			}
+			return nil, handleOpenAIHTTPPhaseError(c, account, err)
+		}
+
 		if errors.Is(err, ErrCodexTicketResponseRejected) {
 			if headerGuard != nil {
 				headerGuard.close()
@@ -1486,6 +1495,10 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		if reqStream {
 			_ = takeOpenAIStreamInvalidEncryptedContent(c)
 			streamResult, err := s.handleStreamingResponseWithReasoning(ctx, resp, c, account, startTime, originalModel, upstreamModel, reasoningEffortValue)
+			if phaseErr := openAIHTTPPhaseError(resp); phaseErr != nil {
+				return nil, handleOpenAIHTTPPhaseError(c, account, phaseErr)
+			}
+
 			if err != nil {
 				if takeOpenAIStreamInvalidEncryptedContent(c) {
 					markInvalidEncryptedContentLineage("http")
@@ -1536,6 +1549,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			searchCount = streamResult.searchCount
 		} else {
 			nonStreamResult, err := s.handleNonStreamingResponse(ctx, resp, c, account, originalModel, upstreamModel)
+			if phaseErr := openAIHTTPPhaseError(resp); phaseErr != nil {
+				return nil, handleOpenAIHTTPPhaseError(c, account, phaseErr)
+			}
 			if err != nil {
 				if signal, ok := asOpenAICompactFallbackSignal(err); ok {
 					if retryBody, fallbackModel, retry := s.prepareOpenAICompactFallbackRetry(
