@@ -648,19 +648,20 @@ func (s *OpenAIOAuthReauthService) CreateTaskForProfile(ctx context.Context, acc
 		return nil, infraerrors.New(http.StatusInternalServerError, "OPENAI_REAUTH_CREDENTIAL_SNAPSHOT_FAILED", "failed to snapshot account credentials")
 	}
 	var record *OpenAIOAuthReauthTaskRecord
-	if profile == "siwc" {
+	switch profile {
+	case "siwc":
 		siwcRepo, repoErr := s.siwcRepository()
 		if repoErr != nil {
 			return nil, repoErr
 		}
 		record, err = siwcRepo.CreateSIWCTask(ctx, accountID, expectedCredentialsHash)
-	} else if profile == "excel" {
+	case "excel":
 		excelRepo, ok := s.repo.(OpenAIExcelOAuthRepository)
 		if !ok {
 			return nil, infraerrors.ServiceUnavailable("OPENAI_REAUTH_EXCEL_UNAVAILABLE", "Excel authorization queue is unavailable")
 		}
 		record, err = excelRepo.CreateExcelTask(ctx, accountID, expectedCredentialsHash)
-	} else {
+	default:
 		record, err = s.repo.CreateTask(ctx, accountID, expectedCredentialsHash)
 	}
 	if err != nil {
