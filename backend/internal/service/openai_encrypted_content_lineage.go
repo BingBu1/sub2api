@@ -107,6 +107,25 @@ func openAIEncryptedRecoveryAmbiguous(input any) bool {
 	return unsafe || count > 1
 }
 
+// Keep provider-specific sanitization (for example Grok compaction recovery)
+// independent of native OpenAI's opaque-history safety policy.
+func trimOpenAIEncryptedReasoningItemsForRecovery(body map[string]any) bool {
+	if openAIEncryptedRecoveryAmbiguous(body["input"]) {
+		return false
+	}
+	return trimOpenAIEncryptedReasoningItems(body)
+}
+
+func sanitizeOpenAIRecoveryInputItem(item any) (any, bool, bool) {
+	if value, ok := item.(map[string]any); ok {
+		kind, _ := value["type"].(string)
+		if kind == "compaction" || kind == "compaction_summary" {
+			return item, false, true
+		}
+	}
+	return sanitizeEncryptedReasoningInputItem(item)
+}
+
 // collectOpenAIEncryptedContentDigestsRaw only attributes a generic rejection
 // when there is one reasoning ciphertext. Multiple or opaque-history items are
 // not evidence that every input ciphertext is invalid. No plaintext is retained.
@@ -163,7 +182,7 @@ func stripOpenAIInvalidEncryptedContentItems(reqBody map[string]any, invalid map
 		if _, hit := invalid[openAIEncryptedContentDigest(encrypted)]; !hit {
 			return item, false, true
 		}
-		return sanitizeEncryptedReasoningInputItem(item)
+		return sanitizeOpenAIRecoveryInputItem(item)
 	}
 	switch input := inputValue.(type) {
 	case []any:
@@ -281,7 +300,7 @@ func stripOpenAIInvalidEncryptedContentFromReplayItems(items []json.RawMessage, 
 			next = append(next, item)
 			continue
 		}
-		nextItem, changed, keep := sanitizeEncryptedReasoningInputItem(decoded)
+		nextItem, changed, keep := sanitizeOpenAIRecoveryInputItem(decoded)
 		if !changed {
 			next = append(next, item)
 			continue

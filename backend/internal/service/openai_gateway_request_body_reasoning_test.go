@@ -106,8 +106,8 @@ func TestTrimOpenAIEncryptedReasoningItems_Compaction(t *testing.T) {
 		encrypted bool
 		changed   bool
 	}{
-		{name: "compaction", itemType: "compaction", encrypted: true, changed: false},
-		{name: "compaction summary", itemType: "compaction_summary", encrypted: true, changed: false},
+		{name: "compaction", itemType: "compaction", encrypted: true, changed: true},
+		{name: "compaction summary", itemType: "compaction_summary", encrypted: true, changed: true},
 		{name: "unencrypted compaction", itemType: "compaction", encrypted: false, changed: false},
 	}
 
@@ -473,7 +473,7 @@ func TestTrimOpenAIEncryptedReasoningItemsDoesNotGuessRejectedItem(t *testing.T)
 		map[string]any{"type": "compaction_summary", "encrypted_content": "history"},
 	} {
 		body := map[string]any{"input": input}
-		require.False(t, trimOpenAIEncryptedReasoningItems(body))
+		require.False(t, trimOpenAIEncryptedReasoningItemsForRecovery(body))
 		require.Equal(t, input, body["input"])
 	}
 }

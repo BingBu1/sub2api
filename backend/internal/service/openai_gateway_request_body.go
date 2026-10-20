@@ -358,7 +358,7 @@ func trimOpenAIEncryptedReasoningItems(reqBody map[string]any) bool {
 	}
 
 	inputValue, has := reqBody["input"]
-	if !has || openAIEncryptedRecoveryAmbiguous(inputValue) {
+	if !has {
 		return false
 	}
 
@@ -441,8 +441,9 @@ func sanitizeEncryptedReasoningInputItem(item any) (next any, changed bool, keep
 	itemType, _ := inputItem["type"].(string)
 	switch strings.TrimSpace(itemType) {
 	case "compaction", "compaction_summary":
-		// This may be the only surviving conversation history. An upstream
-		// rejection does not authorize silently discarding it.
+		if _, encrypted := inputItem["encrypted_content"]; encrypted {
+			return nil, true, false
+		}
 		return item, false, true
 	case "reasoning":
 	default:

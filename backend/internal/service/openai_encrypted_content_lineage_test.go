@@ -68,7 +68,9 @@ func TestStripOpenAIInvalidEncryptedContentItems(t *testing.T) {
 		input, ok := reqBody["input"].([]any)
 		require.True(t, ok)
 		require.Len(t, input, 2)
-		require.Equal(t, "stale-cipher", input[0].(map[string]any)["encrypted_content"])
+		first, ok := input[0].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "stale-cipher", first["encrypted_content"])
 	})
 
 	t.Run("no_hit_no_change", func(t *testing.T) {

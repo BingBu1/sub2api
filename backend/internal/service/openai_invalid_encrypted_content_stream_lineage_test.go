@@ -380,7 +380,7 @@ func TestHTTPStreamInvalidEncryptedContentPreservesOpaqueAndAmbiguousHistory(t *
 		`[{"type":"reasoning","encrypted_content":"one"},{"type":"reasoning","encrypted_content":"two"},{"type":"input_text","text":"continue"}]`,
 	} {
 		t.Run(input, func(t *testing.T) {
-			rejection := "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"invalid_encrypted_content\",\"message\":\"Invalid encrypted content\"}}}\n\n"
+			rejection := `data: {"type":"response.failed","response":{"error":{"code":"invalid_encrypted_content","message":"Invalid encrypted content"}}}` + "\n\n"
 			upstream := &httpUpstreamSequenceRecorder{responses: []*http.Response{
 				newStreamLineageSSEResponse(streamLineageCreatedEvent, streamLineageDeltaEvent, rejection),
 				newStreamLineageSSEResponse(streamLineageCreatedEvent, streamLineageDeltaEvent, streamLineageDoneEvent),
