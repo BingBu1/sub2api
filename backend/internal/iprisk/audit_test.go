@@ -309,7 +309,7 @@ func TestIPRiskRedisBudgetAndCancellationIsolation(t *testing.T) {
 			return a, nil
 		},
 	})
-	defer blackhole.Close()
+	defer func() { _ = blackhole.Close() }()
 	m.redis = blackhole
 	started := time.Now()
 	_, err = m.activeBan(context.Background(), "8.8.8.8/32", false)

@@ -36,7 +36,7 @@ func testIPRiskWhitelistAccounting(t *testing.T, observe bool) {
 	config.Whitelist = []string{"198.51.100.7"}
 	m := iprisk.New(&riskGuardStore{config: config}, client, nil, false)
 	legacyKey := "auth_abuse:{" + authguard.IPKey("198.51.100.7") + "}:banned"
-	server.Set(legacyKey, "1")
+	require.NoError(t, server.Set(legacyKey, "1"))
 	server.SetTTL(legacyKey, time.Hour)
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies(nil))
@@ -64,7 +64,7 @@ func TestAuthAbuseIPRiskObservationRetainsExistingBan(t *testing.T) {
 	config.ObserveOnly = true
 	m := iprisk.New(&riskGuardStore{config: config}, client, nil, false)
 	legacyKey := "auth_abuse:{" + authguard.IPKey("198.51.100.7") + "}:banned"
-	server.Set(legacyKey, "1")
+	require.NoError(t, server.Set(legacyKey, "1"))
 	server.SetTTL(legacyKey, time.Hour)
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies(nil))
@@ -89,7 +89,7 @@ func TestAuthAbuseIPRiskDisabledPreservesLoginLimitSwitch(t *testing.T) {
 		t.Run(map[bool]string{false: "login-limit-off", true: "login-limit-on"}[enabled], func(t *testing.T) {
 			server := miniredis.RunT(t)
 			client := redis.NewClient(&redis.Options{Addr: server.Addr(), MaxRetries: -1})
-			defer client.Close()
+			defer func() { _ = client.Close() }()
 			manager := iprisk.New(&riskGuardStore{config: iprisk.DefaultConfig()}, client, nil, false)
 			defer manager.Stop()
 			key := "auth_abuse:{" + authguard.IPKey("198.51.100.7") + "}:banned"

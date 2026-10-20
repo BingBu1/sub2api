@@ -139,10 +139,10 @@ func (m *Manager) Save(ctx context.Context, c Config) error {
 	}
 	if c.Enabled && !m.emergencyDisabled {
 		if m.redis == nil {
-			return fmt.Errorf("Redis is required for IP risk control")
+			return fmt.Errorf("redis is required for IP risk control")
 		}
 		if err := m.redis.Ping(ctx).Err(); err != nil {
-			return fmt.Errorf("Redis is unavailable")
+			return fmt.Errorf("redis is unavailable")
 		}
 	}
 	m.saveMu.Lock()
@@ -266,7 +266,7 @@ func (m *Manager) count(ctx context.Context, c Config, network, reason string, t
 		return nil, nil
 	}
 	if m.redis == nil {
-		return nil, errors.New("Redis unavailable")
+		return nil, errors.New("redis unavailable")
 	}
 	prefix := modePrefix(c.ObserveOnly)
 	hash := hashNetwork(network)
@@ -298,7 +298,7 @@ func (m *Manager) count(ctx context.Context, c Config, network, reason string, t
 
 func (m *Manager) activeBan(ctx context.Context, network string, observe bool) (*Ban, error) {
 	if m.redis == nil {
-		return nil, errors.New("Redis unavailable")
+		return nil, errors.New("redis unavailable")
 	}
 	var value string
 	err := m.riskRedis(ctx, func(budget context.Context) error {
@@ -321,7 +321,7 @@ func (m *Manager) activeBan(ctx context.Context, network string, observe bool) (
 
 func (m *Manager) Bans(ctx context.Context) ([]Ban, error) {
 	if m.redis == nil {
-		return nil, errors.New("Redis unavailable")
+		return nil, errors.New("redis unavailable")
 	}
 	bans := []Ban{}
 	for _, observe := range []bool{false, true} {
@@ -329,7 +329,7 @@ func (m *Manager) Bans(ctx context.Context) ([]Ban, error) {
 		if err := m.redis.ZRemRangeByScore(ctx, prefix+"bans", "-inf", fmt.Sprint(time.Now().Unix())).Err(); err != nil {
 			return nil, err
 		}
-		networks, err := m.redis.ZRevRange(ctx, prefix+"bans", 0, 499).Result()
+		networks, err := m.redis.ZRangeArgs(ctx, redis.ZRangeArgs{Key: prefix + "bans", Start: 0, Stop: 499, Rev: true}).Result()
 		if err != nil {
 			return nil, err
 		}
@@ -362,7 +362,7 @@ func (m *Manager) Unban(ctx context.Context, raw string) error {
 		return err
 	}
 	if m.redis == nil {
-		return errors.New("Redis unavailable")
+		return errors.New("redis unavailable")
 	}
 	normalized := network.String()
 	hash := hashNetwork(normalized)
@@ -436,7 +436,7 @@ func (m *Manager) Events(ctx context.Context, ipFilter, reason, category string)
 		}
 	}
 	if m.redis == nil {
-		return nil, errors.New("Redis unavailable")
+		return nil, errors.New("redis unavailable")
 	}
 	c, err := m.Config(ctx)
 	if err != nil {
@@ -445,7 +445,7 @@ func (m *Manager) Events(ctx context.Context, ipFilter, reason, category string)
 	if err := m.redis.ZRemRangeByScore(ctx, redisPrefix+"events", "-inf", fmt.Sprint(time.Now().Add(-time.Duration(c.EventRetentionHours)*time.Hour).UnixMicro())).Err(); err != nil {
 		return nil, err
 	}
-	values, err := m.redis.ZRevRange(ctx, redisPrefix+"events", 0, maxEvents-1).Result()
+	values, err := m.redis.ZRangeArgs(ctx, redis.ZRangeArgs{Key: redisPrefix + "events", Start: 0, Stop: maxEvents - 1, Rev: true}).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +475,7 @@ func (m *Manager) Events(ctx context.Context, ipFilter, reason, category string)
 
 func (m *Manager) ClearEvents(ctx context.Context) error {
 	if m.redis == nil {
-		return errors.New("Redis unavailable")
+		return errors.New("redis unavailable")
 	}
 	return m.redis.Del(ctx, redisPrefix+"events").Err()
 }
