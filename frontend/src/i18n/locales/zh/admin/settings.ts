@@ -1403,6 +1403,10 @@ export default {
         label: '向用户展示缓存率',
         description: '开启后，用户在自己的用量页也能看到单条请求的缓存率。默认关闭，仅管理端可见。',
       },
+      upstream_response_model_to_users: {
+        label: '向用户展示上游实际响应模型',
+        description: '开启后，用户在用量记录中可以看到上游响应里声明的实际模型。默认关闭，仅管理端可见。不影响计费，也不会展示映射后的请求模型或账号信息。',
+      },
       saveSettings: '保存设置',
       saving: '保存中...',
       settingsSaved: '设置保存成功',
