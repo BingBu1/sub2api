@@ -106,8 +106,8 @@ func TestTrimOpenAIEncryptedReasoningItems_Compaction(t *testing.T) {
 		encrypted bool
 		changed   bool
 	}{
-		{name: "compaction", itemType: "compaction", encrypted: true, changed: true},
-		{name: "compaction summary", itemType: "compaction_summary", encrypted: true, changed: true},
+		{name: "compaction", itemType: "compaction", encrypted: true, changed: false},
+		{name: "compaction summary", itemType: "compaction_summary", encrypted: true, changed: false},
 		{name: "unencrypted compaction", itemType: "compaction", encrypted: false, changed: false},
 	}
 
@@ -464,4 +464,16 @@ func TestNormalizeOpenAIResponsesWebSocketReasoningStatusScopedToOpenAI(t *testi
 	require.NoError(t, err)
 	require.False(t, changed)
 	require.Equal(t, body, normalized)
+}
+
+func TestTrimOpenAIEncryptedReasoningItemsDoesNotGuessRejectedItem(t *testing.T) {
+	for _, input := range []any{
+		[]any{map[string]any{"type": "reasoning", "encrypted_content": "one"}, map[string]any{"type": "reasoning", "encrypted_content": "two"}},
+		[]map[string]any{{"type": "reasoning", "encrypted_content": "one"}, {"type": "compaction", "encrypted_content": "history"}},
+		map[string]any{"type": "compaction_summary", "encrypted_content": "history"},
+	} {
+		body := map[string]any{"input": input}
+		require.False(t, trimOpenAIEncryptedReasoningItems(body))
+		require.Equal(t, input, body["input"])
+	}
 }
