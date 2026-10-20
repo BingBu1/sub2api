@@ -103,8 +103,11 @@ func (s *OpenAIGatewayService) guardOpenAIHTTPRequest(req *http.Request, account
 	}
 	uploadLimit := s.openAIUploadTimeout(account)
 	budget.mu.Lock()
-	if uploadLimit > 0 && budget.uploadDeadline.IsZero() {
-		budget.uploadDeadline = time.Now().Add(uploadLimit)
+	if uploadLimit > 0 {
+		candidate := time.Now().Add(uploadLimit)
+		if budget.uploadDeadline.IsZero() || candidate.Before(budget.uploadDeadline) {
+			budget.uploadDeadline = candidate
+		}
 	}
 	uploadDeadline := budget.uploadDeadline
 	budget.mu.Unlock()
