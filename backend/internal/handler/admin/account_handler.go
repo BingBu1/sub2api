@@ -1247,7 +1247,7 @@ func (h *AccountHandler) Update(c *gin.Context) {
 	// 确定是否跳过混合渠道检查
 	skipCheck := req.ConfirmMixedChannelRisk != nil && *req.ConfirmMixedChannelRisk
 
-	account, err := h.adminService.UpdateAccount(c.Request.Context(), accountID, &service.UpdateAccountInput{
+	account, err := h.adminService.UpdateAccount(accountManualSchedulingContext(c, req.Schedulable != nil), accountID, &service.UpdateAccountInput{
 		Name:                  req.Name,
 		Notes:                 req.Notes,
 		Type:                  req.Type,
@@ -2477,7 +2477,7 @@ func (h *AccountHandler) BulkUpdate(c *gin.Context) {
 		return
 	}
 
-	result, err := h.adminService.BulkUpdateAccounts(c.Request.Context(), &service.BulkUpdateAccountsInput{
+	result, err := h.adminService.BulkUpdateAccounts(accountManualSchedulingContext(c, req.Schedulable != nil), &service.BulkUpdateAccountsInput{
 		AccountIDs:            req.AccountIDs,
 		Filters:               toServiceBulkUpdateAccountFilters(req.Filters),
 		Name:                  req.Name,
@@ -2915,7 +2915,7 @@ func (h *AccountHandler) SetSchedulable(c *gin.Context) {
 		return
 	}
 
-	account, err := h.adminService.SetAccountSchedulable(c.Request.Context(), accountID, req.Schedulable)
+	account, err := h.adminService.SetAccountSchedulable(accountManualSchedulingContext(c, true), accountID, req.Schedulable)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
