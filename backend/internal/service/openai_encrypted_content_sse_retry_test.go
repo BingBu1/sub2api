@@ -120,8 +120,13 @@ func TestForwardEncryptedContentSSERetry(t *testing.T) {
 						require.False(t, gjson.GetBytes(retry, "input.0.encrypted_content").Exists())
 						require.Equal(t, "keep summary", gjson.GetBytes(retry, "input.0.summary.0.text").String())
 						require.Equal(t, "continue task", gjson.GetBytes(retry, "input.1.content").String())
-						require.Equal(t, "call_history", gjson.GetBytes(retry, "input.2.call_id").String())
-						require.Equal(t, "call_history", gjson.GetBytes(retry, "input.3.call_id").String())
+						// OAuth normalizes call IDs before the first upstream attempt.
+						// Recovery must preserve that normalized call/result pairing.
+						historyCallID := gjson.GetBytes(upstream.bodies[0], "input.2.call_id").String()
+						require.NotEmpty(t, historyCallID)
+						require.Equal(t, historyCallID, gjson.GetBytes(upstream.bodies[0], "input.3.call_id").String())
+						require.Equal(t, historyCallID, gjson.GetBytes(retry, "input.2.call_id").String())
+						require.Equal(t, historyCallID, gjson.GetBytes(retry, "input.3.call_id").String())
 						require.Equal(t, "keep result", gjson.GetBytes(retry, "input.3.output").String())
 					}
 				})
