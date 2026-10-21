@@ -96,6 +96,9 @@ describe('quality operations', () => {
     ;(wrapper.vm as any).newPlan(); await flushPromises()
     expect(wrapper.get('[data-testid="quality-model-shortcuts"]').text()).toContain('private-model')
     useAuthStore().user!.id = 2; await flushPromises()
+    // Changing identity closes the editor; reopen it as the new administrator.
+    expect(wrapper.find('[data-testid="quality-model-shortcuts"]').exists()).toBe(false)
+    ;(wrapper.vm as any).newPlan(); await flushPromises()
     expect(wrapper.get('[data-testid="quality-model-shortcuts"]').text()).not.toContain('private-model')
     expect(wrapper.findAll('[data-testid="quality-model-shortcut"]')).toHaveLength(3)
     wrapper.unmount()
