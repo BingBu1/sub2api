@@ -273,7 +273,13 @@ func (m *Manager) count(ctx context.Context, c Config, network, reason string, t
 	hash := hashNetwork(network)
 	now := time.Now()
 	ban := Ban{Network: network, Reason: reason, CreatedAt: now.Unix(), ExpiresAt: now.Unix() + int64(c.BanSeconds), ObserveOnly: c.ObserveOnly}
-	encoded, _ := json.Marshal(ban)
+	// A fresh internal generation prevents a stale administrative confirmation
+	// from matching a replacement ban created with identical second timestamps.
+	// It is retained only in Redis; public Ban metadata remains unchanged.
+	encoded, _ := json.Marshal(struct {
+		Ban
+		Generation string `json:"generation"`
+	}{Ban: ban, Generation: uuid.NewString()})
 	limit := t.Limit + 1 // Allow exactly Limit requests; failures ban on the Limit-th failure.
 	if failure {
 		limit = t.Limit

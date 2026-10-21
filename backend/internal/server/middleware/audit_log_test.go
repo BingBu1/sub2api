@@ -306,3 +306,44 @@ func TestAnonymousGuardAdminAuditOmitsBodies(t *testing.T) {
 	require.True(t, actions["admin.ip_risk.anonymous.unban"])
 	require.True(t, actions["admin.ip_risk.anonymous.bans.read"])
 }
+
+func TestIPAuditRecoveryOperatorAuditsWithoutRequestBody(t *testing.T) {
+	repository := &auditCaptureRepository{}
+	auditService := service.NewAuditLogService(repository, nil)
+	auditService.Start()
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set(string(ContextKeyUser), AuthSubject{UserID: 17})
+		c.Set(string(ContextKeyUserRole), "admin")
+		c.Next()
+	})
+	router.Use(gin.HandlerFunc(NewAuditLogMiddleware(auditService)))
+	router.POST("/api/v1/admin/settings/ip-audit/release", func(c *gin.Context) {
+		SetAuditAction(c, "admin.ip_audit.release")
+		SetAuditExtra(c, map[string]any{"source": "anonymous_api", "reason_code": "operator_review", "result": "released", "readback": "released", "filter_hash": "digest", "remaining_count": 1})
+		c.Status(200)
+	})
+	router.GET("/api/v1/admin/settings/ip-audit", func(c *gin.Context) { c.Status(200) })
+	for _, method := range []string{"POST", "GET"} {
+		path := "/api/v1/admin/settings/ip-audit"
+		if method == "POST" {
+			path += "/release"
+		}
+		req := httptest.NewRequest(method, path, strings.NewReader(`{"network":"8.8.8.8","key":"private-canary"}`))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(httptest.NewRecorder(), req)
+	}
+	auditService.Stop()
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	require.Len(t, repository.logs, 2)
+	for _, row := range repository.logs {
+		require.EqualValues(t, 17, *row.ActorUserID)
+		require.NotContains(t, row.RequestBody, "private-canary")
+		require.NotContains(t, row.RequestBody, "8.8.8.8")
+	}
+	require.Equal(t, "admin.ip_audit.release", repository.logs[0].Action)
+	require.Equal(t, "anonymous_api", repository.logs[0].Extra["source"])
+	require.Equal(t, "operator_review", repository.logs[0].Extra["reason_code"])
+	require.Equal(t, "released", repository.logs[0].Extra["result"])
+}

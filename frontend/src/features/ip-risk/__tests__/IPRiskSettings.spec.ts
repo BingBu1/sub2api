@@ -67,6 +67,17 @@ describe('IP risk settings', () => {
     wrapper.unmount()
   })
 
+  it('opens the existing settings component from the security deep link', async () => {
+    const original = window.location.href
+    window.history.replaceState({}, '', '/admin/settings?tab=security#ip-risk-settings')
+    try {
+      const wrapper = create();await flushPromises()
+      expect((wrapper.get('details').element as HTMLDetailsElement).open).toBe(true)
+      expect(ipRiskAPI.get).toHaveBeenCalledOnce()
+      wrapper.unmount()
+    } finally { window.history.replaceState({}, '', original) }
+  })
+
   it('loads only when opened and preserves safe initial defaults', async () => {
     const wrapper = create(); await flushPromises()
     expect(ipRiskAPI.get).not.toHaveBeenCalled()

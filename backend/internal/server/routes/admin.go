@@ -671,6 +671,7 @@ func registerPromoCodeRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	adminSettings := admin.Group("/settings")
 	{
+		registerIPAuditRoutes(adminSettings, h.Admin.Setting)
 		adminSettings.GET("/ip-risk", h.Admin.Setting.GetIPRisk)
 		adminSettings.PUT("/ip-risk", h.Admin.Setting.SaveIPRisk)
 		adminSettings.GET("/ip-risk/events", h.Admin.Setting.GetIPRiskEvents)

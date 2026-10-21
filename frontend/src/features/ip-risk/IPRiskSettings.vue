@@ -1,5 +1,5 @@
 <template>
-  <details class="card" data-testid="ip-risk-settings" @toggle="onToggle">
+  <details id="ip-risk-settings" class="card" :open="initiallyOpen" data-testid="ip-risk-settings" @toggle="onToggle">
     <summary class="cursor-pointer px-6 py-4 font-semibold">{{ tr('title') }}</summary>
     <div class="space-y-5 border-t border-gray-100 p-6 dark:border-dark-700">
       <p class="text-sm text-gray-500">{{ tr('description') }}</p>
@@ -154,10 +154,11 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, toRaw } from 'vue'
+import { onMounted, onBeforeUnmount, ref, toRaw } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ipRiskAPI, type IPBan, type IPBlockRule, type IPRiskConfig, type IPRiskEvent, type IPRiskSnapshot } from './api'
 
+const initiallyOpen = typeof window !== 'undefined' && window.location.hash === '#ip-risk-settings'
 const { t, te } = useI18n()
 const tr = (key: string) => t(`admin.settings.ipRisk.${key}`)
 const label = (key: string) => key && te(`admin.settings.ipRisk.labels.${key}`) ? tr(`labels.${key}`) : key || '—'
@@ -172,6 +173,7 @@ const counterKeys = ['login_attempts', 'login_failures', 'register_attempts', 'r
 const reasons = [...counterKeys, 'ip_blacklist', 'country_blocked', 'country_not_allowed', 'country_unknown', 'user_agent_blocked', 'empty_user_agent', 'invalid_client_ip', 'risk_store_unavailable']
 let disposed = false
 onBeforeUnmount(() => { disposed = true })
+onMounted(() => { if (initiallyOpen) void load() })
 const lines = (value: string) => [...new Set(value.split(/[\n,]+/).map(v => v.trim()).filter(Boolean))]
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString()
 function localDate(seconds: number) {

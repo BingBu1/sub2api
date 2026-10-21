@@ -103,7 +103,7 @@ redis.call('ZADD',KEYS[1],now+window,ARGV[1])
 redis.call('EXPIRE',KEYS[1],90000)
 if redis.call('ZCARD',KEYS[2]) < tonumber(ARGV[3]) then return {'',0} end
 local expires = math.floor(now/1000)+tonumber(ARGV[4])
-local ban = cjson.encode({network=ARGV[1],reason='anonymous_api_'..ARGV[7],created_at=math.floor(now/1000),expires_at=expires,observe_only=false})
+local ban = cjson.encode({generation=ARGV[6],network=ARGV[1],reason='anonymous_api_'..ARGV[7],created_at=math.floor(now/1000),expires_at=expires,observe_only=false})
 redis.call('SET',KEYS[3],ban,'EX',ARGV[4])
 redis.call('DEL',KEYS[2])
 redis.call('ZADD',KEYS[1],now+tonumber(ARGV[4])*1000,ARGV[1])
