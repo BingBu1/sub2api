@@ -4,10 +4,11 @@ import { createI18n } from 'vue-i18n'
 import UsageConnections from '../UsageConnections.vue'
 import type { ConnectionTrace } from '@/api/admin/usageConnections'
 import en from '@/i18n/locales/en'
+import zh from '@/i18n/locales/zh'
 const list = vi.hoisted(() => vi.fn())
 vi.mock('@/api/admin/usageConnections', () => ({ listConnections: list }))
-function render(filters = {}) {
-  return mount(UsageConnections, { props: { filters, refreshKey: 0 }, global: { plugins: [createI18n({ legacy: false, locale: 'en', messages: { en } })], stubs: { OpsErrorDetailModal: true, BaseDialog: { props: ['show'], template: '<div v-if="show"><slot /></div>' }, DataTable: { props: ['data'], template: '<div><div v-for="row in data" :key="row.trace_id"><slot name="cell-state" :row="row" /><slot name="cell-user" :row="row" /><slot name="cell-actions" :row="row" /></div></div>' } } } })
+function render(filters = {}, locale: 'en' | 'zh' = 'en') {
+  return mount(UsageConnections, { props: { filters, refreshKey: 0 }, global: { plugins: [createI18n({ legacy: false, locale, messages: { en, zh } })], stubs: { OpsErrorDetailModal: true, BaseDialog: { props: ['show'], template: '<div v-if="show"><slot /></div>' }, DataTable: { props: ['data'], template: '<div><div v-for="row in data" :key="row.trace_id"><slot name="cell-state" :row="row" /><slot name="cell-user" :row="row" /><slot name="cell-actions" :row="row" /></div></div>' } } } })
 }
 const edge = { trace_id: 'edge-id', source: 'nginx', state: 'edge_failed', user_id: 0, api_key_id: 0, host: 'relay.example.com', path: '/v1/responses', detail: { status: 502, version: 1, events: {}, attempts: [] } } as unknown as ConnectionTrace
 beforeEach(() => list.mockReset().mockResolvedValue({ items: [edge], has_more: false }))
@@ -19,6 +20,18 @@ describe('connection diagnostics', () => {
     expect(wrapper.text()).toContain('Unidentified user')
     expect(wrapper.text()).toContain('Edge failure')
     expect(wrapper.text()).not.toContain('Client received')
+  })
+  it.each([
+    ['en', 'Unidentified user', 'Edge failure', 'Page 1'],
+    ['zh', '未识别用户', '入口异常', '第 1 页'],
+  ] as const)('renders real %s namespace messages and interpolation', async (locale, unidentified, failure, page) => {
+    const wrapper = render({}, locale)
+    await flushPromises()
+    expect(wrapper.text()).toContain(unidentified)
+    expect(wrapper.text()).toContain(failure)
+    expect(wrapper.text()).toContain(page)
+    expect(wrapper.text()).not.toMatch(/connections\./)
+    wrapper.unmount()
   })
   it('refreshes without retaining stale rows after a failed query', async () => {
     const wrapper = render()

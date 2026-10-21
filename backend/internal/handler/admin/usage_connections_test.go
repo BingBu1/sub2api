@@ -62,6 +62,21 @@ func TestEdgeImportSanitizesAndCannotAssertUserIdentity(t *testing.T) {
 	require.True(t, ok)
 	require.Empty(t, got.Host)
 	require.Empty(t, got.Path)
+	// Missing host is allowed only before HTTP exists; a malformed host is
+	// rejected even for TLS handshake errors, without attributing an identity.
+	for _, host := range []string{"", "relay.example.com", "invalid/host"} {
+		v.Host = host
+		_, ok = edgeConnectionRecord(v, now)
+		require.Equal(t, host != "invalid/host", ok, host)
+	}
+	v.NetworkError = "upstream_unavailable"
+	v.Status = 502
+	v.Path = "/v1/responses"
+	v.Method = "POST"
+	v.Host = ""
+	_, ok = edgeConnectionRecord(v, now)
+	require.False(t, ok, "ordinary HTTP events require a host")
+	v.Host = "relay.example.com"
 	v.Time = now.Add(-31 * 24 * time.Hour)
 	_, ok = edgeConnectionRecord(v, now)
 	require.False(t, ok)

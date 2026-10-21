@@ -46,7 +46,7 @@ func edgeConnectionRecord(v edgeConnectionEvent, now time.Time) (service.Connect
 		return service.ConnectionTrace{}, false
 	}
 	handshake := v.NetworkError == "tls_error" && v.Status == 0 && v.Path == "" && v.Method == ""
-	if (!connectionHostPattern.MatchString(v.Host) && !(handshake && v.Host == "")) || (v.Scheme != "http" && v.Scheme != "https") || len(v.RequestID) > 128 || len(v.Path) > 4096 || len(v.Method) > 16 || len(v.HTTPVersion) > 16 || len(v.TLSVersion) > 32 || len(v.UpstreamStatus) > 64 {
+	if (!connectionHostPattern.MatchString(v.Host) && (!handshake || v.Host != "")) || (v.Scheme != "http" && v.Scheme != "https") || len(v.RequestID) > 128 || len(v.Path) > 4096 || len(v.Method) > 16 || len(v.HTTPVersion) > 16 || len(v.TLSVersion) > 32 || len(v.UpstreamStatus) > 64 {
 		return service.ConnectionTrace{}, false
 	}
 	if !connectionIDPattern.MatchString(v.RequestID) || !connectionIDPattern.MatchString(v.Method) || !connectionIDPattern.MatchString(v.TLSVersion) {
