@@ -261,9 +261,11 @@ describe('admin AccountsView bulk edit scope', () => {
   it('keeps checked OAuth IDs when a stale filtered-edit action fires', async () => {
     const page = probePage([7, 11, 13])
     page.items[0] = { ...page.items[0], type: 'oauth' }
-    listWithEtag.mockResolvedValue({ notModified: false, etag: 'selection', data: page })
+    // Initial mounting uses list(); listWithEtag() only serves incremental refreshes.
+    listAccounts.mockResolvedValue(page)
     const wrapper = mountProbeView({ BulkEditAccountModal: BulkEditAccountModalStub })
     await flushPromises()
+    expect(wrapper.findAll('[data-account-id]').map(row => row.attributes('data-account-id'))).toEqual(['7', '11', '13'])
     await wrapper.get('[data-account-id="7"] [data-test="select-row"] input').trigger('change')
     const callsBeforeEdit = listAccounts.mock.calls.length
     await wrapper.get('[data-test="edit-filtered"]').trigger('click')
