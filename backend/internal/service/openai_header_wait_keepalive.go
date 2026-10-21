@@ -109,7 +109,7 @@ func (w *openAIHeaderWaitWriter) writeFailure(body []byte) (int, error) {
 	w.terminalSent = true
 	MarkResponseCommitted(w.c)
 	MarkOpsStreamFailure(w.c, errType, code, message, w.errorStatus)
-	header := w.ResponseWriter.Header()
+	header := w.Header()
 	header.Set("Content-Type", "text/event-stream")
 	header.Del("Content-Length")
 	header.Del("Content-Encoding")
