@@ -1819,6 +1819,9 @@ func (s *OpenAIGatewayService) recordOpenAIStreamUpstreamError(
 	message string,
 ) string {
 	message = sanitizeUpstreamErrorMessage(strings.TrimSpace(message))
+	if isOpenAIInvalidEncryptedContentSSE(payload, effectiveOpenAISSEEventType(payload, "")) {
+		message = openAIEncryptedErrorRedacted
+	}
 	if message == "" {
 		message = "OpenAI upstream response failed"
 	}
