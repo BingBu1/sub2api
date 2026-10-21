@@ -182,3 +182,15 @@ func TestOpenAIHeaderWaitDisabledAndCompactAreUntouched(t *testing.T) {
 	require.False(t, w.committed)
 	require.Zero(t, rec.Body.Len())
 }
+
+func TestOpenAIHeaderWaitAdoptsEarlierQueueHeartbeat(t *testing.T) {
+	c, rec, _, _ := newHeaderWaitTest(t, nil)
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	_, err := c.Writer.WriteString(":\n\n")
+	require.NoError(t, err)
+	recordOpenAIStreamKeepaliveBytes(c, 3)
+	c.JSON(400, gin.H{"error": gin.H{"code": "bad_input", "message": "bad request"}})
+	require.Equal(t, 200, rec.Code)
+	require.Contains(t, rec.Body.String(), "event: response.failed")
+	require.NotContains(t, rec.Body.String(), "response.completed")
+}

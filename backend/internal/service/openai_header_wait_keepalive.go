@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"net/http"
 	"strings"
 	"sync"
@@ -62,6 +63,11 @@ func (w *openAIHeaderWaitWriter) Write(p []byte) (int, error) {
 		return w.writeFailure(p)
 	}
 	n, err := w.ResponseWriter.Write(p)
+	// Slot-wait and reader heartbeats may commit the same SSE before this
+	// transport's timer fires. They need the same error representation guard.
+	if (bytes.HasPrefix(p, []byte(": keepalive")) || bytes.Equal(p, []byte(":\n\n"))) && n > 0 && err == nil && w.Status() == http.StatusOK && strings.HasPrefix(w.Header().Get("Content-Type"), "text/event-stream") {
+		w.committed = true
+	}
 	if err != nil {
 		w.writeErr = err
 	}
@@ -160,6 +166,8 @@ func startOpenAIHeaderWaitKeepaliveInterval(c *gin.Context, w *openAIHeaderWaitW
 	}
 }
 
+// OpenAIHeaderWaitDisconnected prevents new attempts after a failed downstream
+// write/flush, while the already sent upstream request can still settle usage.
 func OpenAIHeaderWaitDisconnected(c *gin.Context) bool {
 	if c == nil {
 		return false
