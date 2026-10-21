@@ -5,6 +5,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -25,9 +26,20 @@ func newAdmissionFixture(t *testing.T) *admissionFixture {
 	t.Helper()
 	ctx := t.Context()
 	f := &admissionFixture{t: t, plans: NewScheduledTestPlanRepository(integrationDB), policy: service.DefaultOpenAITwoFAAdmissionConfig()}
-	for range 3 {
+	t.Cleanup(func() {
+		ctx := context.Background()
+		if f.account != nil {
+			_, _ = integrationDB.ExecContext(ctx, `DELETE FROM scheduler_outbox WHERE account_id=$1`, f.account.ID)
+			_, _ = integrationDB.ExecContext(ctx, `DELETE FROM accounts WHERE id=$1`, f.account.ID)
+		}
+		for _, id := range f.groups {
+			_, _ = integrationDB.ExecContext(ctx, `DELETE FROM groups WHERE id=$1`, id)
+		}
+	})
+	for i := range 3 {
 		var id int64
-		require.NoError(t, integrationDB.QueryRowContext(ctx, `INSERT INTO groups(name,platform,status) VALUES('2fa-admission-test','openai','active') RETURNING id`).Scan(&id))
+		name := fmt.Sprintf("2fa-admission-%d-%d", time.Now().UnixNano(), i)
+		require.NoError(t, integrationDB.QueryRowContext(ctx, `INSERT INTO groups(name,platform,status) VALUES($1,'openai','active') RETURNING id`, name).Scan(&id))
 		f.groups = append(f.groups, id)
 	}
 	f.policy.Enabled, f.policy.IsolationGroupID = true, f.groups[2]
@@ -37,14 +49,7 @@ func newAdmissionFixture(t *testing.T) *admissionFixture {
 			Quality: &service.QualityPolicy{Action: service.QualityActionOpenAITwoFAAdmission, ExpectedAnswer: "21", Admission: &f.policy}}}
 	f.account = &service.Account{Name: "2fa-admission-test", Platform: service.PlatformOpenAI, Type: service.AccountTypeOAuth, Status: service.StatusActive, Concurrency: 1, Schedulable: false,
 		Extra: map[string]any{"keep": "value", service.OpenAITwoFAAdmissionExtraKey: service.OpenAITwoFAAdmissionState{Policy: f.policy, Phase: "pending"}}, InitialAdmissionPlan: plan}
-	t.Cleanup(func() {
-		ctx := context.Background()
-		_, _ = integrationDB.ExecContext(ctx, `DELETE FROM scheduler_outbox WHERE account_id=$1`, f.account.ID)
-		_, _ = integrationDB.ExecContext(ctx, `DELETE FROM accounts WHERE id=$1`, f.account.ID)
-		for _, id := range f.groups {
-			_, _ = integrationDB.ExecContext(ctx, `DELETE FROM groups WHERE id=$1`, id)
-		}
-	})
+
 	repo := newAccountRepositoryWithSQL(integrationEntClient, integrationDB, nil)
 	require.NoError(t, repo.CreateWithAccountGroups(ctx, f.account, []service.AccountGroup{{GroupID: f.groups[0], Priority: 7}, {GroupID: f.groups[1], Priority: 9}}))
 	plans, err := f.plans.ListByAccountID(ctx, f.account.ID)
