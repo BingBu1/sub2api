@@ -14,6 +14,8 @@ import (
 
 const openAIEncryptedErrorRedacted = "Upstream encrypted content error (details redacted)"
 
+var openAIEncryptedRelayTrace = regexp.MustCompile(`^（traceid: [0-9a-fA-F]{32}）$`)
+
 // A locator alone proves nothing. Only an explicit encryption rejection, this
 // exact diagnostic and one safe matching item together allow recovery.
 var openAIEncryptedLocator = regexp.MustCompile(`^The encrypted content ([A-Za-z0-9_-]{4})\.\.\.([A-Za-z0-9_-]{4}) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.$`)
@@ -34,6 +36,31 @@ func openAIEncryptedRejectionFields(rejection []byte) (string, string) {
 	} else if root.Get("error").IsObject() {
 		root = root.Get("error")
 	}
+	// Some relays encode one structured error inside error.message. Only
+	// unwrap a code-less invalid_request_error envelope, never arbitrary text
+	// or a conflicting explicit code. Validate inner keys separately too.
+	if root.Get("code").Type == gjson.Null && root.Get("type").String() == "invalid_request_error" {
+		message := root.Get("message")
+		if message.Type != gjson.String || !strings.HasPrefix(message.String(), "{") ||
+			(root.Get("param").Exists() && root.Get("param").Type != gjson.Null) {
+			return "", ""
+		}
+		decoder := json.NewDecoder(strings.NewReader(message.String()))
+		var inner json.RawMessage
+		if err := decoder.Decode(&inner); err != nil || !openAIEncryptedJSONUnambiguous(inner) {
+			return "", ""
+		}
+		suffix := strings.TrimSpace(message.String()[decoder.InputOffset():])
+		if suffix != "" && !openAIEncryptedRelayTrace.MatchString(suffix) {
+			return "", ""
+		}
+		envelope := gjson.ParseBytes(inner)
+		if !envelope.Get("error").IsObject() || envelope.Get("response").Exists() ||
+			envelope.Get("code").Exists() || envelope.Get("message").Exists() {
+			return "", ""
+		}
+		root = envelope.Get("error") // One layer only; nested wrappers stay invalid.
+	}
 	if root.Get("code").Type != gjson.String || (root.Get("message").Exists() && root.Get("message").Type != gjson.String) {
 		return "", ""
 	}
@@ -49,8 +76,11 @@ func openAIRejectedEncryptedDigests(body, rejection []byte) []string {
 	match := openAIEncryptedLocator.FindStringSubmatch(message)
 	// Preserve the legacy single-item generic-code recovery. If a locator is
 	// present but malformed, do not silently fall back to that policy.
-	if len(match) == 0 && (strings.Contains(message, "...") || strings.ContainsAny(message, "…\r\n") ||
-		(strings.Contains(strings.ToLower(message), "the encrypted content") && message != "The encrypted content could not be verified." && message != "The encrypted content could not be verified. Reason: Encrypted content could not be decrypted or parsed.") || strings.EqualFold(strings.TrimSpace(code), "thinking_signature_invalid")) {
+	genericDiagnostic := message == "The encrypted content could not be verified" ||
+		message == "The encrypted content could not be verified." ||
+		message == "The encrypted content could not be verified. Reason: Encrypted content could not be decrypted or parsed."
+	if len(match) == 0 && !genericDiagnostic && (strings.Contains(message, "...") || strings.ContainsAny(message, "…\r\n") ||
+		strings.Contains(strings.ToLower(message), "the encrypted content") || strings.EqualFold(strings.TrimSpace(code), "thinking_signature_invalid")) {
 		return nil
 	}
 	input := gjson.GetBytes(body, "input")
