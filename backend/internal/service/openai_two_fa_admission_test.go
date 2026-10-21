@@ -102,7 +102,9 @@ func TestOpenAITwoFAAdmissionImportScopeAndSnapshot(t *testing.T) {
 			require.Equal(t, 1, input.Concurrency)
 			require.Equal(t, []int64{2}, input.GroupIDs)
 			require.Equal(t, true, input.Extra["keep"])
-			require.Equal(t, "pending", input.Extra[OpenAITwoFAAdmissionExtraKey].(OpenAITwoFAAdmissionState).Phase)
+			state, ok := input.Extra[OpenAITwoFAAdmissionExtraKey].(OpenAITwoFAAdmissionState)
+			require.True(t, ok)
+			require.Equal(t, "pending", state.Phase)
 			p := input.InitialAdmissionPlan
 			require.True(t, p.Enabled)
 			require.Equal(t, "gpt-6.1-sol", p.ModelID)
