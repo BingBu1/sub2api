@@ -636,11 +636,10 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 }
 
 func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *UpdateAccountInput) (*Account, error) {
-	if input.Schedulable == nil {
-		ctx = accounttimer.WithPreservedSchedulable(ctx)
-	} else {
-		ctx = accounttimer.WithManualAccount(ctx, id)
-	}
+	// This DTO edits account settings, not the scheduling permission. Dedicated
+	// single/bulk switch APIs carry manual intent; an ordinary edit must neither
+	// overwrite a concurrently executed timer nor cancel plans via inherited intent.
+	ctx = accounttimer.WithPreservedSchedulable(accounttimer.WithoutManualIntent(ctx))
 	if err := ValidateAccountCostMultiplierExtra(input.Extra); err != nil {
 		return nil, err
 	}
