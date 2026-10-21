@@ -112,7 +112,7 @@ func TestOpenAIAPIKeyBareErrorRetainsUpstreamProvenance(t *testing.T) {
 			require.ErrorContains(t, err, "upstream response failed")
 			require.NotNil(t, result)
 			var failover *UpstreamFailoverError
-			require.False(t, errors.As(err, &failover))
+			require.NotErrorAs(t, err, &failover)
 			events, ok := c.Get(OpsUpstreamErrorsKey)
 			require.True(t, ok)
 			upstream := events.([]*OpsUpstreamErrorEvent)
