@@ -14,7 +14,7 @@ import (
 )
 
 func TestHandle429_OpenAIAPIKeyIgnoresRelayedQuotaWindows(t *testing.T) {
-	for _, source := range []string{"body_reset_at", "body_reset_seconds", "codex_headers", "anthropic_headers", "ordinary_429"} {
+	for _, source := range []string{"body_reset_at", "body_reset_seconds", "codex_headers", "anthropic_headers", "opencode_body", "ordinary_429"} {
 		t.Run(source, func(t *testing.T) {
 			repo := &openAI429SnapshotRepo{}
 			svc := NewRateLimitService(repo, nil, nil, nil, nil)
@@ -28,6 +28,8 @@ func TestHandle429_OpenAIAPIKeyIgnoresRelayedQuotaWindows(t *testing.T) {
 				body = []byte(`{"error":{"type":"usage_limit_reached","plan_type":"pro","resets_at":4102444800}}`)
 			case "body_reset_seconds":
 				body = []byte(`{"error":{"type":"rate_limit_exceeded","resets_in_seconds":604800}}`)
+			case "opencode_body":
+				body = []byte(`{"error":{"type":"GoUsageLimitError","message":"5-hour usage limit reached. Resets in 4hr 59min."}}`)
 			case "codex_headers":
 				headers.Set("x-codex-primary-used-percent", "100")
 				headers.Set("x-codex-primary-reset-after-seconds", "604800")
