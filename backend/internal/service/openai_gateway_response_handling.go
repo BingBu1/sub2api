@@ -250,7 +250,7 @@ func (s *OpenAIGatewayService) handleStreamingResponseWithReasoning(ctx context.
 	// 注意：OpenAI `/v1/responses` streaming 事件必须符合 OpenAI Responses schema；
 	// 否则下游 SDK（例如 OpenCode）会因为类型校验失败而报错。
 	errorEventSent := false
-	clientDisconnected := false // 客户端断开后继续 drain 上游以收集 usage
+	clientDisconnected := OpenAIHeaderWaitDisconnected(c) // Preserve heartbeat transport failure while draining usage.
 	sawTerminalEvent := false
 	sawFailedEvent := false
 	sawBareError := false
@@ -1925,6 +1925,9 @@ func buildOpenAIResponseFailedSSE(responseID, model string, createdAt int64, sou
 		message = "Upstream response failed"
 	}
 	errorBody := gin.H{"code": code, "message": message}
+	if param := gjson.GetBytes(source, "error.param"); param.Exists() && param.Type != gjson.Null {
+		errorBody["param"] = param.Value()
+	}
 	if errorType != "" {
 		errorBody["type"] = errorType
 	}

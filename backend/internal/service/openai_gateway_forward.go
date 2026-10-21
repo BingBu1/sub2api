@@ -1356,7 +1356,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			return nil, err
 		}
 		upstreamStart := time.Now()
-		resp, err := s.doOpenAIUpstream(upstreamReq, proxyURL, account)
+		resp, err := func() (*http.Response, error) {
+			stop := s.startOpenAIHeaderWaitKeepalive(c, reqStream)
+			defer stop()
+			return s.doOpenAIUpstream(upstreamReq, proxyURL, account)
+		}()
 		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
 		var phaseTimeout *openAIHTTPPhaseTimeout
 		if errors.As(err, &phaseTimeout) {

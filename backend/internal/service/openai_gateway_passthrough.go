@@ -405,7 +405,11 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 			return nil, err
 		}
 		upstreamStart := time.Now()
-		resp, err = s.doOpenAIUpstream(upstreamReq, proxyURL, account)
+		resp, err = func() (*http.Response, error) {
+			stop := s.startOpenAIHeaderWaitKeepalive(c, reqStream)
+			defer stop()
+			return s.doOpenAIUpstream(upstreamReq, proxyURL, account)
+		}()
 		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
 		if err != nil {
 			if account.IsCopilotSDKEnabled() {
@@ -2034,7 +2038,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithImage(
 	ctx = requesttiming.ResponseContext(ctx, resp)
 	ttftMode := s.openAITTFTMode(ctx)
 	requesttiming.Mode(ctx, ttftMode)
-	clientDisconnected := false
+	clientDisconnected := OpenAIHeaderWaitDisconnected(c)
 	sawDone := false
 	sawTerminalEvent := false
 	sawFailedEvent := false
