@@ -247,6 +247,8 @@ export default {
       },
       security: {
         loginRateLimit: 'Login rate limiting',
+        registrationIPLimit: 'Registration account limit per IP',
+        registrationIPLimitHint: 'Enabled by default: at most 2 accounts per IP, including email and OAuth signups. Shared networks may block legitimate users. Disabling removes only this quota; CAPTCHA, email verification, request limits and login protection are unchanged. Saving takes effect immediately. Existing counts are retained, signups while disabled are not counted, and re-enabling resumes the retained counts.',
         loginRateLimitHint: 'Enabled by default. Limits sign-in requests and bans an IP for 1 hour after 10 failed verifications within 15 minutes. Disabling bypasses request limits and IP bans for password, two-factor, Passkey, and OAuth account-binding sign-ins. Saving takes effect immediately for admins and users. Existing bans retain their original expiry when re-enabled.',
         passkey: 'Passkey Sign-in',
         passkeyHint: 'Allow passwordless sign-in and user-managed passkeys when the relying party configuration is valid.',
