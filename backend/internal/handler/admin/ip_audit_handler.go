@@ -99,11 +99,12 @@ func (h *SettingHandler) GetIPAudit(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 	var page iprisk.AuditPage
-	if q.Source == "security_penalty" {
+	switch q.Source {
+	case "security_penalty":
 		page, err = h.ipAuditPenaltyPage(ctx, q, userID)
-	} else if q.Source == "admin_history" {
+	case "admin_history":
 		page, err = h.ipAuditHistory(ctx, q)
-	} else {
+	default:
 		page, err = m.AuditPage(ctx, q)
 	}
 	if err != nil {

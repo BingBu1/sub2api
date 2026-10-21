@@ -8,11 +8,15 @@ import (
 )
 
 func TestIPAuditSourceReleaseAndReadback(t *testing.T) {
-	m, _, client := testManager(t, func(c *Config) {
+	m, clock, client := testManager(t, func(c *Config) {
 		c.AnonymousAPI.Enabled = true
 		c.AnonymousAPI.Threshold = 2
 		c.Blacklist = []Rule{{Network: "8.8.8.8", Enabled: true}}
 	})
+	// miniredis advances TTL only through FastForward. Freeze TIME on the same
+	// logical clock so an unchanged login ban cannot acquire a different expiry
+	// fingerprint merely because wall-clock time passed between read and release.
+	clock.SetTime(time.Now())
 	ctx := context.Background()
 	for i := 0; i < 2; i++ {
 		_, err := m.AnonymousFailure(ctx, "8.8.8.8", "unknown")

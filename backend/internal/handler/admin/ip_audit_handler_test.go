@@ -7,9 +7,9 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/authguard"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/Wei-Shaw/sub2api/internal/testutil"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
@@ -39,11 +39,8 @@ func auditFixture(t *testing.T) (*SettingHandler, *miniredis.Miniredis) {
 	h, _ := ipRiskHandlerFixture()
 	server := miniredis.RunT(t)
 	server.SetTime(time.Now())
-	client := redis.NewClient(&redis.Options{Addr: server.Addr(), MaxRetries: -1, ContextTimeoutEnabled: true})
-	t.Cleanup(func() { _ = client.Close() })
-	m := iprisk.New(h.settingService.IPRiskStore(), client, nil, false)
+	m := testutil.NewRedisIPRiskManager(t, h.settingService.IPRiskStore(), server)
 	h.settingService.IPRisk = m
-	t.Cleanup(m.Stop)
 	cfg := iprisk.DefaultConfig()
 	cfg.Enabled = true
 	cfg.ObserveOnly = false

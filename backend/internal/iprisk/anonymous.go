@@ -131,7 +131,7 @@ func (m *Manager) AnonymousFailure(ctx context.Context, raw, reason string) (*Ba
 		return nil, nil
 	}
 	a := p.config.AnonymousAPI
-	var result []interface{}
+	var result []any
 	err := m.riskRedis(ctx, func(budget context.Context) error {
 		var e error
 		result, e = anonymousFailureScript.Run(budget, m.redis, anonymousKeys(network), network, a.WindowSeconds, a.Threshold, a.BanSeconds, a.MaxTrackedIPs, uuid.NewString(), reason).Slice()

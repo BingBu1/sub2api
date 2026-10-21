@@ -230,7 +230,7 @@ func (m *Manager) AuditPage(ctx context.Context, q AuditQuery) (AuditPage, error
 	case "ip_history":
 		rows := []AuditEntry{}
 		err := m.riskRedis(ctx, func(budget context.Context) error {
-			values, e := m.redis.ZRevRange(budget, redisPrefix+"events", 0, maxEvents-1).Result()
+			values, e := m.redis.ZRangeArgs(budget, redis.ZRangeArgs{Key: redisPrefix + "events", Start: 0, Stop: maxEvents - 1, Rev: true}).Result()
 			if e != nil {
 				return e
 			}

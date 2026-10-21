@@ -11,9 +11,9 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/iprisk"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/Wei-Shaw/sub2api/internal/testutil"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -131,11 +131,8 @@ func TestIPRiskHandlerEmergencyRepairAndUnavailableManager(t *testing.T) {
 func TestAnonymousAPIHandlerConfigurationAndScopedRelease(t *testing.T) {
 	h, _ := ipRiskHandlerFixture()
 	server := miniredis.RunT(t)
-	client := redis.NewClient(&redis.Options{Addr: server.Addr(), MaxRetries: -1})
-	t.Cleanup(func() { _ = client.Close() })
-	m := iprisk.New(h.settingService.IPRiskStore(), client, nil, false)
+	m := testutil.NewRedisIPRiskManager(t, h.settingService.IPRiskStore(), server)
 	h.settingService.IPRisk = m
-	t.Cleanup(m.Stop)
 	cfg := iprisk.DefaultConfig()
 	cfg.AnonymousAPI.Enabled = true
 	cfg.AnonymousAPI.Threshold = 2
