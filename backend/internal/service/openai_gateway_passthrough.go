@@ -365,6 +365,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 	var resp *http.Response
 	var usage *OpenAIUsage
 	var firstTokenMs *int
+	var clientDisconnected bool
 	responseID := ""
 	imageCount := 0
 	var imageOutputSizes []string
@@ -533,6 +534,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 				}
 				return nil, handleErr
 			}
+			clientDisconnected = result.clientDisconnect
 			usage = result.usage
 			firstTokenMs = result.firstTokenMs
 			responseID = strings.TrimSpace(result.responseID)
@@ -603,6 +605,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		OpenAIWSMode:                  false,
 		Duration:                      time.Since(startTime),
 		FirstTokenMs:                  firstTokenMs,
+		ClientDisconnect:              clientDisconnected,
 	}
 	if imageCount > 0 {
 		forwardResult.ImageCount = imageCount
@@ -1135,6 +1138,7 @@ func collectOpenAIPassthroughTimeoutHeaders(h http.Header) []string {
 }
 
 type openaiStreamingResultPassthrough struct {
+	clientDisconnect bool
 	usage            *OpenAIUsage
 	firstTokenMs     *int
 	responseID       string
@@ -2011,7 +2015,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithImage(
 	}
 
 	w := c.Writer
-	flusher, ok := w.(http.Flusher)
+	_, ok := w.(http.Flusher)
 	if !ok {
 		return nil, errors.New("streaming not supported")
 	}
@@ -2100,7 +2104,10 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithImage(
 		if clientDisconnected || !flushPending {
 			return
 		}
-		flusher.Flush()
+		if err := FlushGatewayResponse(w); err != nil {
+			clientDisconnected = true
+			return
+		}
 		requesttiming.OutputFlushed(ctx)
 		flushPending = false
 	}
@@ -2163,13 +2170,16 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithImage(
 			clientDisconnected = true
 			return
 		}
-		flusher.Flush()
+		if err := FlushGatewayResponse(w); err != nil {
+			clientDisconnected = true
+		}
 	}
 
 	needModelReplace := strings.TrimSpace(originalModel) != "" && strings.TrimSpace(mappedModel) != "" && strings.TrimSpace(originalModel) != strings.TrimSpace(mappedModel)
 	resultWithUsage := func() *openaiStreamingResultPassthrough {
 		return &openaiStreamingResultPassthrough{
 			usage:            usage,
+			clientDisconnect: clientDisconnected,
 			firstTokenMs:     firstTokenMs,
 			responseID:       responseID,
 			imageCount:       imageCounter.Count(),
@@ -2438,7 +2448,9 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithImage(
 			if !clientDisconnected {
 				_, writeErr := fmt.Fprint(w, buildOpenAIResponseFailedSSE(responseID, originalModel, createdAtTracker.Value(), nil, "Upstream stream timed out"))
 				if writeErr == nil {
-					flusher.Flush()
+					if err := FlushGatewayResponse(w); err != nil {
+						clientDisconnected = true
+					}
 					// The timeout event is the terminal response. Tell the
 					// handler not to append a second failure event.
 					MarkResponseCommitted(c)
@@ -2492,9 +2504,13 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthroughWithImage(
 	if (sawDone || sawTerminalEvent) && !sawFailedEvent {
 		s.clearOpenAIProxyStreamDisconnect(account, resp)
 	}
+	flushPendingOutput()
 	logOpenAISuccessMissingUsage(ctx, c, account, resp, usage, terminalEventType, clientDisconnected)
-	if terminalSuccessful && !clientDisconnected && account != nil {
-		MarkOpsStreamCompleted(c, account.ID)
+	if terminalSuccessful && !clientDisconnected {
+		requesttiming.TerminalFlushed(ctx, terminalEventType)
+		if account != nil {
+			MarkOpsStreamCompleted(c, account.ID)
+		}
 	}
 
 	return resultWithUsage(), nil
