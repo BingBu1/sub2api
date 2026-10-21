@@ -15,6 +15,7 @@ func priorityCandidate(id int64, rate float64, load int) openAIAccountCandidateS
 }
 func TestPriorityScoringExperienceAndCost(t *testing.T) {
 	c := DefaultPrioritySchedulingConfig()
+	c.TargetTTFTMs = 3000
 	c.Mode = "profit"
 	good := PrioritySchedulingSignal{Samples: 20, P90TTFTMs: 500, QualityPassed: 10, QualitySamples: 10}
 	cheap := scorePriorityCandidate(c, priorityCandidate(1, 0.2, 10), good, time.Now())
@@ -80,6 +81,7 @@ func priorityGateway(c PrioritySchedulingConfig, r *priorityReaderStub) *OpenAIG
 }
 func TestPrioritySchedulingOrderingAndFallback(t *testing.T) {
 	c := DefaultPrioritySchedulingConfig()
+	c.TargetTTFTMs = 3000
 	c.Enabled = true
 	c.Mode = "profit"
 	r := &priorityReaderStub{signal: map[int64]PrioritySchedulingSignal{1: {Samples: 20, P90TTFTMs: 6000, QualityPassed: 10, QualitySamples: 10}, 2: {Samples: 20, P90TTFTMs: 1000, QualityPassed: 10, QualitySamples: 10}}}
