@@ -13,7 +13,7 @@ import (
 func TestModerationRecoveryStaleTaskCannotReban(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	r := &contentModerationRepository{db: db}
 	m.ExpectBegin()
 	m.ExpectQuery("SELECT status, role, moderation_status_revision FROM users.*FOR UPDATE").WithArgs(int64(306)).WillReturnRows(sqlmock.NewRows([]string{"status", "role", "revision"}).AddRow("active", "user", 9))
@@ -30,7 +30,7 @@ func TestModerationRecoveryStaleTaskCannotReban(t *testing.T) {
 func TestModerationRecoveryUnbanDoesNotClaimOtherDisable(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	r := &contentModerationRepository{db: db}
 	m.ExpectBegin()
 	m.ExpectQuery("SELECT status, role, moderation_status_revision FROM users.*FOR UPDATE").WithArgs(int64(306)).WillReturnRows(sqlmock.NewRows([]string{"status", "role", "revision"}).AddRow("disabled", "user", 12))
@@ -62,7 +62,7 @@ func TestModerationRecoveryThresholdOwnershipAndExemption(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
-			defer db.Close()
+			defer func() { _ = db.Close() }()
 			r := &contentModerationRepository{db: db}
 			expectModerationLock(m, tc.status, tc.role, 10, 2, 1, tc.exempt, nil)
 			m.ExpectExec("INSERT INTO content_moderation_user_hits").WithArgs(int64(306), int64(1), "request-1", "keyword_block").WillReturnResult(sqlmock.NewResult(1, 1))
@@ -85,7 +85,7 @@ func TestModerationRecoveryThresholdOwnershipAndExemption(t *testing.T) {
 func TestModerationRecoveryDuplicateHitDoesNotNotifyOrBan(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	r := &contentModerationRepository{db: db}
 	expectModerationLock(m, "active", "user", 10, 2, 1, false, nil)
 	m.ExpectExec("INSERT INTO content_moderation_user_hits").WithArgs(int64(306), int64(1), "duplicate", "keyword_block").WillReturnResult(sqlmock.NewResult(0, 0))
@@ -102,7 +102,7 @@ func TestModerationRecoveryActionsRemainIndependent(t *testing.T) {
 		t.Run(action, func(t *testing.T) {
 			db, m, err := sqlmock.New()
 			require.NoError(t, err)
-			defer db.Close()
+			defer func() { _ = db.Close() }()
 			r := &contentModerationRepository{db: db}
 			expectModerationLock(m, "disabled", "user", 11, 2, 1, false, 11)
 			generation := int64(1)
@@ -131,7 +131,7 @@ func TestModerationRecoveryActionsRemainIndependent(t *testing.T) {
 func TestModerationRecoveryConcurrentAdminConflict(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	r := &contentModerationRepository{db: db}
 	expectModerationLock(m, "disabled", "user", 11, 3, 1, false, 11)
 	m.ExpectRollback()
@@ -143,7 +143,7 @@ func TestModerationRecoveryConcurrentAdminConflict(t *testing.T) {
 func TestModerationRecoveryTransactionFailureCannotSucceed(t *testing.T) {
 	db, m, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	r := &contentModerationRepository{db: db}
 	expectModerationLock(m, "active", "user", 10, 2, 1, false, nil)
 	m.ExpectExec("INSERT INTO content_moderation_user_hits").WillReturnError(context.DeadlineExceeded)

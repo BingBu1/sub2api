@@ -47,7 +47,7 @@ func (r *contentModerationRepository) ListModerationUsers(ctx context.Context, p
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := make([]service.ModerationUserState, 0)
 	for rows.Next() {
 		s, err := scanModerationUser(rows)
