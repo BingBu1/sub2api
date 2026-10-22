@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/Wei-Shaw/sub2api/internal/cyberevidence"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -402,6 +403,7 @@ type ContentModerationDecision struct {
 type ContentModerationLog struct {
 	moderationVersion    *int64
 	suppressNotification bool
+	EvidenceStatus       string                       `json:"evidence_status,omitempty"`
 	EngineMeta           *ContentModerationEngineMeta `json:"engine_meta,omitempty"`
 	ID                   int64                        `json:"id"`
 	RequestID            string                       `json:"request_id"`
@@ -516,6 +518,7 @@ type ContentModerationHashCache interface {
 }
 
 type ContentModerationService struct {
+	cyberEvidence            *cyberevidence.Service
 	settingRepo              SettingRepository
 	repo                     ContentModerationRepository
 	hashCache                ContentModerationHashCache
@@ -3046,6 +3049,7 @@ func maskSecretTail(secret string) string {
 
 // CyberPolicyRecordInput 是一次 cyber_policy 硬阻断的风控记录入参。
 type CyberPolicyRecordInput struct {
+	Evidence          cyberevidence.Prepared
 	ModerationVersion *int64
 	LogOnly           bool // Trusted platform user: retain evidence without penalties or notifications.
 	RequestID         string
@@ -3100,8 +3104,15 @@ func (s *ContentModerationService) RecordCyberPolicyEvent(ctx context.Context, i
 	if in.UpstreamInTok > 0 || in.UpstreamOutTok > 0 {
 		errBody = fmt.Sprintf("%s\nupstream_usage=in:%d,out:%d", errBody, in.UpstreamInTok, in.UpstreamOutTok)
 	}
+	evidenceStatus := strings.TrimSpace(in.Evidence.Status)
+	if evidenceStatus == "" {
+		// Callers without an attached evidence recorder must still expose an
+		// explicit non-saved state instead of an empty historical-looking value.
+		evidenceStatus = "unavailable"
+	}
 	log := &ContentModerationLog{
 		moderationVersion: in.ModerationVersion,
+		EvidenceStatus:    evidenceStatus,
 		RequestID:         in.RequestID,
 		UserID:            userID,
 		UserEmail:         in.UserEmail,
@@ -3135,6 +3146,10 @@ func (s *ContentModerationService) RecordCyberPolicyEvent(ctx context.Context, i
 		logPersisted = false
 		slog.Warn("content_moderation.cyber_create_log_failed", "user_id", in.UserID, "error", err)
 	}
+	if logPersisted && s.cyberEvidence != nil {
+		s.cyberEvidence.Enqueue(log.ID, in.Evidence)
+	}
+
 	emailSent := false
 	if !in.LogOnly && !log.suppressNotification && s.emailService != nil && strings.TrimSpace(log.UserEmail) != "" {
 		if err := s.sendCyberPolicyEmail(ctx, log); err != nil {
@@ -3185,4 +3200,17 @@ func (s *ContentModerationService) sendCyberPolicyEmail(ctx context.Context, log
 	}
 	subject := fmt.Sprintf("[%s] 网络安全策略拦截 / Cyber Policy Notice", sanitizeEmailHeader(siteName))
 	return s.emailService.SendEmail(ctx, log.UserEmail, subject, buildCyberPolicyNoticeEmailBody(siteName, log))
+}
+
+func (s *ContentModerationService) CyberEvidence() *cyberevidence.Service {
+	if s == nil {
+		return nil
+	}
+	return s.cyberEvidence
+}
+
+// WithCyberEvidence attaches the optional post-upstream evidence recorder. Configure before serving.
+func (s *ContentModerationService) WithCyberEvidence(e *cyberevidence.Service) *ContentModerationService {
+	s.cyberEvidence = e
+	return s
 }
