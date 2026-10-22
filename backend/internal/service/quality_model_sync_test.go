@@ -144,7 +144,9 @@ func TestQualityModelSyncPreservesUnsupportedProtection(t *testing.T) {
 			account := newCodexModelsAPIKeyTestAccount("https://models.example/v1")
 			account.Credentials["model_mapping"] = map[string]any{"gpt-*": "*", "configured-model": "configured-model"}
 			if tc.target != "" {
-				account.Credentials["model_mapping"].(map[string]any)["gpt-6-astra"] = tc.target
+				mapping, ok := account.Credentials["model_mapping"].(map[string]any)
+				require.True(t, ok)
+				mapping["gpt-6-astra"] = tc.target
 			}
 			account.Extra = map[string]any{qualityUnsupportedModelKey("gpt-6-astra"): "gpt-6-astra"}
 			scheduled, tests := qualityModelSyncService(t, account, tc.status, true, tc.ids...)
@@ -178,7 +180,9 @@ func TestQualityModelSyncResetPersistenceFailureIsReported(t *testing.T) {
 	key := qualityUnsupportedModelKey("gpt-6-astra")
 	account.Extra = map[string]any{key: "gpt-6-astra"}
 	_, tests := qualityModelSyncService(t, account, http.StatusOK, false, "gpt-6-astra")
-	tests.accountRepo.(*qualityModelSyncAccounts).err = errors.New("offline persistence failure")
+	repo, ok := tests.accountRepo.(*qualityModelSyncAccounts)
+	require.True(t, ok)
+	repo.err = errors.New("offline persistence failure")
 	_, err := tests.SyncUpstreamModelCatalog(context.Background(), account)
 	var syncErr *UpstreamModelSyncError
 	require.ErrorAs(t, err, &syncErr)
