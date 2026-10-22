@@ -910,6 +910,13 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  // The former settings form now lives on IP Audit. Match the exact anchor
+  // so unrelated Security settings and their deep links stay on Settings.
+  if (to.path === '/admin/settings' && to.hash === '#ip-risk-settings') {
+    next({ path: '/admin/ip-audit', query: { ...to.query, tab: 'config' }, hash: to.hash, replace: true })
+    return
+  }
+
   // Set page title
   const appStore = useAppStore()
   const adminSettingsStore = useAdminSettingsStore()
