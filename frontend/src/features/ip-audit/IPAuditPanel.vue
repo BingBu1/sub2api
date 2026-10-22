@@ -1,6 +1,6 @@
 <template>
   <section class="space-y-4 py-5" data-testid="ip-audit-panel">
-    <h2 class="text-xl font-semibold">{{ t('ipAudit.title') }}</h2>
+    <h1 class="text-2xl font-semibold">{{ t('ipAudit.title') }}</h1>
     <p class="text-sm text-gray-500">{{ t('ipAudit.scopeHint') }}</p>
     <p class="rounded bg-amber-50 p-3 text-sm text-amber-900" data-testid="host-disconnected">{{ t('ipAudit.externalHint') }}</p>
     <a href="/admin/settings?tab=security#ip-risk-settings" class="inline-block text-sm text-primary-600 underline">{{ t('ipAudit.settings') }}</a>
