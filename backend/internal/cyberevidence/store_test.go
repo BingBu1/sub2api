@@ -16,7 +16,7 @@ func TestSQLStoreEncryptedSaveIdempotentAndAtomic(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	s := NewSQLStore(db)
 	for i := 0; i < 2; i++ {
 		m.ExpectBegin()
@@ -34,7 +34,7 @@ func TestSQLStoreEncryptedSaveIdempotentAndAtomic(t *testing.T) {
 }
 func TestSQLStoreDeletionWinsOverPendingWriter(t *testing.T) {
 	db, m, _ := sqlmock.New()
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	s := NewSQLStore(db)
 	m.ExpectBegin()
 	m.ExpectQuery("SELECT evidence_status").WillReturnRows(sqlmock.NewRows([]string{"evidence_status"}).AddRow("deleted"))
@@ -48,7 +48,7 @@ func TestSQLStoreDeletionWinsOverPendingWriter(t *testing.T) {
 }
 func TestSQLStoreFailureRollsBackAndMissingParent(t *testing.T) {
 	db, m, _ := sqlmock.New()
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	s := NewSQLStore(db)
 	m.ExpectBegin()
 	m.ExpectQuery("SELECT evidence_status").WillReturnError(sql.ErrNoRows)
@@ -69,7 +69,7 @@ func TestSQLStoreFailureRollsBackAndMissingParent(t *testing.T) {
 }
 func TestSQLStoreExpiredReadNeverReturnsCiphertext(t *testing.T) {
 	db, m, _ := sqlmock.New()
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	s := NewSQLStore(db)
 	m.ExpectQuery("SELECT value FROM settings").WillReturnError(sql.ErrNoRows)
 	m.ExpectQuery("SELECT l.id[\\s\\S]*e.expires_at>NOW()[\\s\\S]*u.deleted_at IS NULL").WithArgs(int64(1), 7).WillReturnRows(sqlmock.NewRows([]string{"id", "uid", "request", "endpoint", "model", "created", "status", "cipher", "expires"}).AddRow(1, 42, "req-synthetic", "/v1/chat/completions", "model", time.Now(), "expired", nil, time.Now().Add(-time.Hour)))
@@ -83,7 +83,7 @@ func TestSQLStoreExpiredReadNeverReturnsCiphertext(t *testing.T) {
 }
 func TestSQLStoreCleanupExpiryAndInterrupted(t *testing.T) {
 	db, m, _ := sqlmock.New()
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	s := NewSQLStore(db)
 	m.ExpectExec("WITH removed AS[\\s\\S]*expires_at<=NOW()[\\s\\S]*u.deleted_at IS NOT NULL").WithArgs(7).WillReturnResult(sqlmock.NewResult(0, 3))
 	m.ExpectExec(regexp.QuoteMeta("UPDATE content_moderation_logs SET evidence_status='interrupted' WHERE evidence_status='pending' AND created_at<NOW()-INTERVAL '10 minutes'")).WillReturnResult(sqlmock.NewResult(0, 1))
