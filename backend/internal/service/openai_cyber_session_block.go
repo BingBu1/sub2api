@@ -150,10 +150,10 @@ func CyberRequestFingerprintKey(apiKeyID int64, body []byte) string {
 		if !value.Exists() {
 			continue
 		}
-		normalized.WriteString(field)
-		normalized.WriteByte('=')
-		normalized.WriteString(value.Raw)
-		normalized.WriteByte('\n')
+		_, _ = normalized.WriteString(field)
+		_ = normalized.WriteByte('=')
+		_, _ = normalized.WriteString(value.Raw)
+		_ = normalized.WriteByte('\n')
 	}
 	if normalized.Len() == 0 {
 		return ""
