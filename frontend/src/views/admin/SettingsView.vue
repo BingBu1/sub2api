@@ -8913,6 +8913,7 @@
           />
 
           <!-- Provider Management -->
+          <BEpusdtManager v-if="form.payment_enabled && form.payment_enabled_types.includes('bepusdt')" />
           <PaymentProviderList
             v-if="form.payment_enabled"
             :providers="providers"
@@ -9490,6 +9491,7 @@ import {
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
 import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vue";
+import BEpusdtManager from "@/components/payment/BEpusdtManager.vue";
 import GroupBadge from "@/components/common/GroupBadge.vue";
 import GroupOptionItem from "@/components/common/GroupOptionItem.vue";
 import RequestTimezoneSettings from "@/components/settings/RequestTimezoneSettings.vue";
