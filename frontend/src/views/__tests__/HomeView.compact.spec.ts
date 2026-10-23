@@ -50,6 +50,7 @@ function mountHome(settings: Record<string, unknown> = {}) {
         RouterLink: RouterLinkStub,
         LocaleSwitcher: { template: '<div data-testid="locale-switcher" />' },
         Icon: { template: '<span data-testid="icon" />' },
+        HomeAmbient: true,
       },
     },
   })
@@ -74,7 +75,11 @@ describe('HomeView compact mode', () => {
     authStore.checkAuth.mockClear()
     appStore.fetchPublicSettings.mockClear()
     localStorage.clear()
-    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList)
   })
 
   it('renders custom HTML ahead of compact mode', () => {
@@ -108,7 +113,7 @@ describe('HomeView compact mode', () => {
     const wrapper = mountHome(settings)
 
     expect(wrapper.find('[data-testid="compact-home"]').exists()).toBe(false)
-    expect(wrapper.find('.terminal-container').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="gateway-landing"]').exists()).toBe(true)
   })
 
   it('links unauthenticated visitors to login', () => {
@@ -180,5 +185,35 @@ describe('HomeView compact mode', () => {
     })
 
     expect(modelPlazaDestination(wrapper)).toBeUndefined()
+  })
+
+  it('routes both default landing actions to the administrator dashboard', () => {
+    authStore.isAuthenticated = true
+    authStore.isAdmin = true
+    const destinations = mountHome().findAllComponents(RouterLinkStub).map(link => link.props('to'))
+
+    expect(destinations.filter(path => path === '/admin/dashboard')).toHaveLength(2)
+    expect(destinations).not.toContain('/register')
+  })
+
+  it('respects disabled registration on the default landing', () => {
+    const destinations = mountHome({ registration_enabled: false })
+      .findAllComponents(RouterLinkStub).map(link => link.props('to'))
+
+    expect(destinations).not.toContain('/register')
+    expect(destinations).toContain('/login')
+  })
+
+  it('starts with a static background when reduced motion is requested', () => {
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList)
+    const wrapper = mountHome()
+
+    expect(wrapper.get('home-ambient-stub').attributes('paused')).toBe('true')
+    expect(wrapper.find('.motion-toggle').exists()).toBe(false)
+    wrapper.unmount()
   })
 })

@@ -5,6 +5,15 @@ export default {
   },
   // Home Page
   home: {
+    landing: {
+      navigation: 'Home navigation',
+      createAccount: 'Create account',
+      headlineLead: 'Connect simply.',
+      headlineEnd: 'Create freely.',
+      start: 'Get started',
+      pauseMotion: 'Pause animation',
+      resumeMotion: 'Play animation'
+    },
     viewOnGithub: 'View on GitHub',
     viewDocs: 'View Documentation',
     docs: 'Docs',

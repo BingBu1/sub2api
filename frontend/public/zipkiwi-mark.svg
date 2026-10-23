@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Zipkiwi</title>
+  <desc id="desc">A flowing Z with a leaf-shaped lower stroke.</desc>
+  <path fill="#254E3D" d="M13 10h35c6.3 0 9.4 7.6 4.9 12L23 51H9l31.9-31H13a5 5 0 0 1 0-10Z"/>
+  <path fill="#82A975" d="M19 44h39c-2.5 8.2-8.2 12-17 12H14c-6.4 0-8.7-6.2-4.2-10.7L19 36v8Z"/>
+</svg>

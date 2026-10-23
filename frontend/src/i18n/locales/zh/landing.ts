@@ -5,6 +5,15 @@ export default {
   },
   // Home Page
   home: {
+    landing: {
+      navigation: '首页导航',
+      createAccount: '创建账户',
+      headlineLead: '智能接入',
+      headlineEnd: '灵感无界',
+      start: '开始使用',
+      pauseMotion: '暂停动效',
+      resumeMotion: '播放动效'
+    },
     viewOnGithub: '在 GitHub 上查看',
     viewDocs: '查看文档',
     docs: '文档',
