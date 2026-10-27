@@ -25,8 +25,20 @@
           {{ siteName }}
         </router-link>
         <!-- Version Badge -->
-        <VersionBadge :version="siteVersion" />
+        <VersionBadge v-if="!isAdmin" :version="siteVersion" />
       </div>
+      <HelpTooltip v-if="!sidebarCollapsed" :content="t('nav.visitWebsite')" width-class="w-max" class="shrink-0">
+        <template #trigger>
+          <router-link
+            to="/home"
+            class="btn-ghost btn-icon inline-flex items-center justify-center"
+            :aria-label="t('nav.visitWebsite')"
+            @click="handleMenuItemClick('/home')"
+          >
+            <Icon name="externalLink" size="sm" />
+          </router-link>
+        </template>
+      </HelpTooltip>
     </div>
 
     <FeatureSearch v-if="isAdmin" :items="searchNavItems" :collapsed="sidebarCollapsed" @navigate="handleMenuItemClick" />
@@ -214,6 +226,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore, useSupportTicketStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
+import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import FeatureSearch from './FeatureSearch.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeSvg } from '@/utils/sanitize'

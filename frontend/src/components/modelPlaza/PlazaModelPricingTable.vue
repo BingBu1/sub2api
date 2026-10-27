@@ -1,5 +1,5 @@
 <template>
-  <div class="plaza-pricing-table overflow-x-auto" :style="accentStyle">
+  <div class="plaza-pricing-table overflow-x-auto" role="region" tabindex="0" :aria-label="t('modelPlaza.table.model')">
     <table class="w-full min-w-[1000px] table-auto border-collapse text-sm tabular-nums">
       <colgroup>
         <col class="w-[25%]" />
@@ -309,7 +309,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatScaled, resolveIntervalPrices } from '@/utils/pricing'
-import { platformAccentColor, platformBadgeLightClass, platformLabel } from '@/utils/platformColors'
+import { platformBadgeLightClass, platformLabel } from '@/utils/platformColors'
 import {
   BILLING_MODE_TOKEN,
   BILLING_MODE_IMAGE,
@@ -332,7 +332,7 @@ function reasoningEffortMultipliers(model: PlazaModel): [string, number][] {
 
 const props = defineProps<{
   models: PlazaModel[]
-  /** 分组平台;实付分区底色随平台着色,未知平台回退品牌青。 */
+  /** 分组平台;用于标注混合分组内的模型来源。 */
   platform?: string
   /** 分组默认倍率。 */
   rateMultiplier: number
@@ -354,9 +354,6 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-
-/** 实付分区只从平台拿一个主色,浅底/标题/下划线全部由 scoped CSS 用 color-mix 派生。 */
-const accentStyle = computed(() => ({ '--plaza-accent': platformAccentColor(props.platform ?? '') }))
 
 const PER_MILLION = 1_000_000
 
@@ -559,14 +556,16 @@ function trimZero(n: number): string {
 </script>
 
 <style scoped>
-/* 实付分区配色统一从 --plaza-accent(平台主色)派生,新增平台无需扩展样式 */
+/* 实付分区沿用首页品牌蓝,与官方参考价格分区区分。 */
 .plaza-pricing-table {
+  --plaza-accent: #315ed0;
   --pz-title: color-mix(in srgb, var(--plaza-accent) 88%, black);
   --pz-bg: color-mix(in srgb, var(--plaza-accent) 7%, transparent);
   --pz-bg-hover: color-mix(in srgb, var(--plaza-accent) 13%, transparent);
 }
 
 .dark .plaza-pricing-table {
+  --plaza-accent: #9bb8ff;
   --pz-title: color-mix(in srgb, var(--plaza-accent) 70%, white);
   --pz-bg: color-mix(in srgb, var(--plaza-accent) 6%, transparent);
   --pz-bg-hover: color-mix(in srgb, var(--plaza-accent) 10%, transparent);
@@ -593,6 +592,6 @@ tbody tr:hover .pz-cell {
 }
 
 .pz-unit {
-  color: color-mix(in srgb, var(--pz-title) 62%, transparent);
+  color: var(--plaza-muted, #52627e);
 }
 </style>

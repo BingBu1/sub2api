@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
+import GatewayLanding from '@/components/home/GatewayLanding.vue'
 
 const { appStore, authStore } = vi.hoisted(() => ({
   appStore: {
@@ -80,6 +81,15 @@ describe('HomeView compact mode', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     } as unknown as MediaQueryList)
+  })
+
+  it('passes configured support details to the homepage and refreshes them when contact opens', () => {
+    const wrapper = mountHome({ contact_info: 'QQ群号123456789' })
+    const landing = wrapper.getComponent(GatewayLanding)
+    expect(landing.props('contactInfo')).toBe('QQ群号123456789')
+    landing.vm.$emit('openContact')
+    expect(appStore.fetchPublicSettings).toHaveBeenCalledWith(true)
+    wrapper.unmount()
   })
 
   it('renders custom HTML ahead of compact mode', () => {
@@ -187,12 +197,14 @@ describe('HomeView compact mode', () => {
     expect(modelPlazaDestination(wrapper)).toBeUndefined()
   })
 
-  it('routes both default landing actions to the administrator dashboard', () => {
+  it('routes the header, hero and closing actions to the administrator dashboard', () => {
     authStore.isAuthenticated = true
     authStore.isAdmin = true
-    const destinations = mountHome().findAllComponents(RouterLinkStub).map(link => link.props('to'))
-
-    expect(destinations.filter(path => path === '/admin/dashboard')).toHaveLength(2)
+    const wrapper = mountHome()
+    const destinations = wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))
+    for (const selector of ['.actions .button', '.hero-cta .button', '.cta .button']) {
+      expect(wrapper.getComponent(selector).props('to')).toBe('/admin/dashboard')
+    }
     expect(destinations).not.toContain('/register')
   })
 
@@ -212,8 +224,21 @@ describe('HomeView compact mode', () => {
     } as unknown as MediaQueryList)
     const wrapper = mountHome()
 
-    expect(wrapper.get('home-ambient-stub').attributes('paused')).toBe('true')
+    expect(wrapper.get('[data-testid="gateway-landing"]').classes()).toContain('motion-paused')
     expect(wrapper.find('.motion-toggle').exists()).toBe(false)
     wrapper.unmount()
+  })
+
+  it('restores the saved light theme and persists subsequent theme changes', async () => {
+    document.documentElement.classList.add('dark')
+    localStorage.setItem('theme', 'light')
+    const wrapper = mountHome()
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    await wrapper.get('.theme-toggle').trigger('click')
+    expect(wrapper.get('[data-testid="gateway-landing"]').classes()).toContain('is-dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(localStorage.getItem('theme')).toBe('dark')
+    wrapper.unmount()
+    document.documentElement.classList.remove('dark')
   })
 })

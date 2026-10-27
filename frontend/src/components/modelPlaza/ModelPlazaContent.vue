@@ -1,22 +1,27 @@
 <template>
-  <div class="space-y-5">
+  <div class="plaza-content plaza-theme space-y-5">
     <!-- 页头(独立形态下展示标题;后台形态 AppHeader 已有页面标题) -->
-    <div v-if="!embedded">
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">{{ t('modelPlaza.title') }}</h1>
-      <p class="mt-1.5 text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.description') }}</p>
+    <div v-if="!embedded" class="plaza-intro">
+      <div>
+        <h1>{{ t('modelPlaza.title') }}</h1>
+        <p>{{ t('modelPlaza.description') }}</p>
+      </div>
+      <a v-if="!loading && !error" class="plaza-intro-link" href="#model-catalog">
+        {{ t('modelPlaza.browseModels') }}<Icon name="arrowDown" size="sm" />
+      </a>
     </div>
 
     <!-- 全局价格说明(管理员配置,Markdown) -->
     <div
       v-if="descriptionHtml"
-      class="plaza-description rounded-2xl border border-gray-100 bg-white px-5 py-4 text-sm shadow-card dark:border-dark-700/50 dark:bg-dark-800/50"
+      class="plaza-description rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm dark:border-dark-700 dark:bg-dark-800/50"
       v-html="descriptionHtml"
     ></div>
 
     <!-- 未登录提示 -->
     <p
       v-if="!isAuthenticated"
-      class="flex items-center gap-1.5 text-xs text-gray-400 dark:text-dark-500"
+      class="plaza-anonymous flex items-center gap-2 text-sm"
     >
       <Icon name="infoCircle" size="xs" class="h-3.5 w-3.5" />
       {{ t('modelPlaza.anonymousHint') }}
@@ -35,6 +40,7 @@
     <template v-else>
       <!-- 筛选区:平台 → 分组 → 倍率 -->
       <PlazaFilterBar
+        id="model-catalog"
         :platforms="platforms"
         :groups="groupOptions"
         :rates="rates"
@@ -49,7 +55,7 @@
       />
 
       <!-- 分组分节的模型清单(默认按生效倍率升序) -->
-      <div v-if="filteredGroups.length > 0" class="space-y-5">
+      <div v-if="filteredGroups.length > 0" class="plaza-groups space-y-6">
         <PlazaGroupSection v-for="g in filteredGroups" :key="g.id" :group="g" />
       </div>
       <div
