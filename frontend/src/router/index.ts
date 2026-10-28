@@ -855,6 +855,10 @@ const router = createRouter({
   scrollBehavior(to, _from, savedPosition) {
     // SettingsView waits for its async form and reveals the target tab first.
     if (to.path === '/admin/settings' && settingsLocation(to.query.tab, to.hash).linked) return false
+    // Fresh homepage loads start at the hero; back/forward still restores position.
+    if (to.path === '/home' && _from.matched.length === 0) {
+      return { left: 0, top: 0, behavior: 'instant' }
+    }
     // Scroll to saved position when using browser back/forward
     if (savedPosition) {
       return savedPosition

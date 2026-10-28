@@ -13986,7 +13986,7 @@ h2[id^="settings-section-"]:target {
   height: 2px;
   border-radius: 9999px;
   content: "";
-  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+  background: linear-gradient(90deg, #315ed0, #84a5f5);
 }
 
 .settings-tab-icon {

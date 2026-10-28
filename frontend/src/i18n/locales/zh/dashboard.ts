@@ -767,7 +767,8 @@ export default {
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
     title: '模型广场',
-    description: '按分组浏览可用模型与价格',
+    description: '找到适合你业务的 AI 模型，清晰比较价格，轻松开始接入。',
+    browseModels: '浏览模型与价格',
     loading: '加载中...',
     empty: '暂无可展示的分组',
     loadFailed: '加载模型广场失败',
@@ -821,6 +822,7 @@ export default {
       perImage: '按图片计费'
     },
     nav: {
+      home: '首页',
       login: '登录',
       backToDashboard: '回到后台'
     }

@@ -11,6 +11,7 @@ import pelicanTests from './pelicanTests'
 import modelTrace from './modelTrace'
 import tokenGuardV2 from './tokenGuardV2'
 import landing from './landing'
+import gateway from './gateway'
 import common from './common'
 import dashboard from './dashboard'
 import channelMonitorV2 from './channelMonitorV2'
@@ -40,6 +41,7 @@ export default {
   tokenGuardV2,
   requestTiming,
   ...landing,
+  gateway,
   ...common,
   ...dashboard,
   ...channelMonitorV2,

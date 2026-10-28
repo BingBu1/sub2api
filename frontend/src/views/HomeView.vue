@@ -93,13 +93,17 @@
   <GatewayLanding
     v-else
     :site-name="siteName"
+    :site-logo="siteLogo"
     :doc-url="docUrl"
+    :api-base-url="appStore.cachedPublicSettings?.api_base_url || appStore.apiBaseUrl"
+    :contact-info="appStore.cachedPublicSettings?.contact_info || appStore.contactInfo"
     :is-dark="isDark"
     :is-authenticated="isAuthenticated"
     :dashboard-path="dashboardPath"
     :registration-enabled="appStore.cachedPublicSettings?.registration_enabled !== false"
     :show-model-plaza="showModelPlazaEntry"
     @toggle-theme="toggleTheme"
+    @open-contact="appStore.fetchPublicSettings(true)"
   />
 </template>
 
@@ -161,13 +165,9 @@ function toggleTheme() {
 // Initialize theme
 function initTheme() {
   const savedTheme = localStorage.getItem('theme')
-  if (
-    savedTheme === 'dark' ||
+  isDark.value = savedTheme === 'dark' ||
     (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  ) {
-    isDark.value = true
-    document.documentElement.classList.add('dark')
-  }
+  document.documentElement.classList.toggle('dark', isDark.value)
 }
 
 onMounted(() => {

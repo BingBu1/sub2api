@@ -173,6 +173,7 @@ export default {
 
   // Navigation
   nav: {
+    visitWebsite: 'Visit website',
     dashboard: 'Dashboard',
     announcements: 'Announcements',
     apiKeys: 'API Keys',

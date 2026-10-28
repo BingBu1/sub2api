@@ -762,7 +762,8 @@ export default {
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
     title: 'Model Plaza',
-    description: 'Browse available models and pricing by group',
+    description: 'Find the right AI model for your product. Compare pricing and start building.',
+    browseModels: 'Browse models and pricing',
     loading: 'Loading...',
     empty: 'No groups to display',
     loadFailed: 'Failed to load model plaza',
@@ -817,6 +818,7 @@ export default {
       perImage: 'Per image'
     },
     nav: {
+      home: 'Home',
       login: 'Sign In',
       backToDashboard: 'Back to Console'
     }
