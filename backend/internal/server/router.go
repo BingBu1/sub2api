@@ -154,6 +154,11 @@ func registerRoutes(
 	routes.RegisterAuthRoutes(v1, h, jwtAuth, auditLog, redisClient, settingService, panelRateLimiter)
 	routes.RegisterUserRoutes(v1, h, jwtAuth, auditLog, settingService, panelRateLimiter)
 	routes.RegisterModelPlazaRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
+	publicTelemetry := v1.Group("/public/telemetry")
+	publicTelemetry.Use(panelRateLimiter.PublicIP())
+	publicTelemetry.GET("", func(c *gin.Context) {
+		h.Admin.Dashboard.GetPublicTelemetry(c, opsService)
+	})
 	routes.RegisterPublicPelicanShowcaseRoutes(v1, h, apiKeyAuth, panelRateLimiter)
 	routes.RegisterAdminRoutes(v1, h, adminAuth, auditLog, stepUpAuth, settingService, panelRateLimiter)
 	routes.RegisterGatewayRoutes(r, h, apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg)

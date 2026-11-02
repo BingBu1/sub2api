@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -20,6 +21,9 @@ type DashboardHandler struct {
 	dashboardService   *service.DashboardService
 	aggregationService *service.DashboardAggregationService
 	startTime          time.Time // Server start time for uptime calculation
+	publicTelemetryMu  sync.Mutex
+	publicTelemetry    *publicTelemetrySnapshot
+	publicTelemetryAt  time.Time
 }
 
 // NewDashboardHandler creates a new admin dashboard handler
