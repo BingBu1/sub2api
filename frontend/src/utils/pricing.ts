@@ -24,6 +24,26 @@ export function formatScaled(value: number | null, scale: number, minFractionDig
 }
 
 import type { UserPricingInterval } from '@/api/channels'
+import { BILLING_MODE_IMAGE, BILLING_MODE_VIDEO, type BillingMode } from '@/constants/channel'
+
+export interface PlazaRateConfig {
+  rateMultiplier: number
+  userRateMultiplier?: number | null
+  imageRateIndependent?: boolean
+  imageRateMultiplier?: number | null
+  videoRateIndependent?: boolean
+  videoRateMultiplier?: number | null
+}
+
+export function plazaEffectiveRate(config: PlazaRateConfig): number {
+  return config.userRateMultiplier ?? config.rateMultiplier
+}
+
+export function plazaRate(mode: BillingMode, config: PlazaRateConfig): number {
+  if (mode === BILLING_MODE_IMAGE && config.imageRateIndependent) return config.imageRateMultiplier ?? 1
+  if (mode === BILLING_MODE_VIDEO && config.videoRateIndependent) return Math.max(0, config.videoRateMultiplier ?? 1)
+  return plazaEffectiveRate(config)
+}
 
 type TokenPrices = Pick<UserPricingInterval, 'input_price' | 'output_price' | 'cache_write_price' | 'cache_write_1h_price' | 'cache_read_price'>
 

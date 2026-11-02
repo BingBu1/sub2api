@@ -30,14 +30,21 @@
       <div class="mb-8 text-center">
         <!-- Custom Logo or Default Logo -->
         <template v-if="settingsLoaded">
-          <div
-            class="mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl shadow-lg shadow-primary-500/30"
-          >
-            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
-          </div>
-          <h1 class="text-gradient mb-2 text-3xl font-bold">
-            {{ siteName }}
-          </h1>
+          <template v-if="selectedBrand">
+            <img src="/zipkiwi-lockup-primary.svg" alt="" class="mx-auto mb-4 h-12 w-auto dark:hidden" />
+            <img src="/zipkiwi-lockup-white.svg" alt="" class="mx-auto mb-4 hidden h-12 w-auto dark:block" />
+            <h1 class="sr-only">{{ siteName }}</h1>
+          </template>
+          <template v-else>
+            <div
+              class="mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl shadow-lg shadow-primary-500/30"
+            >
+              <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
+            </div>
+            <h1 class="text-gradient mb-2 text-3xl font-bold">
+              {{ siteName }}
+            </h1>
+          </template>
           <p class="text-sm text-gray-500 dark:text-dark-400">
             {{ siteSubtitle }}
           </p>
@@ -66,11 +73,13 @@
 import { computed, onMounted } from 'vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
+import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 
 const appStore = useAppStore()
 
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
+const selectedBrand = computed(() => isSelectedZipkiwiBrand(siteName.value, siteLogo.value))
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'Subscription to API Conversion Platform')
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 

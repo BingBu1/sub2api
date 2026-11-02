@@ -2,9 +2,12 @@
   <header class="plaza-nav">
     <div class="plaza-container plaza-nav-inner">
       <RouterLink to="/home" class="plaza-brand" :aria-label="siteName">
-        <img v-if="siteLogo" :src="siteLogo" alt="" />
-        <BirdMark v-else />
-        <span>{{ siteName }}</span>
+        <img v-if="selectedBrand" class="plaza-lockup" src="/zipkiwi-lockup-white.svg" alt="" />
+        <template v-else>
+          <img v-if="siteLogo" :src="siteLogo" alt="" />
+          <BirdMark v-else />
+          <span>{{ siteName }}</span>
+        </template>
       </RouterLink>
       <nav class="plaza-nav-links" :aria-label="t('gateway.mainNavigation')">
         <RouterLink to="/home">{{ t('modelPlaza.nav.home') }}</RouterLink>
@@ -34,6 +37,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sanitizeUrl } from '@/utils/url'
+import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import BirdMark from '@/components/home/BirdMark.vue'
@@ -46,6 +50,7 @@ const authStore = useAuthStore()
 const settings = computed(() => appStore.cachedPublicSettings)
 const siteName = computed(() => settings.value?.site_name || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(settings.value?.site_logo || '', { allowRelative: true, allowDataUrl: true }))
+const selectedBrand = computed(() => isSelectedZipkiwiBrand(siteName.value, siteLogo.value))
 const docUrl = computed(() => sanitizeUrl(settings.value?.doc_url || appStore.docUrl || ''))
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const backTarget = computed(() => (authStore.isAdmin ? '/admin/dashboard' : '/dashboard'))

@@ -13,9 +13,12 @@
       <div class="container">
         <header>
           <router-link class="brand" to="/home" :aria-label="siteName">
-            <img v-if="siteLogo" :src="siteLogo" alt="" />
-            <BirdMark v-else />
-            {{ siteName }}
+            <img v-if="selectedBrand" class="brand-lockup" src="/zipkiwi-lockup-white.svg" alt="" />
+            <template v-else>
+              <img v-if="siteLogo" :src="siteLogo" alt="" />
+              <BirdMark v-else />
+              {{ siteName }}
+            </template>
           </router-link>
           <nav
             id="main-navigation"
@@ -23,6 +26,12 @@
             :aria-label="t('gateway.mainNavigation')"
             @click="menuOpen = false"
           >
+            <router-link
+              v-if="showModelPlaza"
+              to="/model-plaza"
+            >
+              {{ t('gateway.modelHub') }}
+            </router-link>
             <a
               v-for="chapter in chapters"
               :key="chapter.id"
@@ -32,23 +41,7 @@
             >
               {{ t(chapter.label) }}
             </a>
-            <router-link
-              v-if="showModelPlaza"
-              to="/model-plaza"
-              style="display: inline-flex; align-items: center; gap: 6px"
-            >
-              {{ t('gateway.modelHub') }}
-              <Icon name="externalLink" size="sm" />
-            </router-link>
-            <a
-              :href="docUrl || '#integration'"
-              :target="docUrl ? '_blank' : undefined"
-              :rel="docUrl ? 'noopener noreferrer' : undefined"
-              style="display: inline-flex; align-items: center; gap: 6px"
-            >
-              {{ t('gateway.documentation') }}
-              <Icon name="externalLink" size="sm" />
-            </a>
+            <button type="button" @click="openContactDialog">{{ t('gateway.contactUs') }}</button>
           </nav>
           <div class="actions">
             <LocaleSwitcher />
@@ -62,9 +55,6 @@
             >
               <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
             </button>
-            <router-link v-if="!isAuthenticated" class="login" to="/login">
-              {{ t('gateway.signIn') }}
-            </router-link>
             <router-link class="button" :to="destination">
               {{ t('gateway.console') }}
               <Icon name="grid" size="sm" class="action-icon" />
@@ -93,22 +83,20 @@
         <div class="container">
           <section class="hero">
             <div class="hero-copy">
-              <div class="badge">
-                {{ siteName.toUpperCase() }} / AI MODEL ACCESS
-              </div>
+              <div class="badge">{{ t('gateway.heroBadge') }}</div>
               <h1>
-                {{ t('gateway.bringGreatAi') }}
+                {{ t('gateway.heroTitleFirst') }}
                 <br />
-                <span>{{ t('gateway.intoYourProduct') }}</span>
+                <span>{{ t('gateway.heroTitleSecond') }}</span>
               </h1>
               <p class="lead">
-                {{ t('gateway.findGptClaudeGeminiAndMoreIn') }}
+                {{ t('gateway.heroDescriptionFirst') }}
                 <br />
-                {{ t('gateway.compareYourOptionsConnectAnApiAnd') }}
+                {{ t('gateway.heroDescriptionSecond') }}
               </p>
               <div class="hero-cta">
                 <router-link class="button" :to="destination">
-                  {{ t('gateway.getStarted') }}
+                  {{ t('gateway.startIntegration') }}
                   <Icon name="link" size="sm" class="action-icon" />
                 </router-link>
                 <a
@@ -117,105 +105,54 @@
                   :target="docUrl ? '_blank' : undefined"
                   :rel="docUrl ? 'noopener noreferrer' : undefined"
                 >
-                  {{ t('gateway.documentation') }}
+                  {{ t('gateway.quickStart') }}
                   <Icon name="book" size="sm" class="action-icon" />
                 </a>
-                <button
-                  class="hero-business"
-                  @click="openContactDialog"
-                >
-                  {{ t('gateway.businessInquiries') }}
-                  <span aria-hidden="true">↗</span>
-                </button>
               </div>
-              <div class="flight-caption">
-                {{ t('gateway.oneGatewaySixModelFamilies') }}
+              <div class="hero-benefits">
+                <span>{{ t('gateway.unifiedEndpoint') }}</span>
+                <span>{{ t('gateway.multipleModels') }}</span>
+                <span>{{ t('gateway.usageVisibility') }}</span>
               </div>
             </div>
             <div
-              class="orbital-scene flight-scene"
+              class="network-scene"
               :aria-label="t('gateway.featuredModelFamilies')"
             >
-              <div class="flight-top">
-                <div class="flight-topline">
-                  <span>{{ siteName.toUpperCase() }} / FLIGHT PATH</span>
-                  <b>ONE KEY · MORE POSSIBILITIES</b>
-                </div>
-                <svg
-                  class="flight-route"
-                  viewBox="0 0 800 260"
-                  preserveAspectRatio="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    class="route-faint"
-                    d="M85 165 C125 165 145 85 205 85 C265 85 268 165 330 165 C392 165 392 85 455 85 C518 85 523 165 585 165 C647 165 650 85 710 85"
-                  />
-                  <path
-                    class="route-main"
-                    d="M85 165 C125 165 145 85 205 85 C265 85 268 165 330 165 C392 165 392 85 455 85 C518 85 523 165 585 165 C647 165 650 85 710 85"
-                  />
-                </svg>
-                <div class="route-map">
-                  <component
-                    v-for="(model, index) in models"
-                    :key="model.name"
-                    :is="showModelPlaza ? RouterLink : 'span'"
-                    class="route-node"
-                    :class="`n${index + 1}`"
-                    :to="showModelPlaza ? '/model-plaza' : undefined"
-                  >
-                    <strong>{{ model.name }}</strong>
-                    <small>{{ model.maker }}</small>
-                  </component>
-                </div>
-                <div class="flight-mark"><BirdMark /></div>
-                <div class="flight-note">
-                  <i></i>
-                  {{ t('gateway.oneRouteToMoreCapabilities') }}
-                </div>
-                <span class="flight-no">06 / CONNECTED</span>
-              </div>
-              <div class="flight-products">
-                <strong>{{ t('gateway.exploreModels') }}</strong>
-                <span>{{ t('gateway.chooseByTask06ModelFamilies') }}</span>
-              </div>
-              <div class="catalog-grid">
+              <div class="network-title">ZIPKIWI / INTELLIGENCE NETWORK <span>CONCEPT DEMO</span></div>
+              <div class="network-globe" aria-hidden="true"><div class="network-core"><BirdMark /><strong>{{ siteName }}</strong><small>INTELLIGENCE HUB</small></div></div>
+              <div class="network-models">
                 <component
                   v-for="(model, index) in models"
                   :key="model.name"
                   :is="showModelPlaza ? RouterLink : 'span'"
-                  class="catalog-model"
+                  class="network-model"
+                  :class="`n${index + 1}`"
                   :to="showModelPlaza ? '/model-plaza' : undefined"
                 >
-                  <span class="catalog-maker">
-                    {{ String(index + 1).padStart(2, '0') }} /
-                    {{ model.maker.toUpperCase() }}
-                  </span>
                   <strong>{{ model.name }}</strong>
-                  <small>{{ t(model.description) }}</small>
-                  <span
-                    v-if="showModelPlaza"
-                    class="catalog-arrow"
-                    aria-hidden="true"
-                  >
-                    ↗
-                  </span>
+                  <small>{{ model.maker }}</small>
                 </component>
               </div>
-              <div class="catalog-footer">
-                <span>
-                  {{ t('gateway.modelFamiliesShownForIllustrationCheckThe') }}
-                </span>
-                <router-link v-if="showModelPlaza" to="/model-plaza">
-                  {{ t('gateway.exploreAllModels') }}
-                  <span aria-hidden="true">↗</span>
-                </router-link>
-              </div>
+              <div class="network-caption">01 / Aggregating <span>MODEL ECOSYSTEM</span></div>
             </div>
           </section>
+          <div class="hero-bottom"><small>{{ t('gateway.modelFamiliesShownForIllustrationCheckThe') }}</small><span v-for="model in models" :key="model.name">{{ model.name }}</span></div>
         </div>
       </div>
+      <section class="telemetry-section" aria-labelledby="network-overview-title">
+        <div class="container telemetry-layout">
+          <div><h2 id="network-overview-title">{{ t('gateway.networkOverview') }}</h2><p>{{ t('gateway.networkDemoNote') }}</p></div>
+          <div class="telemetry-flow" aria-hidden="true"><span>API</span><i></i><span>{{ siteName }}</span><i></i><span>AI</span></div>
+          <div class="telemetry-families"><strong>{{ t('gateway.modelFamilies') }}</strong><span>{{ models.map(model => model.name).join(' · ') }}</span></div>
+        </div>
+      </section>
+      <section class="pricing-section module-section" id="models">
+        <div class="container pricing-layout">
+          <div><p class="module-label">{{ t('gateway.modelsAndPricing') }}</p><h2>{{ t('gateway.chooseModelWithClarity') }}</h2><p>{{ t('gateway.pricingDescription') }}</p></div>
+          <div class="pricing-actions"><router-link v-if="showModelPlaza" class="button" to="/model-plaza">{{ t('gateway.exploreAllModels') }} <Icon name="chevronRight" size="sm" /></router-link><router-link v-if="!isAuthenticated" class="textlink" to="/login">{{ t('gateway.signInForPricing') }} <Icon name="chevronRight" size="sm" /></router-link></div>
+        </div>
+      </section>
       <section class="container module-section" id="platform">
         <div class="section-heading">
           <div>
@@ -388,10 +325,11 @@
         <div class="section-heading">
           <div>
             <p class="module-label" data-chapter="03">
-              {{ t('gateway.useCases') }}
+              {{ t('gateway.enterpriseService') }}
             </p>
-            <h2>{{ t('gateway.fromPersonalExplorationToTeamwork') }}</h2>
+            <h2>{{ t('gateway.enterpriseHeadline') }}</h2>
           </div>
+          <button class="textlink" type="button" @click="openContactDialog">{{ t('gateway.contactUs') }} <Icon name="chevronRight" size="sm" /></button>
         </div>
         <div
           class="audience-tabs"
@@ -711,8 +649,12 @@
       <div class="container">
         <footer>
           <router-link class="brand" to="/home">
-            <BirdMark />
-            {{ siteName }}
+            <img v-if="selectedBrand" class="brand-lockup" :src="isDark ? '/zipkiwi-lockup-white.svg' : '/zipkiwi-lockup-primary.svg'" :alt="siteName" />
+            <template v-else>
+              <img v-if="siteLogo" :src="siteLogo" alt="" />
+              <BirdMark v-else />
+              {{ siteName }}
+            </template>
           </router-link>
           <span>
             © {{ new Date().getFullYear() }} {{ siteName }}
@@ -780,6 +722,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { sanitizeUrl } from '@/utils/url'
+import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import BirdMark from './BirdMark.vue'
 
 const props = defineProps<{
@@ -796,6 +739,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ toggleTheme: []; openContact: [] }>()
 const { t } = useI18n()
+const selectedBrand = computed(() => isSelectedZipkiwiBrand(props.siteName, props.siteLogo || ''))
 const { copied: contactCopied, copyToClipboard } = useClipboard()
 const contactText = computed(() => props.contactInfo?.trim() || '')
 const contactDigits = computed(() => contactText.value.match(/\d+/g)?.join('') || '')
@@ -819,14 +763,12 @@ const models = [
   { name: 'Kimi', maker: 'Moonshot AI', description: 'gateway.readingCreation' }
 ]
 
-const audience = ref(0)
+const audience = ref(1)
 const activeValue = ref(0)
 const chapters = [
   { id: 'platform', label: 'gateway.coreFeatures' },
-  { id: 'value', label: 'gateway.whyZipkiwi' },
-  { id: 'audiences', label: 'gateway.useCases' },
   { id: 'integration', label: 'gateway.quickStart' },
-  { id: 'faq', label: 'gateway.faq' }
+  { id: 'audiences', label: 'gateway.enterpriseService' }
 ]
 const activeChapter = ref('')
 let chapterElements: HTMLElement[] = []
@@ -996,4 +938,4 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped src="./home-landing.css"></style>
-<style scoped src="./home-flight.css"></style>
+<style scoped src="./home-final.css"></style>

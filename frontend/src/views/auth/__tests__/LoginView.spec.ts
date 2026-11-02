@@ -73,7 +73,7 @@ function mountLogin() {
   return mount(LoginView, {
     global: {
       stubs: {
-        AuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
+        BrandAuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
         DingTalkOAuthSection: true,
         EmailOAuthButtons: true,
         Icon: true,

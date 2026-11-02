@@ -22,7 +22,7 @@
       <nav class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div class="flex min-w-0 flex-1 items-center gap-3">
           <img
-            :src="siteLogo || '/logo.svg'"
+            :src="selectedBrand ? (isDark ? '/zipkiwi-symbol-white.svg' : '/zipkiwi-symbol-primary.svg') : (siteLogo || '/logo.svg')"
             alt="Logo"
             class="h-9 w-9 shrink-0 rounded-lg object-contain"
           />
@@ -70,7 +70,7 @@
     <main class="flex min-w-0 flex-1 items-center justify-center px-4 py-16 sm:px-6">
       <div class="min-w-0 max-w-2xl text-center">
         <img
-          :src="siteLogo || '/logo.svg'"
+          :src="selectedBrand ? (isDark ? '/zipkiwi-symbol-white.svg' : '/zipkiwi-symbol-primary.svg') : (siteLogo || '/logo.svg')"
           alt="Logo"
           class="mx-auto mb-6 h-20 w-20 rounded-2xl object-contain"
         />
@@ -115,6 +115,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import GatewayLanding from '@/components/home/GatewayLanding.vue'
 import { sanitizeUrl } from '@/utils/url'
+import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 
 const { t } = useI18n()
@@ -125,6 +126,7 @@ const appStore = useAppStore()
 // Site settings - directly from appStore (already initialized from injected config)
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
+const selectedBrand = computed(() => isSelectedZipkiwiBrand(siteName.value, siteLogo.value))
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')

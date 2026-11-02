@@ -96,13 +96,13 @@ describe('GatewayLanding', () => {
     vi.stubGlobal('scrollY', 0)
     const scrollTo = vi.mocked(window.scrollTo)
     const { wrapper } = render()
-    const sections = ['platform', 'value', 'audiences', 'integration', 'faq']
+    const sections = ['platform', 'integration', 'audiences']
       .map((id) => wrapper.get<HTMLElement>(`#${id}`).element)
     const bounds = sections.map((section, index) =>
       vi.spyOn(section, 'getBoundingClientRect')
         .mockReturnValue(new DOMRect(0, index === 0 ? 100 : 1000 + index * 500, 100, 200))
     )
-    const links = wrapper.findAll('#main-navigation a')
+    const links = wrapper.findAll('#main-navigation a[href^="#"]')
     window.dispatchEvent(new Event('scroll'))
     await vi.waitFor(() => expect(links[0]!.attributes('aria-current')).toBe('location'))
     expect(links[1]!.attributes('aria-current')).toBeUndefined()
@@ -113,9 +113,9 @@ describe('GatewayLanding', () => {
     await vi.waitFor(() => expect(links[1]!.attributes('aria-current')).toBe('location'))
     expect(links[0]!.classes()).not.toContain('is-current')
 
-    bounds[3]!.mockReturnValue(new DOMRect(0, 600, 100, 200))
+    bounds[2]!.mockReturnValue(new DOMRect(0, 600, 100, 200))
     const url = window.location.href
-    await links[3]!.trigger('click')
+    await links[2]!.trigger('click')
     expect(scrollTo).toHaveBeenCalledWith({ top: 580, behavior: 'smooth' })
     expect(window.location.href).toBe(url)
   })
@@ -171,7 +171,7 @@ describe('GatewayLanding', () => {
 
   it('connects theme controls and translates the full page reactively', async () => {
     const { wrapper, i18n } = render()
-    expect(wrapper.get('h1').text()).toContain('让好用的 AI')
+    expect(wrapper.get('h1').text()).toContain('让智能更近')
     await wrapper.get('.theme-toggle').trigger('click')
     expect(wrapper.emitted('toggleTheme')).toHaveLength(1)
     await wrapper.setProps({ isDark: true })
@@ -181,9 +181,9 @@ describe('GatewayLanding', () => {
     )
     i18n.global.locale.value = 'en'
     await wrapper.vm.$nextTick()
-    expect(wrapper.get('h1').text()).toContain('Bring great AI')
+    expect(wrapper.get('h1').text()).toContain('Bring intelligence closer')
     expect(wrapper.text()).not.toContain('gateway.')
-    expect(wrapper.text()).not.toContain('让好用的 AI')
+    expect(wrapper.text()).not.toContain('让智能更近')
   })
 
   it('uses configured documentation and keeps disabled model links out of navigation', async () => {
@@ -199,9 +199,19 @@ describe('GatewayLanding', () => {
     await wrapper.setProps({ docUrl: '', showModelPlaza: true })
     expect(docs.attributes('href')).toBe('#integration')
     expect(docs.attributes('target')).toBeUndefined()
-    expect(wrapper.getComponent('.catalog-model').props('to')).toBe(
+    expect(wrapper.getComponent('.network-model').props('to')).toBe(
       '/model-plaza'
     )
+  })
+
+  it('offers the login pricing link only to guests', async () => {
+    const { wrapper } = render({ showModelPlaza: true })
+    const pricing = wrapper.get('.pricing-actions')
+    expect(pricing.text()).toContain('登录查看价格')
+    expect(pricing.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/model-plaza', '/login'])
+    await wrapper.setProps({ isAuthenticated: true })
+    expect(pricing.text()).not.toContain('登录查看价格')
+    expect(pricing.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/model-plaza'])
   })
 
   it('supports keyboard navigation between audience panels', async () => {

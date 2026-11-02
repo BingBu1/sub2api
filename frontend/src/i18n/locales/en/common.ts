@@ -232,6 +232,9 @@ export default {
 
   // Auth
   auth: {
+    backToHome: 'Back to home',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     welcomeBack: 'Welcome Back',
     signInToAccount: 'Sign in to your account to continue',
     signIn: 'Sign In',

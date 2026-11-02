@@ -1,14 +1,16 @@
 <template>
-  <div class="plaza-content plaza-theme space-y-5">
+  <div class="plaza-content plaza-theme space-y-5" :class="{ 'is-embedded': embedded }">
     <!-- 页头(独立形态下展示标题;后台形态 AppHeader 已有页面标题) -->
     <div v-if="!embedded" class="plaza-intro">
       <div>
+        <span class="plaza-intro-kicker">{{ t('modelPlaza.card.tagline') }}</span>
         <h1>{{ t('modelPlaza.title') }}</h1>
         <p>{{ t('modelPlaza.description') }}</p>
       </div>
-      <a v-if="!loading && !error" class="plaza-intro-link" href="#model-catalog">
-        {{ t('modelPlaza.browseModels') }}<Icon name="arrowDown" size="sm" />
-      </a>
+      <div class="plaza-hero-search">
+        <Icon name="search" size="sm" />
+        <input v-model="searchQuery" type="search" :aria-label="t('modelPlaza.filters.modelLabel')" :placeholder="t('modelPlaza.filters.searchPlaceholder')" />
+      </div>
     </div>
 
     <!-- 全局价格说明(管理员配置,Markdown) -->
@@ -38,31 +40,44 @@
       {{ t('modelPlaza.loadFailed') }}
     </div>
     <template v-else>
-      <!-- 筛选区:平台 → 分组 → 倍率 -->
-      <PlazaFilterBar
-        id="model-catalog"
-        :platforms="platforms"
-        :groups="groupOptions"
-        :rates="rates"
-        :platform="selectedPlatform"
-        :group-id="selectedGroupId"
-        :rate="selectedRate"
-        :search="searchQuery"
-        @update:platform="selectedPlatform = $event"
-        @update:group-id="selectedGroupId = $event"
-        @update:rate="selectedRate = $event"
-        @update:search="searchQuery = $event"
-      />
-
-      <!-- 分组分节的模型清单(默认按生效倍率升序) -->
-      <div v-if="filteredGroups.length > 0" class="plaza-groups space-y-6">
-        <PlazaGroupSection v-for="g in filteredGroups" :key="g.id" :group="g" />
-      </div>
-      <div
-        v-else
-        class="rounded-2xl border border-dashed border-gray-300 px-5 py-12 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
-      >
-        {{ searchActive ? t('modelPlaza.noSearchResult') : t('modelPlaza.empty') }}
+      <div id="model-catalog" class="plaza-catalog-layout">
+        <aside class="plaza-filter-sidebar" :aria-label="t('modelPlaza.card.filterTitle')">
+          <div class="plaza-filter-heading"><strong>{{ t('modelPlaza.card.filterTitle') }}</strong><button type="button" @click="resetFilters">{{ t('modelPlaza.card.reset') }}</button></div>
+          <PlazaFilterBar
+            :platforms="platforms"
+            :groups="groupOptions"
+            :rates="rates"
+            :platform="selectedPlatform"
+            :group-id="selectedGroupId"
+            :rate="selectedRate"
+            :search="searchQuery"
+            :hide-search="!embedded"
+            @update:platform="selectedPlatform = $event"
+            @update:group-id="selectedGroupId = $event"
+            @update:rate="selectedRate = $event"
+            @update:search="searchQuery = $event"
+          />
+        </aside>
+        <div class="plaza-results">
+          <div class="plaza-results-toolbar">
+            <span>{{ t('modelPlaza.card.priceNote') }}</span>
+            <div class="plaza-view-switch" role="group" :aria-label="t('modelPlaza.card.viewMode')">
+              <button type="button" :aria-pressed="viewMode === 'cards'" @click="viewMode = 'cards'"><Icon name="grid" size="sm" />{{ t('modelPlaza.card.cards') }}</button>
+              <button type="button" :aria-pressed="viewMode === 'table'" @click="viewMode = 'table'"><Icon name="menu" size="sm" />{{ t('modelPlaza.card.table') }}</button>
+            </div>
+          </div>
+          <template v-if="filteredGroups.length > 0 && (viewMode === 'table' || cardModels.length > 0)">
+            <div v-if="viewMode === 'cards'" class="plaza-card-grid">
+              <PlazaModelCard v-for="item in cardModels" :key="`${item.group.id}:${item.model.name}`" :group="item.group" :model="item.model" @show-details="showDetails(item.group.id)" />
+            </div>
+            <div v-else class="plaza-groups space-y-6">
+              <PlazaGroupSection v-for="g in filteredGroups" :key="g.id" :group="g" />
+            </div>
+          </template>
+          <div v-else class="plaza-empty">
+            {{ searchActive ? t('modelPlaza.noSearchResult') : filteredGroups.length ? t('modelPlaza.detail.noModels') : t('modelPlaza.empty') }}
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -76,6 +91,7 @@ import DOMPurify from 'dompurify'
 import Icon from '@/components/icons/Icon.vue'
 import PlazaFilterBar from './PlazaFilterBar.vue'
 import PlazaGroupSection from './PlazaGroupSection.vue'
+import PlazaModelCard from './PlazaModelCard.vue'
 import type { ModelPlazaGroup, ModelPlazaResponse } from '@/api/modelPlaza'
 import { useAuthStore } from '@/stores/auth'
 
@@ -95,6 +111,19 @@ const selectedPlatform = ref<string>('all')
 const selectedGroupId = ref<number | 'all'>('all')
 const selectedRate = ref<number | 'all'>('all')
 const searchQuery = ref('')
+const viewMode = ref<'cards' | 'table'>(props.embedded ? 'table' : 'cards')
+
+function resetFilters() {
+  selectedPlatform.value = 'all'
+  selectedGroupId.value = 'all'
+  selectedRate.value = 'all'
+  searchQuery.value = ''
+}
+
+function showDetails(groupId: number) {
+  selectedGroupId.value = groupId
+  viewMode.value = 'table'
+}
 
 const searchActive = computed(() => searchQuery.value.trim() !== '')
 
@@ -157,6 +186,10 @@ const filteredGroups = computed(() => {
     (a, b) => effectiveRate(a) - effectiveRate(b) || a.name.localeCompare(b.name)
   )
 })
+
+const cardModels = computed(() => filteredGroups.value.flatMap(group =>
+  group.models.map(model => ({ group, model }))
+))
 </script>
 
 <style scoped>

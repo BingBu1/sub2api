@@ -79,7 +79,7 @@ function mountLogin() {
   return mount(LoginView, {
     global: {
       stubs: {
-        AuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
+        BrandAuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
         RouterLink: true,
         TurnstileWidget: CaptchaChallengeStub,
         Icon: true,

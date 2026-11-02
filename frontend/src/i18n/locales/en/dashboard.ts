@@ -762,7 +762,18 @@ export default {
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
     title: 'Model Plaza',
-    description: 'Find the right AI model for your product. Compare pricing and start building.',
+    description: 'Bring intelligence closer and make every call count. Choose what fits your application.',
+    card: {
+      tagline: 'One API connects models and applications',
+      filterTitle: 'Filter models',
+      reset: 'Reset',
+      priceNote: 'Base paid price; token prices are per 1M. See details for other rules',
+      viewMode: 'View mode',
+      cards: 'Cards',
+      table: 'Details',
+      details: 'Details',
+      copyModel: 'Copy model ID'
+    },
     browseModels: 'Browse models and pricing',
     loading: 'Loading...',
     empty: 'No groups to display',

@@ -77,7 +77,7 @@ function mountRegister() {
   return mount(RegisterView, {
     global: {
       stubs: {
-        AuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
+        BrandAuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
         Icon: true,
         TurnstileWidget: {
           template: '<div data-testid="turnstile-widget" />',

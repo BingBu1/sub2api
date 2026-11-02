@@ -308,7 +308,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { formatScaled, resolveIntervalPrices } from '@/utils/pricing'
+import { formatScaled, plazaEffectiveRate, plazaRate, resolveIntervalPrices } from '@/utils/pricing'
 import { platformBadgeLightClass, platformLabel } from '@/utils/platformColors'
 import {
   BILLING_MODE_TOKEN,
@@ -377,7 +377,7 @@ const sortedModels = computed(() => {
   })
 })
 
-const effectiveRate = computed(() => props.userRateMultiplier ?? props.rateMultiplier)
+const effectiveRate = computed(() => plazaEffectiveRate(props))
 const hasCustomRate = computed(
   () => props.userRateMultiplier != null && props.userRateMultiplier !== props.rateMultiplier
 )
@@ -434,12 +434,7 @@ function usesIndependentMediaRate(m: PlazaModel): boolean {
 
 /** 非 token 行的生效倍率，图片和视频可分别覆盖通用倍率。 */
 function requestRate(m: PlazaModel): number {
-  if (billingMode(m) === BILLING_MODE_VIDEO && props.videoRateIndependent === true) {
-    return Math.max(0, props.videoRateMultiplier ?? 1)
-  }
-  return billingMode(m) === BILLING_MODE_IMAGE && props.imageRateIndependent === true
-    ? (props.imageRateMultiplier ?? 1)
-    : effectiveRate.value
+  return plazaRate(billingMode(m), props)
 }
 
 /** 非 token 单价乘该行生效倍率，不换算为每百万 token。 */
