@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout>
+  <BrandAuthLayout>
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
@@ -361,14 +361,14 @@
         </router-link>
       </p>
     </template>
-  </AuthLayout>
+  </BrandAuthLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AuthLayout } from '@/components/layout'
+import BrandAuthLayout from '@/components/layout/BrandAuthLayout.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
 import WechatOAuthSection from '@/components/auth/WechatOAuthSection.vue'

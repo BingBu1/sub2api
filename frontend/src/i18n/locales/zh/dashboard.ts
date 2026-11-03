@@ -767,7 +767,18 @@ export default {
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
     title: '模型广场',
-    description: '找到适合你业务的 AI 模型，清晰比较价格，轻松开始接入。',
+    description: '让智能更近，让成本更轻。为你的应用，选好每一次调用。',
+    card: {
+      tagline: '一个 API，连接模型与应用',
+      filterTitle: '筛选模型',
+      reset: '重置',
+      priceNote: '实付基础价格 · Token 价按每 100 万计；其他规则请查看明细',
+      viewMode: '显示方式',
+      cards: '卡片',
+      table: '明细',
+      details: '详情',
+      copyModel: '复制模型 ID'
+    },
     browseModels: '浏览模型与价格',
     loading: '加载中...',
     empty: '暂无可展示的分组',

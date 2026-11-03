@@ -7,17 +7,32 @@
     ]"
   >
     <!-- Logo/Brand -->
-    <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed }">
+    <div class="sidebar-header" :class="{ 'sidebar-header-collapsed': sidebarCollapsed, 'sidebar-header-lockup': selectedBrand && !sidebarCollapsed }">
       <!-- Custom Logo or Default Logo -->
       <router-link
         :to="homePath"
         class="sidebar-logo flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-glow transition-opacity hover:opacity-80"
+        :class="{ 'sidebar-logo-lockup': selectedBrand && !sidebarCollapsed }"
+        :aria-label="siteName"
         @click="handleMenuItemClick(homePath)"
       >
-        <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
+        <template v-if="settingsLoaded">
+          <template v-if="selectedBrand">
+            <template v-if="sidebarCollapsed">
+              <img src="/zipkiwi-symbol-primary.svg" alt="" class="h-full w-full object-contain dark:hidden" />
+              <img src="/zipkiwi-symbol-white.svg" alt="" class="hidden h-full w-full object-contain dark:block" />
+            </template>
+            <template v-else>
+              <img src="/zipkiwi-lockup-primary.svg" alt="" class="h-full w-full object-contain dark:hidden" />
+              <img src="/zipkiwi-lockup-white.svg" alt="" class="hidden h-full w-full object-contain dark:block" />
+            </template>
+          </template>
+          <img v-else :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
+        </template>
       </router-link>
       <div class="sidebar-brand" :class="{ 'sidebar-brand-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
         <router-link
+          v-if="!selectedBrand"
           :to="homePath"
           class="sidebar-brand-title text-lg font-bold text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
           @click="handleMenuItemClick(homePath)"
@@ -231,6 +246,7 @@ import FeatureSearch from './FeatureSearch.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
+import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
@@ -302,6 +318,7 @@ const groupExpandOverrides = ref<Map<string, boolean>>(new Map())
 // Site settings from appStore (cached, no flicker)
 const siteName = computed(() => appStore.siteName)
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
+const selectedBrand = computed(() => isSelectedZipkiwiBrand(siteName.value, siteLogo.value))
 const siteVersion = computed(() => appStore.siteVersion)
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 
@@ -1086,6 +1103,18 @@ onBeforeUnmount(() => {
 .sidebar-logo {
   flex: 0 0 2.25rem;
   min-width: 2.25rem;
+}
+
+.sidebar-logo-lockup {
+  flex-basis: 7rem;
+  width: 7rem;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sidebar-header-lockup {
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
 }
 
 .sidebar-header-collapsed {

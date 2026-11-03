@@ -1,7 +1,7 @@
 <template>
   <div class="plaza-filters">
     <!-- 模型名搜索(纯前端过滤) -->
-    <div class="plaza-search-row">
+    <div v-if="!hideSearch" class="plaza-search-row">
       <label for="plaza-model-search" class="sr-only">
         {{ t('modelPlaza.filters.modelLabel') }}
       </label>
@@ -133,6 +133,7 @@ const props = defineProps<{
   rate: number | 'all'
   /** 模型名搜索词(纯前端过滤)。 */
   search: string
+  hideSearch?: boolean
 }>()
 
 defineEmits<{

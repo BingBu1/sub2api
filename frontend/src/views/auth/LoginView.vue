@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout>
+  <BrandAuthLayout>
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
@@ -60,6 +60,8 @@
               type="button"
               @click="showPassword = !showPassword"
               :disabled="authActionDisabled"
+              :aria-label="showPassword ? t('auth.hidePassword') : t('auth.showPassword')"
+              :aria-pressed="showPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
@@ -208,7 +210,7 @@
         </router-link>
       </p>
     </template>
-  </AuthLayout>
+  </BrandAuthLayout>
 
   <!-- 2FA Modal -->
   <TotpLoginModal
@@ -225,7 +227,7 @@
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AuthLayout } from '@/components/layout'
+import BrandAuthLayout from '@/components/layout/BrandAuthLayout.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import DingTalkOAuthSection from '@/components/auth/DingTalkOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'

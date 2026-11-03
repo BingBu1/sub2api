@@ -85,6 +85,10 @@ a {
   object-fit: contain;
   color: var(--blue);
 }
+.brand img.brand-lockup {
+  width: 150px;
+  height: auto;
+}
 .site-header nav {
   display: flex;
   flex: 1;
@@ -1210,6 +1214,10 @@ summary::-webkit-details-marker {
   .brand :is(svg, img) {
     width: 26px;
     height: 25px;
+  }
+  .brand img.brand-lockup {
+    width: 118px;
+    height: auto;
   }
   .site-header .brand {
     font-size: clamp(15px, 5vw, 22px);
