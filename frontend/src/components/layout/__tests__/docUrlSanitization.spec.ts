@@ -22,8 +22,8 @@ describe('doc_url sanitization', () => {
     expect(homeViewSource).toContain("import { sanitizeUrl } from '@/utils/url'")
   })
 
-  it('HomeView applies sanitizeUrl to docUrl', () => {
-    expect(homeViewSource).toContain('sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl')
+  it('HomeView applies sanitizeUrl to the configured logo', () => {
+    expect(homeViewSource).toContain('sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo')
   })
 
   it('KeyUsageView imports sanitizeUrl', () => {

@@ -6823,14 +6823,16 @@
               <!-- Contact Info -->
               <div>
                 <label
+                  for="site-contact-info"
                   class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >
                   {{ t("admin.settings.site.contactInfo") }}
                 </label>
-                <input
+                <textarea
+                  id="site-contact-info"
                   v-model="form.contact_info"
-                  type="text"
-                  class="input"
+                  rows="3"
+                  class="input resize-y"
                   :placeholder="t('admin.settings.site.contactInfoPlaceholder')"
                 />
                 <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">

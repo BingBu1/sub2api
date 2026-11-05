@@ -45,7 +45,7 @@
               {{ siteName }}
             </h1>
           </template>
-          <p class="text-sm text-gray-500 dark:text-dark-400">
+          <p v-if="siteSubtitle" class="text-sm text-gray-500 dark:text-dark-400">
             {{ siteSubtitle }}
           </p>
         </template>
@@ -80,7 +80,7 @@ const appStore = useAppStore()
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const selectedBrand = computed(() => isSelectedZipkiwiBrand(siteName.value, siteLogo.value))
-const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'Subscription to API Conversion Platform')
+const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || (selectedBrand.value ? '' : 'Subscription to API Conversion Platform'))
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 
 const currentYear = computed(() => new Date().getFullYear())

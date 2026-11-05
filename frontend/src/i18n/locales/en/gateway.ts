@@ -25,7 +25,8 @@ export default {
   quickStart: 'Quick start',
   faq: 'FAQ',
   modelHub: 'Model hub',
-  documentation: 'Documentation',
+  documentation: 'Tutorials',
+  viewTutorials: 'View tutorials',
   signIn: 'Sign in',
   console: 'Console',
   bringGreatAi: 'Bring great AI',
@@ -41,7 +42,8 @@ export default {
   backToTop: 'Back to top',
   contactDescription: 'Get in touch for integration help, questions, and feedback.',
   contactDetails: 'Support contact',
-  copyContact: 'Copy number',
+  copyContact: 'Copy contact details',
+  openContactLink: 'Open contact link',
   oneGatewaySixModelFamilies: 'One gateway · Six model families',
   oneRouteToMoreCapabilities: 'One route to more capabilities',
   exploreModels: 'Explore models',
@@ -178,5 +180,4 @@ export default {
   teamsAndSystems: 'Teams & business systems', validateThenMigrate: 'Validate, then migrate', teamsAndSystemsDescription: 'Identify your protocol, models and expected usage. Test first, then move business requests gradually.',
   enterpriseIntro: 'Bring AI into daily work, from support and content to internal tools.', supportKnowledge: 'Support & knowledge', supportKnowledgeBody: 'Use business content to test Q&A, retrieval and assisted replies.', contentOperations: 'Content & operations', contentOperationsBody: 'Bring summaries, rewriting and organization into existing workflows.', internalToolsBody: 'Start with one task to test analysis, development and collaboration.',
   teamPath: 'Team integration path', defineValidateConnect: 'DEFINE → VALIDATE → CONNECT', clearPath: 'A clear path to your next step.', defineNeeds: 'Define requirements', defineNeedsBody: 'Models · Use cases · Expected usage', smallValidation: 'Run a small validation', smallValidationBody: 'Compatibility · Quality · Cost per request', connectBusiness: 'Connect gradually', connectBusinessBody: 'Configuration · Usage review · Troubleshooting', validateYourTasks: 'Validate each step with your own tasks.',
-  contactHeadline: 'A connection shaped around your needs.', contactIntro: 'Find the right models and connection for your business.', modelIntegration: 'Model integration', modelIntegrationBody: 'Model choice · API compatibility · Migration', usagePlanning: 'Usage planning', usagePlanningBody: 'Volume · Costs · Groups', teamCollaboration: 'Team collaboration', teamCollaborationBody: 'Requirements · Testing · Support', otherNeeds: 'Other inquiries', contactPath: 'DISCUSS → PLAN → VALIDATE', tellUsYourNeeds: 'Tell us what you need', contactFormIntro: 'Leave a contact detail to start a conversation.', yourName: 'Your name', namePlaceholder: 'What should we call you?', contactPlaceholder: 'WeChat / QQ / Email', consultationTopic: 'Topic', requirements: 'Requirements', requirementsPlaceholder: 'Which models and use cases? Include expected usage if known.', formPreviewNote: 'Preview form: copy your request and send it using the contact details below.', prepareAndCopy: 'Prepare & copy request', requestSummary: 'Request summary', notProvided: 'Not provided', requestCopied: 'Request copied. Please send it using the contact details below.', requestCopyFailed: 'Request prepared. Copy the summary manually and send it.', directContact: 'You can also contact us directly'
 }

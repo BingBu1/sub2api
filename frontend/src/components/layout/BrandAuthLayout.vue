@@ -1,9 +1,13 @@
 <template>
-  <div class="brand-auth-page">
-    <div class="brand-auth-bar">
-      <router-link to="/home"><Icon name="arrowLeft" size="sm" />{{ t('auth.backToHome') }}</router-link>
-      <LocaleSwitcher />
-    </div>
+  <PublicSiteHeader v-if="!standalone" />
+  <div class="brand-auth-page" :class="{ 'brand-auth-standalone': standalone }">
+    <router-link v-if="standalone" to="/home" class="brand-auth-corner-logo" :aria-label="siteName">
+      <template v-if="selectedBrand">
+        <img class="brand-auth-lockup-light" src="/zipkiwi-lockup-primary.svg" alt="" />
+        <img class="brand-auth-lockup-dark" src="/zipkiwi-lockup-white.svg" alt="" />
+      </template>
+      <template v-else><img :src="siteLogo || '/logo.svg'" alt="" /><strong>{{ siteName }}</strong></template>
+    </router-link>
     <div class="brand-auth-shell">
       <aside class="brand-auth-showcase">
         <router-link to="/home" class="brand-auth-logo" :aria-label="siteName">
@@ -40,8 +44,9 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
-import Icon from '@/components/icons/Icon.vue'
-import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import PublicSiteHeader from './PublicSiteHeader.vue'
+
+defineProps<{ standalone?: boolean }>()
 
 const { t } = useI18n()
 const appStore = useAppStore()

@@ -1,0 +1,34 @@
+.business-dialog { position: fixed; inset: 0; width: min(540px, calc(100vw - 32px)); max-width: none; max-height: calc(100svh - 32px); overflow-y: auto; margin: auto; padding: 36px; border: 1px solid #c8d6e7; border-radius: 12px; background: #fff; color: #173454; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; line-height: 1.6; }
+.business-dialog::backdrop { background: #08182bb3; }
+:global(html:has(.business-dialog[open])) { overflow: hidden; }
+.business-dialog :is(a, button):focus-visible { outline: 2px solid #5c8dee; outline-offset: 3px; }
+.contact-close { position: absolute; right: 14px; top: 14px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 6px; color: #536b86; }
+.contact-close:hover { background: #edf3fa; color: #173454; }
+.contact-brand { display: flex; align-items: center; gap: 8px; padding-right: 30px; color: #234c80; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.contact-brand svg { flex-shrink: 0; width: 28px; height: 25px; }
+.business-dialog h2 { margin: 28px 0 8px; font-size: 30px; font-weight: 650; letter-spacing: -.02em; }
+#contact-description { margin: 0; color: #526780; font-size: 14px; }
+.contact-details { margin-top: 24px; border-top: 1px solid #e0e8f2; text-align: center; }
+.contact-method { padding-top: 20px; }
+.contact-method + .contact-method { margin-top: 20px; border-top: 1px solid #e0e8f2; }
+.contact-label { margin: 0 0 8px; color: #526780; font-size: 13px; }
+.contact-value { margin: 0; color: #173454; font-size: 28px; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.contact-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px 20px; margin-top: 12px; }
+.contact-copy, .contact-open { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 600; }
+.contact-copy { padding: 10px 18px; border-radius: 6px; background: #2460e9; color: #fff; }
+.contact-copy:hover { background: #1b50cb; }
+.contact-open { color: #245cbd; text-decoration: none; }
+.contact-open:hover { text-decoration: underline; }
+.contact-empty { margin: 28px 0 0; padding: 20px; border-radius: 8px; background: #f0f5fb; color: #526780; font-size: 14px; }
+.dark .business-dialog { background: #12263e; border-color: #405a77; color: #eff5ff; }
+.dark .contact-brand, .dark .contact-value { color: #eff5ff; }
+.dark .contact-label, .dark #contact-description, .dark .contact-close { color: #b6c9df; }
+.dark .contact-close:hover, .dark .contact-empty { background: #1b3450; color: #c5d7eb; }
+.dark .contact-details, .dark .contact-method { border-color: #354e6a; }
+.dark .contact-open { color: #a9caff; }
+@media (max-width: 700px) {
+  .business-dialog { padding: 28px 24px; }
+  .business-dialog h2 { font-size: 26px; }
+  .contact-value { font-size: 22px; }
+  .contact-copy { width: 100%; }
+}

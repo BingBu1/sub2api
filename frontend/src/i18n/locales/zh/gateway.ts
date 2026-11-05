@@ -25,7 +25,8 @@ export default {
   quickStart: '快速接入',
   faq: '常见问题',
   modelHub: '模型广场',
-  documentation: '接入文档',
+  documentation: '教程文档',
+  viewTutorials: '查看教程',
   signIn: '登录',
   console: '进入控制台',
   bringGreatAi: '让好用的 AI，',
@@ -39,7 +40,8 @@ export default {
   backToTop: '回到顶部',
   contactDescription: '接入咨询、使用交流与问题反馈，欢迎联系我们。',
   contactDetails: '客服联系方式',
-  copyContact: '复制号码',
+  copyContact: '复制联系方式',
+  openContactLink: '打开联系链接',
   oneGatewaySixModelFamilies: '一个入口，连接六大模型系列',
   oneRouteToMoreCapabilities: '一条航线，接通多种能力',
   exploreModels: '探索模型',
@@ -165,5 +167,4 @@ export default {
   teamsAndSystems: '团队与业务系统', validateThenMigrate: '先验证，再逐步迁移', teamsAndSystemsDescription: '梳理现有协议、目标模型与预计用量，先在测试环境验证，再逐步切换业务请求。',
   enterpriseIntro: '从客服、内容到内部工具，把模型能力接入实际工作。', supportKnowledge: '客服与知识库', supportKnowledgeBody: '围绕业务资料，验证问答、检索与回复辅助。', contentOperations: '内容与运营', contentOperationsBody: '将摘要、改写与信息整理接入已有工作流。', internalToolsBody: '从单个任务开始，验证分析、开发与日常协作。',
   teamPath: '团队接入路径', defineValidateConnect: '需求 → 验证 → 接入', clearPath: '让下一步，有清晰的路径。', defineNeeds: '明确使用需求', defineNeedsBody: '目标模型 · 业务场景 · 预计用量', smallValidation: '完成小规模验证', smallValidationBody: '协议兼容 · 输出效果 · 单次成本', connectBusiness: '逐步接入业务', connectBusinessBody: '应用配置 · 用量核对 · 问题排查', validateYourTasks: '从你的实际任务出发，确认每一步。',
-  contactHeadline: '按业务需求，定制接入方案。', contactIntro: '围绕你的业务场景，找到合适的模型与接入方式。', modelIntegration: '模型接入', modelIntegrationBody: '模型选择 · 协议兼容 · 应用迁移', usagePlanning: '用量规划', usagePlanningBody: '调用规模 · 成本评估 · 分组选择', teamCollaboration: '团队合作', teamCollaborationBody: '业务对接 · 接入验证 · 使用沟通', otherNeeds: '其他需求', contactPath: '沟通需求 → 确认方案 → 接入验证', tellUsYourNeeds: '聊聊你的需求', contactFormIntro: '留下联系方式，让沟通有个开始。', yourName: '如何称呼你', namePlaceholder: '你的称呼', contactPlaceholder: '微信 / QQ / 邮箱', consultationTopic: '咨询方向', requirements: '需求描述', requirementsPlaceholder: '想接入什么模型？用于什么场景？也可以说说预计用量。', formPreviewNote: '预览表单：可复制需求，通过联系方式发送。', prepareAndCopy: '整理并复制需求', requestSummary: '需求摘要', notProvided: '未填写', requestCopied: '需求已整理并复制，请通过联系方式发送。', requestCopyFailed: '需求已整理，请手动复制摘要并发送。', directContact: '也可以直接联系我们'
 }
