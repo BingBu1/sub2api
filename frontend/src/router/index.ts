@@ -186,6 +186,16 @@ const routes: RouteRecordRaw[] = [
       titleKey: 'modelPlaza.title'
     }
   },
+  {
+    path: '/tutorials',
+    name: 'Tutorials',
+    component: () => import('@/views/TutorialDocsView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Tutorials',
+      titleKey: 'tutorials.pageTitle'
+    }
+  },
 
   // ==================== User Routes ====================
   {
@@ -855,6 +865,9 @@ const router = createRouter({
   scrollBehavior(to, _from, savedPosition) {
     // SettingsView waits for its async form and reveals the target tab first.
     if (to.path === '/admin/settings' && settingsLocation(to.query.tab, to.hash).linked) return false
+    if (!savedPosition && to.path === '/home' && ['#platform', '#integration', '#enterprise'].includes(to.hash)) {
+      return { el: to.hash, top: 91, behavior: 'instant' }
+    }
     // Fresh homepage loads start at the hero; back/forward still restores position.
     if (to.path === '/home' && _from.matched.length === 0) {
       return { left: 0, top: 0, behavior: 'instant' }
@@ -862,6 +875,9 @@ const router = createRouter({
     // Scroll to saved position when using browser back/forward
     if (savedPosition) {
       return savedPosition
+    }
+    if (to.path === '/tutorials' && to.hash) {
+      return { el: to.hash, top: 155, behavior: 'instant' }
     }
     // Scroll to top for new routes
     return { top: 0 }

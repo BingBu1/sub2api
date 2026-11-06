@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
@@ -30,6 +30,14 @@ vi.mock('@/stores/app', () => ({
   useAppStore: () => appStore,
 }))
 
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => authStore }))
+vi.mock('vue-router', async (importOriginal) => ({
+  ...await importOriginal<typeof import('vue-router')>(),
+  useRoute: () => ({ path: '/home' })
+}))
+vi.mock('@/api/publicTelemetry', () => ({ getPublicTelemetry: vi.fn().mockRejectedValue(new Error('offline')) }))
+vi.mock('@/api/modelPlaza', () => ({ getModelPlaza: vi.fn().mockRejectedValue(new Error('offline')) }))
+
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
   return {
@@ -38,6 +46,9 @@ vi.mock('vue-i18n', async (importOriginal) => {
   }
 })
 
+const mounted: ReturnType<typeof mount>[] = []
+afterEach(() => { mounted.splice(0).forEach(wrapper => wrapper.unmount()); vi.restoreAllMocks() })
+
 function mountHome(settings: Record<string, unknown> = {}) {
   appStore.cachedPublicSettings = {
     site_name: 'Test site',
@@ -45,7 +56,7 @@ function mountHome(settings: Record<string, unknown> = {}) {
     ...settings,
   }
 
-  return mount(HomeView, {
+  const wrapper = mount(HomeView, {
     global: {
       stubs: {
         RouterLink: RouterLinkStub,
@@ -55,10 +66,12 @@ function mountHome(settings: Record<string, unknown> = {}) {
       },
     },
   })
+  mounted.push(wrapper)
+  return wrapper
 }
 
 function compactDestination(wrapper: ReturnType<typeof mountHome>) {
-  return wrapper.get('[data-testid="compact-home"]').findComponent(RouterLinkStub).props('to')
+  return wrapper.get('[data-testid="compact-home"]').getComponent('.public-console').props('to')
 }
 
 function modelPlazaDestination(wrapper: ReturnType<typeof mountHome>) {
@@ -76,6 +89,7 @@ describe('HomeView compact mode', () => {
     authStore.checkAuth.mockClear()
     appStore.fetchPublicSettings.mockClear()
     localStorage.clear()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
     vi.spyOn(window, 'matchMedia').mockReturnValue({
       matches: false,
       addEventListener: vi.fn(),
@@ -202,7 +216,7 @@ describe('HomeView compact mode', () => {
     authStore.isAdmin = true
     const wrapper = mountHome()
     const destinations = wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))
-    for (const selector of ['.actions .button', '.hero-cta .button', '.cta .button']) {
+    for (const selector of ['.public-console', '.hero-cta .button', '.cta .button']) {
       expect(wrapper.getComponent(selector).props('to')).toBe('/admin/dashboard')
     }
     expect(destinations).not.toContain('/register')
@@ -234,7 +248,7 @@ describe('HomeView compact mode', () => {
     localStorage.setItem('theme', 'light')
     const wrapper = mountHome()
     expect(document.documentElement.classList.contains('dark')).toBe(false)
-    await wrapper.get('.theme-toggle').trigger('click')
+    await wrapper.get('.public-theme-toggle').trigger('click')
     expect(wrapper.get('[data-testid="gateway-landing"]').classes()).toContain('is-dark')
     expect(document.documentElement.classList.contains('dark')).toBe(true)
     expect(localStorage.getItem('theme')).toBe('dark')

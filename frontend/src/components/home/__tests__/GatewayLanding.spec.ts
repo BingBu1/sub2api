@@ -39,7 +39,7 @@ function render(overrides: Partial<InstanceType<typeof GatewayLanding>['$props']
   const wrapper = mount(GatewayLanding, {
     attachTo: document.body,
     props: {
-      siteName: 'zipkiwi', docUrl: '', isDark: false, isAuthenticated: false,
+      siteName: 'zipkiwi', isDark: false, isAuthenticated: false,
       dashboardPath: '/dashboard', registrationEnabled: true, showModelPlaza: true,
       ...overrides
     },
@@ -209,7 +209,7 @@ describe('GatewayLanding final handoff', () => {
     expect(writeText).toHaveBeenCalledWith(wrapper.find('pre').text())
   })
 
-  it('prepares contact requirements locally and opens via the navigation', async () => {
+  it('opens the configured contact details from navigation and copies them intact', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     vi.stubGlobal('isSecureContext', true)
@@ -219,19 +219,19 @@ describe('GatewayLanding final handoff', () => {
     await wrapper.get('#main-navigation button').trigger('click')
     expect(dialog.showModal).toHaveBeenCalledOnce()
     await wrapper.get('.contact-copy').trigger('click')
-    expect(writeText).toHaveBeenCalledWith('123456789')
-    const inputs = wrapper.findAll('.contact-request-panel input')
-    await inputs[0]!.setValue('Alice')
-    await inputs[1]!.setValue('alice@example.com')
-    await wrapper.get('.contact-request-panel textarea').setValue('需要模型接入')
-    await wrapper.get('.contact-request-panel').trigger('submit')
-    expect(writeText).toHaveBeenLastCalledWith(expect.stringContaining('Alice'))
-    expect(wrapper.get('.contact-request-panel [role="status"]').text()).toContain('需求已整理并复制')
+    expect(writeText).toHaveBeenCalledWith('QQ群号123456789')
+    expect(wrapper.get('.contact-value').text()).toBe('QQ群号123456789')
+    expect(wrapper.find('dialog form').exists()).toBe(false)
   })
 
-  it('preserves routing, configured documentation and reactive translation', async () => {
-    const { wrapper, i18n } = render({ docUrl: 'https://docs.example.com/start' })
-    expect(wrapper.get('.hero-cta .secondary').attributes('href')).toBe('https://docs.example.com/start')
+  it('preserves public routing and reactive translation', async () => {
+    const { wrapper, i18n } = render()
+    expect(wrapper.get('.hero-cta').text()).toContain('进入控制台')
+    expect(wrapper.get('.hero-cta').text()).toContain('查看教程')
+    expect(wrapper.find('.hero-copy .badge').exists()).toBe(false)
+    expect(wrapper.find('.network-title').exists()).toBe(false)
+    expect(wrapper.find('.network-caption').exists()).toBe(false)
+    expect(wrapper.getComponent('.hero-cta .secondary').props('to')).toBe('/tutorials')
     expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/model-plaza')).toBe(true)
     await wrapper.setProps({ showModelPlaza: false })
     expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/model-plaza')).toBe(false)
@@ -243,9 +243,11 @@ describe('GatewayLanding final handoff', () => {
 
   it('respects reduced motion and cleans up listeners', async () => {
     const add = vi.fn(), remove = vi.fn()
-    vi.spyOn(window, 'matchMedia').mockReturnValue({
-      matches: true, addEventListener: add, removeEventListener: remove
-    } as unknown as MediaQueryList)
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+      matches: true,
+      addEventListener: query.includes('prefers-reduced-motion') ? add : vi.fn(),
+      removeEventListener: query.includes('prefers-reduced-motion') ? remove : vi.fn()
+    } as unknown as MediaQueryList))
     const { wrapper } = render()
     expect(wrapper.classes()).toContain('motion-paused')
     add.mock.calls[0]![1]({ matches: false })

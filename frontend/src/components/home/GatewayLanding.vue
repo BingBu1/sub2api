@@ -5,85 +5,25 @@
     data-testid="gateway-landing"
     @click="onAnchorClick"
   >
-    <div
+    <PublicHeader
       ref="header"
-      class="site-header"
-      :style="{ '--page-progress': pageProgress }"
-    >
-      <div class="container">
-        <header>
-          <router-link class="brand" to="/home" :aria-label="siteName">
-            <img v-if="selectedBrand" class="brand-lockup" src="/zipkiwi-lockup-white.svg" alt="" />
-            <template v-else>
-              <img v-if="siteLogo" :src="siteLogo" alt="" />
-              <BirdMark v-else />
-              {{ siteName }}
-            </template>
-          </router-link>
-          <nav
-            id="main-navigation"
-            :class="{ open: menuOpen }"
-            :aria-label="t('gateway.mainNavigation')"
-            @click="menuOpen = false"
-          >
-            <router-link
-              v-if="showModelPlaza"
-              to="/model-plaza"
-            >
-              {{ t('gateway.modelHub') }}
-            </router-link>
-            <a
-              v-for="chapter in chapters"
-              :key="chapter.id"
-              :href="`#${chapter.id}`"
-              :class="{ 'is-current': activeChapter === chapter.id }"
-              :aria-current="activeChapter === chapter.id ? 'location' : undefined"
-            >
-              {{ t(chapter.label) }}
-            </a>
-            <button type="button" @click="openContactDialog">{{ t('gateway.contactUs') }}</button>
-          </nav>
-          <div class="actions">
-            <LocaleSwitcher />
-            <button
-              type="button"
-              class="theme-toggle"
-              :aria-label="
-                isDark ? t('home.switchToLight') : t('home.switchToDark')
-              "
-              @click="$emit('toggleTheme')"
-            >
-              <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
-            </button>
-            <router-link class="button" :to="destination">
-              {{ t('gateway.console') }}
-              <Icon name="grid" size="sm" class="action-icon" />
-            </router-link>
-          </div>
-          <button
-            ref="menuToggle"
-            type="button"
-            class="mobile-menu-toggle"
-            :aria-label="
-              menuOpen
-                ? t('gateway.closeNavigationMenu')
-                : t('gateway.openNavigationMenu')
-            "
-            aria-controls="main-navigation"
-            :aria-expanded="menuOpen"
-            @click="menuOpen = !menuOpen"
-          >
-            <Icon :name="menuOpen ? 'x' : 'menu'" size="md" />
-          </button>
-        </header>
-      </div>
-    </div>
+      :site-name="siteName"
+      :site-logo="siteLogo"
+      :destination="destination"
+      :is-dark="isDark"
+      :show-model-plaza="showModelPlaza"
+      :contact-info="contactInfo"
+      :active-chapter="activeChapter"
+      :page-progress="pageProgress"
+      home
+      @toggle-theme="emit('toggleTheme')"
+      @open-contact="emit('openContact')"
+    />
     <main>
       <div class="hero-shell">
         <div class="container">
           <section class="hero">
             <div class="hero-copy">
-              <div class="badge">{{ t('gateway.heroBadge') }}</div>
               <h1>
                 {{ t('gateway.heroTitleFirst') }}
                 <br />
@@ -96,18 +36,13 @@
               </p>
               <div class="hero-cta">
                 <router-link class="button" :to="destination">
-                  {{ t('gateway.startIntegration') }}
-                  <Icon name="link" size="sm" class="action-icon" />
+                  {{ t('gateway.console') }}
+                  <Icon name="grid" size="sm" class="action-icon" />
                 </router-link>
-                <a
-                  class="button secondary"
-                  :href="docUrl || '#integration'"
-                  :target="docUrl ? '_blank' : undefined"
-                  :rel="docUrl ? 'noopener noreferrer' : undefined"
-                >
-                  {{ t('gateway.quickStart') }}
+                <router-link class="button secondary" to="/tutorials">
+                  {{ t('gateway.viewTutorials') }}
                   <Icon name="book" size="sm" class="action-icon" />
-                </a>
+                </router-link>
               </div>
               <div class="hero-benefits">
                 <span>{{ t('gateway.unifiedEndpoint') }}</span>
@@ -120,13 +55,12 @@
               :aria-label="t('gateway.featuredModelFamilies')"
             >
               <canvas ref="networkCanvas" class="network-canvas" aria-hidden="true"></canvas>
-              <div class="network-title">ZIPKIWI / INTELLIGENCE NETWORK <span>CONCEPT DEMO</span></div>
               <div class="network-globe" aria-hidden="true">
                 <div class="network-core">
                   <div class="network-core-platform bottom"></div>
                   <div class="network-core-platform middle"></div>
                   <div class="network-core-platform top"></div>
-                  <div class="network-core-label"><BirdMark /><strong>{{ siteName }}</strong><small>INTELLIGENCE HUB</small></div>
+                  <div class="network-core-label"><BirdMark /><strong>{{ siteName }}</strong></div>
                 </div>
               </div>
               <div class="network-models">
@@ -142,7 +76,6 @@
                   <small>{{ model.maker }}</small>
                 </component>
               </div>
-              <div class="network-caption">{{ networkPhase }} <span>MODEL ECOSYSTEM</span></div>
             </div>
           </section>
           <div class="hero-bottom"><small>{{ t('gateway.modelFamiliesShownForIllustrationCheckThe') }}</small><span v-for="model in models" :key="model.name">{{ model.name }}</span></div>
@@ -429,20 +362,6 @@
       </div>
     </div>
 
-    <dialog
-      ref="businessDialog"
-      class="business-dialog"
-      aria-labelledby="business-title"
-      aria-describedby="contact-description"
-      @click="closeDialogBackdrop"
-    >
-      <button type="button" class="contact-close" :aria-label="t('gateway.close')" @click="businessDialog?.close()"><Icon name="x" size="md" /></button>
-      <div class="contact-request-shell">
-        <div class="contact-service"><span class="contact-brand"><BirdMark />{{ siteName }}</span><p class="module-label">{{ t('gateway.contactUs') }}</p><h2 id="business-title">{{ t('gateway.contactHeadline') }}</h2><p id="contact-description">{{ t('gateway.contactIntro') }}</p><div v-for="(item, index) in contactServices" :key="item.title" class="contact-service-item"><small>0{{ index + 1 }}</small><div><h3>{{ t(item.title) }}</h3><p>{{ t(item.body) }}</p></div></div><p class="contact-service-path">{{ t('gateway.contactPath') }}</p></div>
-        <form class="contact-request-panel" @submit.prevent="prepareContactRequest"><h3>{{ t('gateway.tellUsYourNeeds') }}</h3><p>{{ t('gateway.contactFormIntro') }}</p><div class="contact-form-row"><label>{{ t('gateway.yourName') }}<input v-model.trim="requestName" maxlength="60" autocomplete="name" :placeholder="t('gateway.namePlaceholder')" /></label><label>{{ t('gateway.contactMethod') }} *<input v-model.trim="requestContact" maxlength="120" required :placeholder="t('gateway.contactPlaceholder')" /></label></div><label>{{ t('gateway.consultationTopic') }}<select v-model="requestTopic"><option v-for="topic in contactTopics" :key="topic" :value="topic">{{ t(topic) }}</option></select></label><label>{{ t('gateway.requirements') }} *<textarea v-model.trim="requestNeeds" rows="4" maxlength="1600" required :placeholder="t('gateway.requirementsPlaceholder')"></textarea></label><p class="contact-form-preview">{{ t('gateway.formPreviewNote') }}</p><button class="button" type="submit">{{ t('gateway.prepareAndCopy') }} →</button><p role="status">{{ requestFeedback }}</p><label v-if="requestSummary">{{ t('gateway.requestSummary') }}<textarea readonly :value="requestSummary" rows="6"></textarea></label></form>
-      </div>
-      <div class="contact-request-footer"><span>{{ t('gateway.directContact') }}</span><div v-if="contactText" class="contact-details"><strong>{{ contactText }}</strong><button v-if="contactDigits" type="button" class="contact-copy" @click="copyContact">{{ contactCopied ? t('common.copied') : t('gateway.copyContact') }}</button></div><p v-else class="contact-empty">{{ t('gateway.contactDetailsAreNotConfiguredSignIn') }}</p></div>
-    </dialog>
   </div>
 </template>
 
@@ -451,8 +370,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
-import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
-import { useClipboard } from '@/composables/useClipboard'
+import PublicHeader from '@/components/layout/PublicHeader.vue'
+import { publicChapters as chapters } from '@/components/layout/publicNavigation'
 import { sanitizeUrl } from '@/utils/url'
 import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import { getPublicTelemetry, type PublicTelemetry } from '@/api/publicTelemetry'
@@ -463,7 +382,6 @@ import BirdMark from './BirdMark.vue'
 const props = defineProps<{
   siteName: string
   siteLogo?: string
-  docUrl: string
   apiBaseUrl?: string
   contactInfo?: string
   isDark: boolean
@@ -475,9 +393,6 @@ const props = defineProps<{
 const emit = defineEmits<{ toggleTheme: []; openContact: [] }>()
 const { t, locale } = useI18n()
 const selectedBrand = computed(() => isSelectedZipkiwiBrand(props.siteName, props.siteLogo || ''))
-const { copied: contactCopied, copyToClipboard } = useClipboard()
-const contactText = computed(() => props.contactInfo?.trim() || '')
-const contactDigits = computed(() => contactText.value.match(/\d+/g)?.join('') || '')
 const destination = computed(() =>
   props.isAuthenticated ? props.dashboardPath : '/login'
 )
@@ -498,25 +413,16 @@ const models = [
   { name: 'Kimi', maker: 'Moonshot AI', description: 'gateway.readingCreation' }
 ]
 
-const chapters = [
-  { id: 'platform', label: 'gateway.coreFeatures' },
-  { id: 'integration', label: 'gateway.quickStart' },
-  { id: 'enterprise', label: 'gateway.enterpriseService' }
-]
 const activeChapter = ref('')
 let chapterElements: HTMLElement[] = []
-const menuOpen = ref(false)
-const header = ref<HTMLElement | null>(null)
+const header = ref<InstanceType<typeof PublicHeader> | null>(null)
 const pageProgress = ref(0)
 let scrollFrame: number | null = null
 let networkFrame: number | null = null
 let networkResizeObserver: ResizeObserver | null = null
 let networkVisibilityObserver: IntersectionObserver | null = null
 let fallbackNetworkResize: (() => void) | null = null
-const menuToggle = ref<HTMLButtonElement | null>(null)
-const businessDialog = ref<HTMLDialogElement | null>(null)
 const networkCanvas = ref<HTMLCanvasElement | null>(null)
-const networkPhase = ref('01 / Aggregating')
 const selectedTask = ref('all')
 const priceTasks = [
   { id: 'all', label: 'gateway.allTasks' },
@@ -636,19 +542,10 @@ async function loadTelemetry() {
 const integrationSteps = [{ title: 'gateway.createAKey', body: 'gateway.signInAndCreateAnApiKey' }, { title: 'gateway.configureAccess', body: 'gateway.setYourEndpointKeyAndAvailableModel' }, { title: 'gateway.sendARequest', body: 'gateway.sendYourFirstRequestAndReviewIts' }]
 const enterpriseBenefits = [{ icon: 'grid' as const, title: 'gateway.supportKnowledge', body: 'gateway.supportKnowledgeBody' }, { icon: 'book' as const, title: 'gateway.contentOperations', body: 'gateway.contentOperationsBody' }, { icon: 'chat' as const, title: 'gateway.internalTools', body: 'gateway.internalToolsBody' }]
 const enterpriseSteps = [{ title: 'gateway.defineNeeds', body: 'gateway.defineNeedsBody' }, { title: 'gateway.smallValidation', body: 'gateway.smallValidationBody' }, { title: 'gateway.connectBusiness', body: 'gateway.connectBusinessBody' }]
-const contactServices = [{ title: 'gateway.modelIntegration', body: 'gateway.modelIntegrationBody' }, { title: 'gateway.usagePlanning', body: 'gateway.usagePlanningBody' }, { title: 'gateway.teamCollaboration', body: 'gateway.teamCollaborationBody' }]
-const contactTopics = ['gateway.modelIntegration', 'gateway.usagePlanning', 'gateway.teamCollaboration', 'gateway.otherNeeds']
-const requestName = ref('')
-const requestContact = ref('')
-const requestNeeds = ref('')
-const requestTopic = ref(contactTopics[0]!)
-const requestSummary = ref('')
-const requestFeedback = ref('')
 const endpointCopied = ref(false)
 const codeLanguages = ['Python', 'Node.js', 'cURL'] as const
 const codeLanguage = ref<(typeof codeLanguages)[number]>('Python')
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
-const desktopPreference = window.matchMedia('(min-width: 1191px)')
 const reducedMotion = ref(motionPreference.matches)
 const copyState = ref<'idle' | 'copied' | 'failed'>('idle')
 const copyLabel = computed(() =>
@@ -707,40 +604,14 @@ async function copyCode() {
   }
 }
 function openContactDialog() {
-  contactCopied.value = false
-  emit('openContact')
-  businessDialog.value?.showModal()
-}
-async function prepareContactRequest() {
-  requestSummary.value = `${t('gateway.requestSummary')}\n${t('gateway.yourName')}: ${requestName.value || t('gateway.notProvided')}\n${t('gateway.contactMethod')}: ${requestContact.value}\n${t('gateway.consultationTopic')}: ${t(requestTopic.value)}\n${t('gateway.requirements')}: ${requestNeeds.value}`
-  try {
-    await navigator.clipboard.writeText(requestSummary.value)
-    requestFeedback.value = t('gateway.requestCopied')
-  } catch {
-    requestFeedback.value = t('gateway.requestCopyFailed')
-  }
+  header.value?.openContact()
 }
 async function copyEndpoint() {
   try { await navigator.clipboard.writeText(endpointUrl.value); endpointCopied.value = true }
   catch { endpointCopied.value = false }
 }
-async function copyContact() {
-  await copyToClipboard(contactDigits.value, t('common.copiedToClipboard'))
-}
 function backToTop() {
   window.scrollTo({ top: 0, behavior: reducedMotion.value ? 'instant' : 'smooth' })
-}
-function closeDialogBackdrop(event: MouseEvent) {
-  const dialog = businessDialog.value
-  if (!dialog || event.target !== dialog) return
-  const bounds = dialog.getBoundingClientRect()
-  if (
-    event.clientX < bounds.left ||
-    event.clientX > bounds.right ||
-    event.clientY < bounds.top ||
-    event.clientY > bounds.bottom
-  )
-    dialog.close()
 }
 function updateMotion(event: MediaQueryListEvent) {
   reducedMotion.value = event.matches
@@ -749,19 +620,6 @@ function updateMotion(event: MediaQueryListEvent) {
     telemetryFrame = null
     visibleTokens.value = telemetry.value.total_tokens
   }
-}
-function closeMenu() {
-  menuOpen.value = false
-}
-function onEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape' && menuOpen.value) {
-    closeMenu()
-    menuToggle.value?.focus()
-  }
-}
-function onOutsideClick(event: MouseEvent) {
-  if (event.target instanceof Node && !header.value?.contains(event.target))
-    closeMenu()
 }
 function onAnchorClick(event: MouseEvent) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -772,7 +630,7 @@ function onAnchorClick(event: MouseEvent) {
   if (!target) return
   event.preventDefault()
   window.scrollTo({
-    top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - (header.value?.offsetHeight || 0) - 20),
+    top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - (header.value?.$el.offsetHeight || 0) - 20),
     behavior: reducedMotion.value ? 'instant' : 'smooth'
   })
 }
@@ -861,7 +719,6 @@ function startNetworkAnimation() {
       }
       ctx.strokeStyle = '#72e8ff'; ctx.lineWidth = 2.4; ctx.shadowColor = '#49c9ff'; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0
     })
-    networkPhase.value = cycle < 3 ? '01 / Aggregating' : cycle < 3.7 ? '02 / Routing' : cycle < 7 ? '03 / Distributing' : '04 / Ready'
   }
   function resize() {
     const bounds = scene!.getBoundingClientRect()
@@ -898,16 +755,13 @@ onMounted(() => {
   document.addEventListener('visibilitychange', loadPricing)
   startNetworkAnimation()
   chapterElements = chapters.flatMap(({ id }) => {
-    const section = header.value?.parentElement?.querySelector<HTMLElement>(`#${id}`)
+    const section = document.querySelector<HTMLElement>(`#${id}`)
     return section ? [section] : []
   })
   updatePageProgress()
   window.addEventListener('scroll', queuePageProgress, { passive: true })
   window.addEventListener('resize', queuePageProgress)
   motionPreference.addEventListener('change', updateMotion)
-  desktopPreference.addEventListener('change', closeMenu)
-  document.addEventListener('keydown', onEscape)
-  document.addEventListener('click', onOutsideClick)
 })
 onBeforeUnmount(() => {
   if (telemetryTimer !== null) clearInterval(telemetryTimer)
@@ -925,9 +779,6 @@ onBeforeUnmount(() => {
   networkVisibilityObserver?.disconnect()
   if (fallbackNetworkResize) window.removeEventListener('resize', fallbackNetworkResize)
   motionPreference.removeEventListener('change', updateMotion)
-  desktopPreference.removeEventListener('change', closeMenu)
-  document.removeEventListener('keydown', onEscape)
-  document.removeEventListener('click', onOutsideClick)
 })
 </script>
 

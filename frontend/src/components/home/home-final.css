@@ -1,49 +1,3 @@
-.gateway-landing .site-header {
-  background: #0a1930;
-  border-bottom: 1px solid #273956;
-  color: #f5f8ff;
-}
-.gateway-landing .site-header .brand,
-.gateway-landing .site-header nav,
-.gateway-landing .site-header .brand svg {
-  color: #f5f8ff;
-}
-.gateway-landing .site-header header {
-  height: 78px;
-}
-.gateway-landing .site-header nav {
-  gap: clamp(16px, 1.6vw, 26px);
-  font-size: 15px;
-}
-.gateway-landing .site-header nav :is(a, button) {
-  color: #c6d4e9;
-  white-space: nowrap;
-}
-.gateway-landing .site-header nav :is(a, button):hover,
-.gateway-landing .site-header nav .is-current {
-  color: #fff;
-}
-.gateway-landing .site-header nav button {
-  padding: 12px 0;
-  font: inherit;
-}
-.gateway-landing .site-header nav a::after {
-  background: #75a8ff;
-}
-.gateway-landing .site-header .theme-toggle,
-.gateway-landing .site-header .mobile-menu-toggle {
-  color: #e0eaff;
-}
-.gateway-landing .site-header .theme-toggle:hover,
-.gateway-landing .site-header .mobile-menu-toggle:hover {
-  background: #1a3155;
-}
-.gateway-landing .site-header .button {
-  background: #2460e9;
-}
-.gateway-landing .site-header .button:hover {
-  background: #3c78fa;
-}
 .gateway-landing .hero-shell {
   background: linear-gradient(145deg, #09172c, #0a2340 55%, #0a1b33);
   color: #f5f8ff;
@@ -63,15 +17,8 @@
   gap: 38px;
   padding: 36px 0 18px;
 }
-.gateway-landing .hero .badge {
-  color: #b9d8ff;
-  letter-spacing: 0;
-  font-size: 12px;
-}
-.gateway-landing .hero .badge::before {
-  background: #5fe0ea;
-}
 .gateway-landing .hero h1 {
+  color: #fff;
   margin: 24px 0 28px;
   max-width: 650px;
   font-size: clamp(43px, 4vw, 66px);
@@ -119,26 +66,6 @@
   height: 500px;
   isolation: isolate;
 }
-.network-title,
-.network-caption {
-  position: absolute;
-  inset-inline: 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  color: #9eb4d2;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-}
-.network-title {
-  top: 4px;
-}
-.network-title span {
-  color: #69d9e9;
-}
-.network-caption {
-  bottom: 2px;
-}
 .network-globe {
   position: absolute;
   width: min(78%, 400px);
@@ -175,7 +102,7 @@
   top: 50%;
   width: 130px;
   height: 150px;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(1.3);
   perspective: 600px;
 }
 .network-core-platform {
@@ -203,22 +130,19 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
+  gap: 6px;
   color: #fff;
   pointer-events: none;
   text-shadow: 0 2px 8px #061427;
 }
 .network-core-label svg {
-  width: 32px;
-  height: 32px;
+  width: 56px;
+  height: 40px;
 }
 .network-core-label strong {
-  font-size: 23px;
+  font-size: 16px;
   line-height: 1.1;
-}
-.network-core-label small {
-  margin-top: 6px;
-  font-size: 7px;
-  letter-spacing: 1.5px;
+  white-space: nowrap;
 }
 @keyframes network-core-turn {
   from { transform: rotateX(57deg) rotateZ(-35deg) translateZ(0); }
@@ -298,10 +222,6 @@
 .is-dark .telemetry-layout p,
 .is-dark .telemetry-families span,
 .is-dark .pricing-layout p:last-child { color: #c7d5e8; }
-@media (max-width: 1190px) {
-  .gateway-landing .site-header nav { background: #10223b; border-bottom-color: #395374; }
-  .gateway-landing .site-header nav button { width: 100%; text-align: left; }
-}
 @media (max-width: 900px) {
   .gateway-landing .hero { grid-template-columns: 1fr; padding-top: 58px; gap: 12px; }
   .network-scene { width: min(100%, 600px); margin-inline: auto; }
@@ -311,7 +231,6 @@
   .telemetry-layout > :first-child { grid-column: 1 / -1; }
 }
 @media (max-width: 700px) {
-  .gateway-landing .site-header header { height: 72px; }
   .gateway-landing .hero h1 { font-size: clamp(38px, 8vw, 56px); }
   .gateway-landing .hero .lead { font-size: 14px; }
   .gateway-landing .hero .lead br { display: none; }
@@ -319,8 +238,7 @@
   .network-model { min-width: 72px; padding: 6px; }
   .network-model strong { font-size: 11px; }
   .network-model small { font-size: 8px; }
-  .network-core { transform: translate(-50%, -50%) scale(.85); }
-  .network-title, .network-caption { font-size: 8px; }
+  .network-core { transform: translate(-50%, -50%) scale(.95); }
   .telemetry-layout { grid-template-columns: 1fr; }
   .telemetry-layout > :first-child { grid-column: auto; }
   .pricing-layout { display: block; }
@@ -328,15 +246,9 @@
 }
 
 /* Final handoff: orbital scene and the modules beneath it. */
-.gateway-landing .site-header header { height: 70px; }
-.gateway-landing .site-header nav { font-size: 15px; }
 .gateway-landing .hero { min-height: 660px; padding: 32px 0 22px; }
 .gateway-landing .hero h1 { font-size: clamp(42px, 3.6vw, 62px); text-wrap: balance; }
 .gateway-landing :is(h2, h3) { text-wrap: balance; }
-.gateway-landing .site-header nav :is(a, button) { display: inline-flex; align-items: center; min-height: 44px; }
-.gateway-landing .site-header :deep(.actions > .relative > button) { min-height: 44px; color: #dce8f8; }
-.gateway-landing .site-header :deep(.actions > .relative > button:hover) { background: #1a3155; }
-.gateway-landing .site-header :is(.theme-toggle, .mobile-menu-toggle) { width: 44px; min-height: 44px; }
 .gateway-landing :is(input, select, textarea):focus-visible { outline: 2px solid #2460e9; outline-offset: 2px; }
 .gateway-landing :is(.model-guide button, .request-tabs button, .request-toolbar .copy, .connection-endpoint button):hover { color: #2460e9; }
 .gateway-landing .request-tabs button:hover, .gateway-landing .request-toolbar .copy:hover { color: #fff; }
@@ -540,38 +452,13 @@
 .enterprise-blueprint li strong { font-size: 12px; }
 .enterprise-blueprint li p, .enterprise-blueprint > p { margin: 3px 0 0; color: #aec8e6; font-size: 12px; }
 .enterprise-blueprint > p { padding-top: 18px; margin-top: 18px; border-top: 1px solid #426487; }
-
-.business-dialog { position: fixed; inset: 0; width: min(900px,calc(100vw - 32px)); max-width: none; padding: 0; border-radius: 8px; background: #f4f8fe; color: #244568; }
-.contact-close { position: absolute; right: 16px; top: 15px; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; color: #4c6788; }
-.contact-request-shell { display: grid; grid-template-columns: .9fr 1.1fr; }
-.contact-service { padding: 38px; background: #122b49; color: #d6e7fb; }
-.contact-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 35px; color: #fff; font-size: 21px; font-weight: 700; }
-.contact-brand svg { width: 27px; height: 22px; }
-.contact-service h2 { color: white; font-size: 29px; }
-.contact-service > p:not(.module-label), .contact-service-item p { color: #a1bbd7; font-size: 12px; }
-.contact-service-item { display: flex; gap: 15px; margin-top: 20px; }
-.contact-service-item small { color: #79a9ed; }
-.contact-service-item h3 { margin: 0; font-size: 13px; }
-.contact-service-item p { margin: 4px 0 0; }
-.contact-service-path { margin-top: 35px; font-size: 11px; }
-.contact-request-panel { display: grid; gap: 13px; padding: 42px 36px 25px; }
-.contact-request-panel h3 { margin: 0; font-size: 23px; }
-.contact-request-panel > p { margin: 0; color: #4b6688; font-size: 13px; }
-.contact-request-panel label { display: grid; gap: 5px; color: #385a7e; font-size: 13px; }
-.contact-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.contact-request-panel :is(input,select,textarea) { min-width: 0; width: 100%; min-height: 44px; padding: 10px; border: 1px solid #b9cde5; border-radius: 4px; background: #fff; color: #244568; font-size: 14px; }
-.contact-request-panel textarea { resize: vertical; }
-.contact-request-panel .button { border: 0; cursor: pointer; }
-.contact-request-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 17px 36px; border-top: 1px solid #d6e2f0; font-size: 12px; }
-.contact-details { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 0; border: 0; border-radius: 0; background: transparent; text-align: left; }
-.contact-copy { width: auto; min-height: 44px; margin: 0; color: #245cbd; }
 .gateway-landing .site-footer { background: #0d2038; border-color: #284768; }
 .gateway-landing .cta-shell { background: #102641; color: #f3f8ff; }
 .gateway-landing .cta-shell .cta p { color: #a9c2df; }
 .gateway-landing .site-footer footer { display: block; padding: 48px 0 20px; color: #9bb4d2; }
 .footer-main { display: grid; grid-template-columns: 1.6fr repeat(3,1fr); gap: 35px; padding-bottom: 38px; }
 .footer-identity .brand { color: #fff; }
-.footer-identity .brand img.brand-lockup { width: 140px; }
+.footer-identity .brand img.brand-lockup { width: 220px; }
 .footer-identity p { color: #c1d2e6; font-size: 14px; }
 .footer-link-group { display: grid; align-content: start; gap: 10px; }
 .footer-link-group h3 { margin: 0 0 5px; color: #e6f0fc; font-size: 13px; }
@@ -592,20 +479,11 @@
 .gateway-landing.is-dark .model-guide button[aria-pressed=true] { background: #315785; border-color: #5f88b8; color: #fff; }
 .gateway-landing.is-dark .price-table th { background: #315071; color: #e2edfc; }
 .gateway-landing.is-dark .price-table :is(td:first-child small, td:nth-child(2), td:last-child small) { color: #c4d7ee; }
-.gateway-landing.is-dark :is(.price-table td:last-child a, .price-snapshot a, .connection-paths a, .contact-copy) { color: #a9caff; }
 .gateway-landing.is-dark .price-table td:last-child a { border-color: #6b88ab; }
 .gateway-landing.is-dark .connection-options { border-top-color: #456180; }
 .gateway-landing.is-dark .connection-endpoint { background: #17304e; color: #d6e7fb; }
 .gateway-landing.is-dark .connection-endpoint button { color: #a9caff; }
 .gateway-landing.is-dark .enterprise-benefits svg { background: #2c4b70; border-color: #56759b; color: #c4dfff; }
-.gateway-landing.is-dark .business-dialog { background: #1b304e; color: #edf5ff; }
-.gateway-landing.is-dark .contact-service { background: #102641; }
-.gateway-landing.is-dark .contact-close { color: #d8e8fc; }
-.gateway-landing.is-dark .contact-request-panel :is(h3, label), .gateway-landing.is-dark .contact-request-footer { color: #edf5ff; }
-.gateway-landing.is-dark .contact-request-panel > p { color: #c4d7ee; }
-.gateway-landing.is-dark .contact-request-panel :is(input, select, textarea) { background: #132b47; border-color: #6581a3; color: #edf5ff; }
-.gateway-landing.is-dark .contact-request-panel :is(input, textarea)::placeholder { color: #b8cce6; }
-.gateway-landing.is-dark .contact-request-footer { border-top-color: #456180; }
 .gateway-landing.motion-paused :is(.hero-copy > *, .network-scene) { animation: none; }
 .gateway-landing.motion-paused .network-core-platform { animation: none; transform: rotateX(57deg) rotateZ(-35deg); }
 @media (max-width: 900px) {
@@ -614,12 +492,9 @@
   .connection-paths { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
-  .gateway-landing .site-header nav { font-size: 16px; }
-  .gateway-landing .site-header nav :is(a, button) { width: 100%; }
-  .contact-close { color: #fff; background: #ffffff1a; }
   .gateway-landing .hero { min-height: 0; padding-top: 45px; }
   .network-scene { height: min(100vw,430px); }
-  .network-core { transform: translate(-50%, -50%) scale(.85); }
+  .network-core { transform: translate(-50%, -50%) scale(.95); }
   .telemetry-shell { gap: 25px; }
   .telemetry-metric { padding: 12px; }
   .telemetry-metric > strong { font-size: 16px; }
@@ -635,10 +510,6 @@
   #platform .product-visual { height: 220px; }
   .integration-copy h2, .enterprise-copy h2 { font-size: 30px; }
   .connection-options-heading { align-items: start; flex-direction: column; }
-  .contact-request-shell, .contact-form-row { grid-template-columns: 1fr; }
-  .contact-service { padding: 24px; }
-  .contact-request-panel { padding: 24px; }
-  .contact-request-footer { align-items: start; flex-direction: column; padding: 20px 24px; }
   .footer-main { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 30px 15px; }
   .footer-identity { grid-column: 1 / -1; }
   .footer-baseline { flex-wrap: wrap; }

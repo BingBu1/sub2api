@@ -3,7 +3,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100svh;
+  min-height: calc(100svh - 71px);
   padding: 38px 20px;
   background: #ecf2f9;
   color: #173454;
@@ -14,12 +14,22 @@
 .brand-auth-bar { margin-bottom: 22px; }
 .brand-auth-bar a { display: inline-flex; align-items: center; gap: 8px; }
 .brand-auth-bottom { margin-top: 18px; }
+.brand-auth-standalone { position: relative; min-height: 100svh; padding-top: 100px; padding-bottom: 64px; }
+.brand-auth-corner-logo { position: absolute; top: 28px; left: clamp(20px, 4vw, 64px); display: inline-flex; align-items: center; gap: 9px; max-width: calc(100% - 40px); color: inherit; font-size: 24px; }
+.brand-auth-corner-logo img { width: 32px; height: 32px; object-fit: contain; }
+.brand-auth-corner-logo img[src*='lockup'] { width: 220px; height: auto; }
+.brand-auth-corner-logo strong { overflow-wrap: anywhere; }
+.brand-auth-corner-logo .brand-auth-lockup-dark { display: none; }
+.dark .brand-auth-corner-logo .brand-auth-lockup-light { display: none; }
+.dark .brand-auth-corner-logo .brand-auth-lockup-dark { display: block; }
+.brand-auth-standalone .brand-auth-logo, .brand-auth-standalone .brand-auth-mobile-logo { display: none; }
+.brand-auth-standalone .brand-auth-copy { margin-top: 24px; }
 .brand-auth-page :is(a, button, input):focus-visible { outline: 2px solid #356de3; outline-offset: 3px; }
 .brand-auth-shell { display: grid; grid-template-columns: 42% 58%; width: min(100%, 980px); min-height: 568px; overflow: hidden; border: 1px solid #cbdbef; border-radius: 8px; background: #fff; box-shadow: 0 7px 28px #25436b12; }
 .brand-auth-showcase { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 568px; padding: 40px; overflow: hidden; background: linear-gradient(150deg, #0a1b32, #0b2745); color: #fff; }
 .brand-auth-logo { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 9px; width: fit-content; font-size: 27px; }
 .brand-auth-logo img { width: 30px; max-height: 42px; object-fit: contain; }
-.brand-auth-logo img[src*='lockup'] { width: 150px; max-height: none; }
+.brand-auth-logo img[src*='lockup'] { width: 220px; max-height: none; }
 .brand-auth-copy { position: relative; z-index: 1; margin-top: 48px; }
 .brand-auth-copy p { margin-bottom: 8px; color: #c4dcfa; font-size: 12px; }
 .brand-auth-copy h2 { font-size: 36px; font-weight: 700; line-height: 1.36; }
@@ -50,12 +60,13 @@
 .dark .brand-auth-form :deep(.input) { background: #18304c; border-color: #52708e; }
 @media (max-width: 760px) {
   .brand-auth-page { padding: 24px 16px; }
+  .brand-auth-standalone { padding-top: 92px; padding-bottom: 32px; }
   .brand-auth-shell { display: block; min-height: 0; }
   .brand-auth-showcase { display: none; }
   .brand-auth-main { padding: 32px 24px; }
   .brand-auth-mobile-logo { display: inline-flex; align-items: center; gap: 9px; align-self: flex-start; margin-bottom: 35px; font-weight: 700; font-size: 22px; }
   .brand-auth-mobile-logo img { width: 30px; height: 30px; object-fit: contain; }
-  .brand-auth-mobile-logo img[src*='lockup'] { width: 126px; height: auto; }
+  .brand-auth-mobile-logo img[src*='lockup'] { width: 190px; height: auto; }
   .brand-auth-form,
   .brand-auth-form-footer { width: 100%; }
 }

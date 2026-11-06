@@ -1106,15 +1106,24 @@ onBeforeUnmount(() => {
 }
 
 .sidebar-logo-lockup {
-  flex-basis: 7rem;
-  width: 7rem;
+  flex-basis: 11rem;
+  width: 11rem;
+  height: 2.75rem;
   border-radius: 0;
   box-shadow: none;
 }
 
 .sidebar-header-lockup {
+  position: relative;
   gap: 0.5rem;
   padding-inline: 0.75rem;
+}
+
+.sidebar-header-lockup .sidebar-brand {
+  position: absolute;
+  left: 3.75rem;
+  right: 3.5rem;
+  bottom: 0;
 }
 
 .sidebar-header-collapsed {
