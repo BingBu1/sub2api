@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="迅奇 Zipkiwi">
+  <defs>
+    <linearGradient id="zk-icon-base" x1="16" y1="8" x2="112" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16233A"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </linearGradient>
+    <linearGradient id="zk-icon-bird" x1="82" y1="84" x2="238" y2="209" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9AB4FF"/>
+      <stop offset=".48" stop-color="#7C9DF4"/>
+      <stop offset="1" stop-color="#7DD7DD"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="125" height="125" rx="30" fill="url(#zk-icon-base)" stroke="#344965" stroke-width="2"/>
+  <g transform="translate(14 26) scale(.56 .61) translate(-82 -84)">
+    <path fill="url(#zk-icon-bird)" fill-rule="evenodd" d="M82 84 C104 104 140 107 164 109 C177 110 182 120 177 127 C188 119 198 119 204 123 C210 127 214 131 217 135 C232 145 248 159 262 175 C245 161 230 149 216 143 C216 160 194 174 158 183 C178 185 198 178 211 173 C205 185 195 195 182 197 C155 196 123 199 91 209 C109 182 141 157 172 139 C149 140 129 136 114 128 C98 118 88 100 82 84 Z M177 127 C185 134 188 141 184 148 C184 140 179 134 174 130 Z M212 132 A3 3 0 1 0 206 132 A3 3 0 1 0 212 132 Z"/>
+  </g>
+</svg>

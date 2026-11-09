@@ -58,6 +58,15 @@ function mountTable(
 }
 
 describe('PlazaModelPricingTable', () => {
+  it('can show just paid prices while retaining cache and discount information', () => {
+    const wrapper = mount(PlazaModelPricingTable, { props: { models: [tokenModel()], rateMultiplier: 0.5, showReferencePricing: false } })
+    expect(wrapper.findAll('tbody td')).toHaveLength(5)
+    expect(wrapper.get('thead').text()).not.toContain('modelPlaza.table.officialPrice')
+    expect(wrapper.findAll('tbody td')[1].text()).toBe('$1.50')
+    expect(wrapper.findAll('tbody td')[2].text()).toBe('$7.50')
+    expect(wrapper.findAll('tbody td')[3].text()).toContain('$0.15')
+    expect(wrapper.findAll('tbody td')[4].text()).toContain('0.5x')
+  })
   it.each([
     { enabled: true, multiplier: 1, userRate: 0.05, expected: 1 },
     { enabled: true, multiplier: 0.5, userRate: null, expected: 0.5 },

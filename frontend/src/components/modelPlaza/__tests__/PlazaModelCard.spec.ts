@@ -55,13 +55,13 @@ describe('PlazaModelCard', () => {
     const wrapper = render()
     expect(wrapper.find('.plaza-card-prices').text()).toContain('$0.50')
     expect(wrapper.find('.plaza-card-prices').text()).toContain('$1.00')
-    expect(wrapper.find('.plaza-card-bottom').text()).toContain('0.5x')
+    expect(wrapper.find('.plaza-card-meta').text()).toContain('0.5x')
   })
 
   it('uses the user-specific rate when returned by the API', () => {
     const wrapper = render({ ...group, user_rate_multiplier: 0.2 })
     expect(wrapper.find('.plaza-card-prices').text()).toContain('$0.20')
-    expect(wrapper.find('.plaza-card-bottom').text()).toContain('0.2x')
+    expect(wrapper.find('.plaza-card-meta').text()).toContain('0.2x')
   })
 
   it('uses an independent image rate for per-image prices', () => {
@@ -79,7 +79,7 @@ describe('PlazaModelCard', () => {
       { ...model, pricing: { ...model.pricing!, billing_mode: 'video', per_request_price: 0.1 } }
     )
     expect(wrapper.find('.plaza-card-prices').text()).toContain('$0.15')
-    expect(wrapper.find('.plaza-card-bottom').text()).toContain('1.5x')
+    expect(wrapper.find('.plaza-card-meta').text()).toContain('1.5x')
   })
 
   it('keeps missing pricing visibly unavailable and opens details', async () => {
@@ -87,5 +87,29 @@ describe('PlazaModelCard', () => {
     expect(wrapper.find('.plaza-card-prices').text()).toContain('-')
     await wrapper.find('.plaza-card-bottom button').trigger('click')
     expect(wrapper.emitted('showDetails')).toHaveLength(1)
+  })
+
+  it('summarizes the first context tier with resolved multipliers and exposes its billing rules', () => {
+    const wrapper = render(group, { ...model, pricing: { ...model.pricing!, intervals: [
+      { min_tokens: 100_000, max_tokens: null, tier_label: '', input_price: 0.00001, output_price: 0.00002, cache_write_price: null, cache_read_price: null, per_request_price: null },
+      { min_tokens: 0, max_tokens: 100_000, tier_label: '', input_price: null, output_price: null, input_multiplier: 2, output_multiplier: 3, cache_write_price: null, cache_read_price: null, per_request_price: null }
+    ] } })
+    expect(wrapper.get('.plaza-card-prices').text()).toContain('$1.00')
+    expect(wrapper.get('.plaza-card-prices').text()).toContain('$3.00')
+    expect(wrapper.get('.plaza-card-bottom').text()).toContain('modelPlaza.card.variablePricing')
+  })
+
+  it('keeps zero cache prices visible and distinguishes USD per million from per-call prices', () => {
+    const wrapper = render(group, { ...model, pricing: { ...model.pricing!, cache_read_price: 0 } })
+    expect(wrapper.get('.plaza-card-cache').text()).toContain('$0.00')
+    expect(wrapper.get('.plaza-card-unit').text()).toBe('modelPlaza.card.tokenUnit')
+    const perCall = render(group, { ...model, pricing: { ...model.pricing!, billing_mode: 'per_request', per_request_price: 0.001 } })
+    expect(perCall.get('.plaza-card-unit').text()).toBe('modelPlaza.card.requestUnit')
+    expect(perCall.get('.plaza-card-prices').text()).toContain('$0.0005')
+  })
+
+  it('discloses time and peak adjustments without advertising them as a flat price', () => {
+    const wrapper = render(group, { ...model, time_pricing: { timezone: 'Asia/Shanghai', periods: [{ start_time: '00:00', end_time: '08:00', multiplier: 0.5 }] } })
+    expect(wrapper.get('.plaza-card-bottom').text()).toContain('modelPlaza.card.variablePricing')
   })
 })

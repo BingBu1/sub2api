@@ -417,6 +417,29 @@ describe('useAppStore', () => {
       expect(store.publicSettingsLoaded).toBe(true)
     })
 
+    it('keeps dedicated backend support separate through injection and settings refresh', async () => {
+      window.__APP_CONFIG__ = createPublicSettings({
+        contact_info: 'Public support',
+        backend_support_contact: 'Console support',
+      })
+      const store = useAppStore()
+      store.initFromInjectedConfig()
+      expect(store.contactInfo).toBe('Public support')
+      expect(store.backendSupportContact).toBe('Console support')
+      vi.mocked(getPublicSettings).mockResolvedValue(createPublicSettings({ contact_info: 'Public support', backend_support_contact: '' }))
+      await store.fetchPublicSettings(true)
+      expect(store.backendSupportContact).toBe('')
+      expect(store.contactInfo).toBe('Public support')
+      expect(window.__APP_CONFIG__?.backend_support_contact).toBe('')
+    })
+
+    it('defaults dedicated backend support to empty for older settings', () => {
+      window.__APP_CONFIG__ = createPublicSettings({ contact_info: 'Public support' })
+      const store = useAppStore()
+      store.initFromInjectedConfig()
+      expect(store.backendSupportContact).toBe('')
+    })
+
     it('无注入配置时返回 false', () => {
       const store = useAppStore()
       const result = store.initFromInjectedConfig()
