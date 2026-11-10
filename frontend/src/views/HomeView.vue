@@ -18,19 +18,6 @@
     data-testid="compact-home"
     class="flex min-h-screen flex-col bg-gray-50 text-gray-900 dark:bg-dark-950 dark:text-white"
   >
-    <PublicHeader
-      :site-name="siteName"
-      :site-logo="siteLogo"
-      :destination="isAuthenticated ? dashboardPath : '/login'"
-      :is-dark="isDark"
-      :show-model-plaza="showModelPlazaEntry"
-      :show-chapters="false"
-      home
-      :contact-info="appStore.cachedPublicSettings?.contact_info || appStore.contactInfo"
-      @toggle-theme="toggleTheme"
-      @open-contact="appStore.fetchPublicSettings(true)"
-    />
-
     <main class="flex min-w-0 flex-1 items-center justify-center px-4 py-16 sm:px-6">
       <div class="min-w-0 max-w-2xl text-center">
         <img
@@ -59,22 +46,20 @@
     :site-name="siteName"
     :site-logo="siteLogo"
     :api-base-url="appStore.cachedPublicSettings?.api_base_url || appStore.apiBaseUrl"
-    :contact-info="appStore.cachedPublicSettings?.contact_info || appStore.contactInfo"
     :is-dark="isDark"
     :is-authenticated="isAuthenticated"
     :dashboard-path="dashboardPath"
     :registration-enabled="appStore.cachedPublicSettings?.registration_enabled !== false"
     :show-model-plaza="showModelPlazaEntry"
-    @toggle-theme="toggleTheme"
-    @open-contact="appStore.fetchPublicSettings(true)"
+    @open-contact="openContact"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
-import PublicHeader from '@/components/layout/PublicHeader.vue'
+import { usePublicSite } from '@/components/layout/publicSiteContext'
 import GatewayLanding from '@/components/home/GatewayLanding.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
@@ -101,8 +86,7 @@ const isHomeContentUrl = computed(() => {
   return content.startsWith('http://') || content.startsWith('https://')
 })
 
-// Theme
-const isDark = ref(document.documentElement.classList.contains('dark'))
+const { isDark, openContact } = usePublicSite()
 
 // Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)
@@ -118,24 +102,7 @@ const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dash
 // Current year for footer
 const currentYear = computed(() => new Date().getFullYear())
 
-// Toggle theme
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-}
-
-// Initialize theme
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme')
-  isDark.value = savedTheme === 'dark' ||
-    (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.documentElement.classList.toggle('dark', isDark.value)
-}
-
 onMounted(() => {
-  initTheme()
-
   // Check auth state
   authStore.checkAuth()
 

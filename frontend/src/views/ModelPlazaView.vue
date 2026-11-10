@@ -4,9 +4,8 @@
     <ModelPlazaContent :response="data" :loading="loading" :error="loadFailed" @refresh="load" embedded />
   </AppLayout>
 
-  <!-- 独立形态:自带导航条(logo/站名 + 登录/回后台) -->
+  <!-- 公共形态使用父路由的共享导航 -->
   <div v-else class="plaza-page plaza-theme">
-    <PublicSiteHeader />
     <main class="plaza-container plaza-main">
       <ModelPlazaContent :response="data" :loading="loading" :error="loadFailed" @refresh="load" />
     </main>
@@ -17,7 +16,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import PublicSiteHeader from '@/components/layout/PublicSiteHeader.vue'
 import ModelPlazaContent from '@/components/modelPlaza/ModelPlazaContent.vue'
 import { getModelPlaza, type ModelPlazaResponse } from '@/api/modelPlaza'
 import { useAppStore } from '@/stores/app'

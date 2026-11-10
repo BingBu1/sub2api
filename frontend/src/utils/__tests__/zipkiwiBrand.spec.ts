@@ -7,6 +7,9 @@ describe('isSelectedZipkiwiBrand', () => {
     expect(isSelectedZipkiwiBrand('zipkiwi', '/zipkiwi-bird-blue.svg')).toBe(true)
     expect(isSelectedZipkiwiBrand('迅奇', '/zipkiwi-bird-blue.svg')).toBe(true)
     expect(isSelectedZipkiwiBrand('迅奇（ZipKiwi）', '/zipkiwi-bird-blue.svg')).toBe(true)
+    for (const logo of ['/zipkiwi-icon.svg', '/zipkiwi-icon.png', '/zipkiwi-bird-blue.png', '/zipkiwi-symbol-primary.svg', '/zipkiwi-symbol-white.svg']) {
+      expect(isSelectedZipkiwiBrand('迅奇Zipkiwi', logo)).toBe(true)
+    }
   })
 
   it('preserves explicitly configured logos and other site names', () => {

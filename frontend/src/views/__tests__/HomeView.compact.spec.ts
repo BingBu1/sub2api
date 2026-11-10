@@ -3,6 +3,8 @@ import { mount, RouterLinkStub } from '@vue/test-utils'
 
 import HomeView from '../HomeView.vue'
 import GatewayLanding from '@/components/home/GatewayLanding.vue'
+import PublicSiteLayout from '@/components/layout/PublicSiteLayout.vue'
+import PublicHeader from '@/components/layout/PublicHeader.vue'
 
 const { appStore, authStore } = vi.hoisted(() => ({
   appStore: {
@@ -33,7 +35,7 @@ vi.mock('@/stores/app', () => ({
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => authStore }))
 vi.mock('vue-router', async (importOriginal) => ({
   ...await importOriginal<typeof import('vue-router')>(),
-  useRoute: () => ({ path: '/home' })
+  useRoute: () => ({ name: 'Home', path: '/home', fullPath: '/home', query: {} })
 }))
 vi.mock('@/api/publicTelemetry', () => ({ getPublicTelemetry: vi.fn().mockRejectedValue(new Error('offline')) }))
 vi.mock('@/api/modelPlaza', () => ({ getModelPlaza: vi.fn().mockRejectedValue(new Error('offline')) }))
@@ -56,9 +58,10 @@ function mountHome(settings: Record<string, unknown> = {}) {
     ...settings,
   }
 
-  const wrapper = mount(HomeView, {
+  const wrapper = mount(PublicSiteLayout, {
     global: {
       stubs: {
+        RouterView: HomeView,
         RouterLink: RouterLinkStub,
         LocaleSwitcher: { template: '<div data-testid="locale-switcher" />' },
         Icon: { template: '<span data-testid="icon" />' },
@@ -71,7 +74,7 @@ function mountHome(settings: Record<string, unknown> = {}) {
 }
 
 function compactDestination(wrapper: ReturnType<typeof mountHome>) {
-  return wrapper.get('[data-testid="compact-home"]').getComponent('.public-console').props('to')
+  return wrapper.getComponent('.public-console').props('to')
 }
 
 function modelPlazaDestination(wrapper: ReturnType<typeof mountHome>) {
@@ -100,7 +103,8 @@ describe('HomeView compact mode', () => {
   it('passes configured support details to the homepage and refreshes them when contact opens', () => {
     const wrapper = mountHome({ contact_info: 'QQ群号123456789' })
     const landing = wrapper.getComponent(GatewayLanding)
-    expect(landing.props('contactInfo')).toBe('QQ群号123456789')
+    expect(wrapper.getComponent(PublicHeader).props('contactInfo')).toBe('QQ群号123456789')
+    ;(wrapper.get('dialog').element as HTMLDialogElement).showModal = vi.fn()
     landing.vm.$emit('openContact')
     expect(appStore.fetchPublicSettings).toHaveBeenCalledWith(true)
     wrapper.unmount()

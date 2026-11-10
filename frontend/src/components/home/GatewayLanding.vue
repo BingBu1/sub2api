@@ -5,82 +5,14 @@
     data-testid="gateway-landing"
     @click="onAnchorClick"
   >
-    <PublicHeader
-      ref="header"
-      :site-name="siteName"
-      :site-logo="siteLogo"
-      :destination="destination"
-      :is-dark="isDark"
-      :show-model-plaza="showModelPlaza"
-      :contact-info="contactInfo"
-      :active-chapter="activeChapter"
-      :page-progress="pageProgress"
-      home
-      @toggle-theme="emit('toggleTheme')"
-      @open-contact="emit('openContact')"
-    />
     <main>
-      <div class="hero-shell">
-        <div class="container">
-          <section class="hero">
-            <div class="hero-copy">
-              <h1>
-                {{ t('gateway.heroTitleFirst') }}
-                <br />
-                <span>{{ t('gateway.heroTitleSecond') }}</span>
-              </h1>
-              <p class="lead">
-                {{ t('gateway.heroDescriptionFirst') }}
-                <br />
-                {{ t('gateway.heroDescriptionSecond') }}
-              </p>
-              <div class="hero-cta">
-                <router-link class="button" :to="destination">
-                  {{ t('gateway.console') }}
-                  <Icon name="grid" size="sm" class="action-icon" />
-                </router-link>
-                <router-link class="button secondary" to="/tutorials">
-                  {{ t('gateway.viewTutorials') }}
-                  <Icon name="book" size="sm" class="action-icon" />
-                </router-link>
-              </div>
-              <div class="hero-benefits">
-                <span>{{ t('gateway.unifiedEndpoint') }}</span>
-                <span>{{ t('gateway.multipleModels') }}</span>
-                <span>{{ t('gateway.usageVisibility') }}</span>
-              </div>
-            </div>
-            <div
-              class="network-scene"
-              :aria-label="t('gateway.featuredModelFamilies')"
-            >
-              <canvas ref="networkCanvas" class="network-canvas" aria-hidden="true"></canvas>
-              <div class="network-globe" aria-hidden="true">
-                <div class="network-core">
-                  <div class="network-core-platform bottom"></div>
-                  <div class="network-core-platform middle"></div>
-                  <div class="network-core-platform top"></div>
-                  <div class="network-core-label"><BirdMark /><strong>{{ siteName }}</strong></div>
-                </div>
-              </div>
-              <div class="network-models">
-                <component
-                  v-for="(model, index) in models"
-                  :key="model.name"
-                  :is="showModelPlaza ? RouterLink : 'span'"
-                  class="network-model"
-                  :class="`n${index + 1}`"
-                  :to="showModelPlaza ? '/model-plaza' : undefined"
-                >
-                  <strong>{{ model.name }}</strong>
-                  <small>{{ model.maker }}</small>
-                </component>
-              </div>
-            </div>
-          </section>
-          <div class="hero-bottom"><small>{{ t('gateway.modelFamiliesShownForIllustrationCheckThe') }}</small><span v-for="model in models" :key="model.name">{{ model.name }}</span></div>
-        </div>
-      </div>
+      <GatewayHero
+        :site-name="siteName"
+        :is-dark="isDark"
+        :site-logo="siteLogo"
+        :destination="destination"
+        :show-model-plaza="showModelPlaza"
+      />
       <section class="telemetry-section" aria-labelledby="network-overview-title">
         <div class="container">
           <div class="telemetry-heading"><h2 id="network-overview-title">{{ t('gateway.networkOverview') }}</h2><span class="telemetry-demo" :class="{ 'is-unavailable': telemetryError }">{{ telemetryStatus }}</span></div>
@@ -347,7 +279,7 @@
       <div class="container">
         <footer>
           <div class="footer-main"><div class="footer-identity"><router-link class="brand" to="/home">
-            <img v-if="selectedBrand" class="brand-lockup" src="/zipkiwi-lockup-white.svg" :alt="siteName" />
+            <img v-if="selectedBrand" class="brand-lockup" :src="isDark ? '/zipkiwi-lockup-white.svg' : '/zipkiwi-lockup-primary.svg'" :alt="siteName" />
             <template v-else>
               <img v-if="siteLogo" :src="siteLogo" alt="" />
               <BirdMark v-else />
@@ -370,59 +302,30 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
-import PublicHeader from '@/components/layout/PublicHeader.vue'
-import { publicChapters as chapters } from '@/components/layout/publicNavigation'
 import { sanitizeUrl } from '@/utils/url'
 import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import { getPublicTelemetry, type PublicTelemetry } from '@/api/publicTelemetry'
 import { getModelPlaza, type ModelPlazaGroup, type ModelPlazaResponse, type PlazaModel } from '@/api/modelPlaza'
 import { formatScaled, plazaEffectiveRate, resolveIntervalPrices } from '@/utils/pricing'
 import BirdMark from './BirdMark.vue'
+import GatewayHero from './GatewayHero.vue'
 
 const props = defineProps<{
   siteName: string
   siteLogo?: string
   apiBaseUrl?: string
-  contactInfo?: string
   isDark: boolean
   isAuthenticated: boolean
   dashboardPath: string
   registrationEnabled: boolean
   showModelPlaza: boolean
 }>()
-const emit = defineEmits<{ toggleTheme: []; openContact: [] }>()
+const emit = defineEmits<{ openContact: [] }>()
 const { t, locale } = useI18n()
 const selectedBrand = computed(() => isSelectedZipkiwiBrand(props.siteName, props.siteLogo || ''))
 const destination = computed(() =>
   props.isAuthenticated ? props.dashboardPath : '/login'
 )
-const models = [
-  { name: 'GPT', maker: 'OpenAI', description: 'gateway.writingDevelopment' },
-  {
-    name: 'Claude',
-    maker: 'Anthropic',
-    description: 'gateway.analysisLongForm'
-  },
-  { name: 'Grok', maker: 'xAI', description: 'gateway.qAIdeas' },
-  {
-    name: 'Gemini',
-    maker: 'Google',
-    description: 'gateway.multimodalCreative'
-  },
-  { name: 'DeepSeek', maker: 'DeepSeek', description: 'gateway.reasoningCode' },
-  { name: 'Kimi', maker: 'Moonshot AI', description: 'gateway.readingCreation' }
-]
-
-const activeChapter = ref('')
-let chapterElements: HTMLElement[] = []
-const header = ref<InstanceType<typeof PublicHeader> | null>(null)
-const pageProgress = ref(0)
-let scrollFrame: number | null = null
-let networkFrame: number | null = null
-let networkResizeObserver: ResizeObserver | null = null
-let networkVisibilityObserver: IntersectionObserver | null = null
-let fallbackNetworkResize: (() => void) | null = null
-const networkCanvas = ref<HTMLCanvasElement | null>(null)
 const selectedTask = ref('all')
 const priceTasks = [
   { id: 'all', label: 'gateway.allTasks' },
@@ -609,7 +512,7 @@ async function copyCode() {
   }
 }
 function openContactDialog() {
-  header.value?.openContact()
+  emit('openContact')
 }
 async function copyEndpoint() {
   try { await navigator.clipboard.writeText(endpointUrl.value); endpointCopied.value = true }
@@ -631,125 +534,13 @@ function onAnchorClick(event: MouseEvent) {
   const link = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null
   const id = link?.getAttribute('href')?.slice(1)
   if (!id) return
-  const target = chapterElements.find((section) => section.id === id)
+  const target = document.getElementById(id)
   if (!target) return
   event.preventDefault()
   window.scrollTo({
-    top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - (header.value?.$el.offsetHeight || 0) - 20),
+    top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - (document.querySelector('.public-header')?.clientHeight || 0) - 20),
     behavior: reducedMotion.value ? 'instant' : 'smooth'
   })
-}
-function updatePageProgress() {
-  const scrollable = document.documentElement.scrollHeight - window.innerHeight
-  pageProgress.value =
-    scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0
-  activeChapter.value = ''
-  for (const section of chapterElements) {
-    if (section.getBoundingClientRect().top <= window.innerHeight * 0.32)
-      activeChapter.value = section.id
-  }
-  scrollFrame = null
-}
-function queuePageProgress() {
-  if (scrollFrame === null)
-    scrollFrame = window.requestAnimationFrame(updatePageProgress)
-}
-function startNetworkAnimation() {
-  const canvas = networkCanvas.value
-  const scene = canvas?.parentElement
-  if (!canvas || !scene) return
-  let context: CanvasRenderingContext2D | null = null
-  try { context = canvas.getContext('2d') } catch { return }
-  if (!context) return
-  const ctx = context
-  let width = 0
-  let height = 0
-  let elapsed = 0
-  let lastFrame = 0
-  let visible = true
-  let modelAnchors: Array<[number, number]> = []
-  function point(lat: number, lon: number, rotation: number) {
-    const radius = Math.min(width * .42, height * .39)
-    const x = Math.cos(lat) * Math.cos(lon + rotation)
-    const z = Math.cos(lat) * Math.sin(lon + rotation)
-    return [width * .5 + x * radius, height * .49 + (Math.sin(lat) * .93 + z * .22) * radius, z]
-  }
-  function draw() {
-    if (!width || !height) return
-    ctx.clearRect(0, 0, width, height)
-    const rotation = elapsed / 1000 * .065
-    const cycle = elapsed / 1000 % 8
-    const cx = width * .5, cy = height * .49
-    const glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, height * .43)
-    glow.addColorStop(0, '#2864c145')
-    glow.addColorStop(1, '#2864c100')
-    ctx.fillStyle = glow
-    ctx.fillRect(0, 0, width, height)
-    for (let lat = -60; lat <= 60; lat += 20) {
-      ctx.beginPath()
-      for (let lon = 0; lon <= 360; lon += 5) {
-        const p = point(lat * Math.PI / 180, lon * Math.PI / 180, rotation)
-        if (lon === 0) ctx.moveTo(p[0]!, p[1]!)
-        else ctx.lineTo(p[0]!, p[1]!)
-      }
-      ctx.strokeStyle = '#5683bc40'; ctx.lineWidth = .65; ctx.stroke()
-    }
-    for (let lon = 0; lon < 360; lon += 30) {
-      ctx.beginPath()
-      for (let lat = -90; lat <= 90; lat += 5) {
-        const p = point(lat * Math.PI / 180, lon * Math.PI / 180, rotation)
-        if (lat === -90) ctx.moveTo(p[0]!, p[1]!)
-        else ctx.lineTo(p[0]!, p[1]!)
-      }
-      ctx.strokeStyle = '#5683bc40'; ctx.stroke()
-    }
-    for (let lat = -70; lat <= 70; lat += 14) for (let lon = 0; lon < 360; lon += 18) {
-      const p = point(lat * Math.PI / 180, lon * Math.PI / 180, rotation)
-      ctx.beginPath(); ctx.arc(p[0]!, p[1]!, p[2]! > 0 ? 1.5 : .8, 0, Math.PI * 2)
-      ctx.fillStyle = p[2]! > 0 ? '#6dacf0b0' : '#456a9560'; ctx.fill()
-    }
-    modelAnchors.forEach(([ex, ey], index) => {
-      const mx = (cx + ex) / 2 + (index % 2 ? 18 : -18), my = (cy + ey) / 2 - 28
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(mx, my, ex, ey)
-      ctx.strokeStyle = '#5c91d260'; ctx.lineWidth = 1; ctx.stroke()
-      const incoming = cycle < 3, outgoing = cycle >= 3.7 && cycle < 7
-      const q = incoming ? 1 - Math.min(1, (cycle + index * .13) / 3) : outgoing ? Math.min(1, Math.max(0, (cycle - 3.7 - index * .13) / 2.5)) : -1
-      if (q < 0 || q > 1) return
-      ctx.beginPath()
-      for (let k = 0; k <= 16; k++) {
-        const v = Math.max(0, Math.min(1, q + (incoming ? 1 : -1) * k * .006))
-        const px = (1 - v) ** 2 * cx + 2 * (1 - v) * v * mx + v ** 2 * ex
-        const py = (1 - v) ** 2 * cy + 2 * (1 - v) * v * my + v ** 2 * ey
-        if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py)
-      }
-      ctx.strokeStyle = '#72e8ff'; ctx.lineWidth = 2.4; ctx.shadowColor = '#49c9ff'; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0
-    })
-  }
-  function resize() {
-    const bounds = scene!.getBoundingClientRect()
-    width = bounds.width; height = bounds.height
-    modelAnchors = Array.from(scene!.querySelectorAll<HTMLElement>('.network-model'), (node, index) => {
-      const rect = node.getBoundingClientRect()
-      const x = index === 0 || index === 3 ? rect.left + rect.width / 2 : index === 1 || index === 2 ? rect.left : rect.right
-      const y = index === 0 ? rect.bottom : index === 3 ? rect.top : rect.top + rect.height / 2
-      return [x - bounds.left, y - bounds.top]
-    })
-    const scale = Math.min(window.devicePixelRatio || 1, 2)
-    canvas!.width = Math.round(width * scale); canvas!.height = Math.round(height * scale)
-    ctx.setTransform(scale, 0, 0, scale, 0, 0)
-    draw()
-  }
-  function tick(stamp: number) {
-    const delta = Math.min(50, stamp - lastFrame)
-    lastFrame = stamp
-    if (visible && !document.hidden && !reducedMotion.value) { elapsed += delta; draw() }
-    networkFrame = window.requestAnimationFrame(tick)
-  }
-  resize()
-  if (typeof ResizeObserver !== 'undefined') { networkResizeObserver = new ResizeObserver(resize); networkResizeObserver.observe(scene) }
-  else { fallbackNetworkResize = resize; window.addEventListener('resize', resize) }
-  if (typeof IntersectionObserver !== 'undefined') { networkVisibilityObserver = new IntersectionObserver(entries => { visible = entries[0]?.isIntersecting ?? true }); networkVisibilityObserver.observe(scene) }
-  networkFrame = window.requestAnimationFrame(tick)
 }
 onMounted(() => {
   void loadTelemetry()
@@ -758,14 +549,6 @@ onMounted(() => {
   void loadPricing()
   pricingTimer = setInterval(() => { void loadPricing() }, 60_000)
   document.addEventListener('visibilitychange', loadPricing)
-  startNetworkAnimation()
-  chapterElements = chapters.flatMap(({ id }) => {
-    const section = document.querySelector<HTMLElement>(`#${id}`)
-    return section ? [section] : []
-  })
-  updatePageProgress()
-  window.addEventListener('scroll', queuePageProgress, { passive: true })
-  window.addEventListener('resize', queuePageProgress)
   motionPreference.addEventListener('change', updateMotion)
 })
 onBeforeUnmount(() => {
@@ -776,13 +559,6 @@ onBeforeUnmount(() => {
   if (pricingTimer !== null) clearInterval(pricingTimer)
   pricingRequest?.abort()
   document.removeEventListener('visibilitychange', loadPricing)
-  window.removeEventListener('scroll', queuePageProgress)
-  window.removeEventListener('resize', queuePageProgress)
-  if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame)
-  if (networkFrame !== null) window.cancelAnimationFrame(networkFrame)
-  networkResizeObserver?.disconnect()
-  networkVisibilityObserver?.disconnect()
-  if (fallbackNetworkResize) window.removeEventListener('resize', fallbackNetworkResize)
   motionPreference.removeEventListener('change', updateMotion)
 })
 </script>
