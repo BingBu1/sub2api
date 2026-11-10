@@ -77,38 +77,23 @@ describe('GatewayLanding final handoff', () => {
     expect(wrapper.get('.model-guide').text()).not.toContain('USD')
   })
 
-  it('connects each network route to the facing edge of its model card', () => {
-    const boxes = [
-      [400, 240, 100, 50], [660, 320, 100, 50], [660, 540, 100, 50],
-      [400, 600, 100, 50], [120, 540, 100, 50], [120, 320, 100, 50]
-    ]
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
-      const box = this.classList.contains('network-scene')
-        ? [100, 200, 700, 495]
-        : boxes.find((_, index) => this.classList.contains(`n${index + 1}`))
-      const [left, top, width, height] = box ?? [0, 0, 0, 0]
-      return { left, top, width, height, right: left + width, bottom: top + height } as DOMRect
-    })
-    const quadraticCurveTo = vi.fn()
-    const context = {
-      clearRect: vi.fn(), setTransform: vi.fn(), fillRect: vi.fn(), beginPath: vi.fn(),
-      moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), arc: vi.fn(), fill: vi.fn(),
-      quadraticCurveTo, createRadialGradient: () => ({ addColorStop: vi.fn() })
-    } as unknown as CanvasRenderingContext2D
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context)
-    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
-    render()
-    expect(quadraticCurveTo.mock.calls.map(([, , x, y]) => [x, y])).toEqual([
-      [350, 90], [560, 145], [560, 365], [350, 400], [120, 365], [120, 145]
+  it('keeps model capabilities and navigation usable without a canvas context', () => {
+    const { wrapper } = render()
+    expect(wrapper.findAll('.orbit-node').map(node => node.find('b').text())).toEqual([
+      'OpenAI', 'Claude', 'Gemini', 'DeepSeek', 'Grok', 'Kimi'
     ])
+    expect(wrapper.get('.orbit-core').text()).toContain('zipkiwi')
+    expect(wrapper.getComponent('.hero-cta .primary').props('to')).toBe('/login')
+    expect(wrapper.get('.hero-cta .secondary').attributes('href')).toBe('#models')
   })
 
   it('renders the screenshot modules in the intended sequence', async () => {
     const { wrapper } = render()
     await flushPromises()
-    expect(wrapper.find('canvas.network-canvas').exists()).toBe(true)
-    expect(wrapper.findAll('.network-core-platform')).toHaveLength(3)
-    expect(wrapper.find('.network-core-label').text()).toContain('zipkiwi')
+    expect(wrapper.find('canvas.orbit-canvas').exists()).toBe(true)
+    expect(wrapper.find('canvas.hero-flow').exists()).toBe(true)
+    expect(wrapper.findAll('.orbit-node')).toHaveLength(6)
+    expect(wrapper.find('.orbit-core').text()).toContain('zipkiwi')
     expect(wrapper.find('.telemetry-metrics').exists()).toBe(true)
     expect(wrapper.find('.telemetry-ranking').text()).toContain('Claude Sonnet 4.6')
     expect(wrapper.get('[data-testid="telemetry-tokens"]').text()).toBe('683,130,000')
@@ -222,31 +207,23 @@ describe('GatewayLanding final handoff', () => {
     expect(writeText).toHaveBeenCalledWith(wrapper.find('pre').text())
   })
 
-  it('opens the configured contact details from navigation and copies them intact', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    vi.stubGlobal('navigator', { clipboard: { writeText } })
-    vi.stubGlobal('isSecureContext', true)
-    const { wrapper } = render({ contactInfo: 'QQ群号123456789' })
-    const dialog = wrapper.get('dialog').element as HTMLDialogElement
-    dialog.showModal = vi.fn()
-    await wrapper.get('#main-navigation button').trigger('click')
-    expect(dialog.showModal).toHaveBeenCalledOnce()
-    await wrapper.get('.contact-copy').trigger('click')
-    expect(writeText).toHaveBeenCalledWith('QQ群号123456789')
-    expect(wrapper.get('.contact-value').text()).toBe('QQ群号123456789')
-    expect(wrapper.find('dialog form').exists()).toBe(false)
+  it('opens contact through the shared public layout from the footer', async () => {
+    const { wrapper } = render()
+    await wrapper.get('.footer-link-group button').trigger('click')
+    expect(wrapper.emitted('openContact')).toHaveLength(1)
   })
 
   it('preserves public routing and reactive translation', async () => {
     const { wrapper, i18n } = render()
-    expect(wrapper.get('.hero-cta').text()).toContain('进入控制台')
-    expect(wrapper.get('.hero-cta').text()).toContain('查看教程')
+    expect(wrapper.get('.hero-cta').text()).toContain('开始构建')
+    expect(wrapper.get('.hero-cta').text()).toContain('探索模型')
     expect(wrapper.find('.hero-copy .badge').exists()).toBe(false)
     expect(wrapper.find('.network-title').exists()).toBe(false)
     expect(wrapper.find('.network-caption').exists()).toBe(false)
-    expect(wrapper.getComponent('.hero-cta .secondary').props('to')).toBe('/tutorials')
+    expect(wrapper.get('.hero-cta .secondary').attributes('href')).toBe('#models')
     expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/model-plaza')).toBe(true)
     await wrapper.setProps({ showModelPlaza: false })
+    expect(wrapper.get('.hero-cta .secondary').attributes('href')).toBe('#integration')
     expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/model-plaza')).toBe(false)
     i18n.global.locale.value = 'en'
     await wrapper.vm.$nextTick()
@@ -263,10 +240,11 @@ describe('GatewayLanding final handoff', () => {
     } as unknown as MediaQueryList))
     const { wrapper } = render()
     expect(wrapper.classes()).toContain('motion-paused')
-    add.mock.calls[0]![1]({ matches: false })
+    const onChange = add.mock.calls.at(-1)![1]
+    onChange({ matches: false })
     await wrapper.vm.$nextTick()
     expect(wrapper.classes()).not.toContain('motion-paused')
     wrapper.unmount()
-    expect(remove).toHaveBeenCalledWith('change', add.mock.calls[0]![1])
+    expect(remove).toHaveBeenCalledWith('change', onChange)
   })
 })

@@ -30,8 +30,8 @@
     </p>
 
     <!-- 加载/错误/空 -->
-    <div v-if="loading" class="flex min-h-[240px] items-center justify-center">
-      <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-600/25 border-t-primary-600 dark:border-primary-400/25 dark:border-t-primary-400"></div>
+    <div v-if="loading" class="plaza-card-grid" aria-busy="true" :aria-label="t('modelPlaza.loading')">
+      <div v-for="n in 6" :key="n" class="plaza-loading-card" aria-hidden="true"><span /><span /><span /></div>
     </div>
     <div
       v-else-if="error"
@@ -61,7 +61,7 @@
         <div class="plaza-results">
           <PlazaBillingCurrency v-if="authStore.isAdmin" :platform="selectedPlatform" @saved="emit('refresh')" />
           <div class="plaza-results-toolbar">
-            <span>{{ t('modelPlaza.card.priceNote') }}</span>
+            <div class="plaza-results-summary"><strong role="status">{{ t('modelPlaza.card.resultCount', { count: cardModels.length }) }}</strong><span>{{ t('modelPlaza.card.priceNote') }}</span></div>
             <div class="plaza-view-switch" role="group" :aria-label="t('modelPlaza.card.viewMode')">
               <button type="button" :aria-pressed="viewMode === 'cards'" @click="viewMode = 'cards'"><Icon name="grid" size="sm" />{{ t('modelPlaza.card.cards') }}</button>
               <button type="button" :aria-pressed="viewMode === 'table'" @click="viewMode = 'table'"><Icon name="menu" size="sm" />{{ t('modelPlaza.card.table') }}</button>
@@ -69,7 +69,7 @@
           </div>
           <template v-if="filteredGroups.length > 0 && (viewMode === 'table' || cardModels.length > 0)">
             <div v-if="viewMode === 'cards'" class="plaza-card-grid">
-              <PlazaModelCard v-for="item in cardModels" :key="`${item.group.id}:${item.model.name}`" :group="item.group" :model="item.model" @show-details="showDetails(item.group.id)" />
+              <PlazaModelCard v-for="item in cardModels" :key="`${item.group.id}:${item.model.platform}:${item.model.name}`" :group="item.group" :model="item.model" @show-details="showDetails(item.group, item.model)" />
             </div>
             <div v-else class="plaza-groups space-y-6">
               <PlazaGroupSection v-for="g in filteredGroups" :key="g.id" :group="g" />
@@ -81,6 +81,9 @@
         </div>
       </div>
     </template>
+    <BaseDialog :show="detailGroup !== null" :title="t('modelPlaza.card.details')" width="wide" close-on-click-outside @close="detailGroup = null">
+      <div v-if="detailGroup" class="plaza-theme plaza-model-detail"><PlazaGroupSection :key="`${detailGroup.id}:${detailGroup.models[0]?.name}`" :group="detailGroup" /></div>
+    </BaseDialog>
   </div>
 </template>
 
@@ -94,7 +97,8 @@ import PlazaFilterBar from './PlazaFilterBar.vue'
 import PlazaGroupSection from './PlazaGroupSection.vue'
 import PlazaModelCard from './PlazaModelCard.vue'
 import PlazaBillingCurrency from './PlazaBillingCurrency.vue'
-import type { ModelPlazaGroup, ModelPlazaResponse } from '@/api/modelPlaza'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import type { ModelPlazaGroup, ModelPlazaResponse, PlazaModel } from '@/api/modelPlaza'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
@@ -114,7 +118,8 @@ const selectedPlatform = ref<string>('all')
 const selectedGroupId = ref<number | 'all'>('all')
 const selectedRate = ref<number | 'all'>('all')
 const searchQuery = ref('')
-const viewMode = ref<'cards' | 'table'>(props.embedded ? 'table' : 'cards')
+const viewMode = ref<'cards' | 'table'>('cards')
+const detailGroup = ref<ModelPlazaGroup | null>(null)
 
 function resetFilters() {
   selectedPlatform.value = 'all'
@@ -123,10 +128,11 @@ function resetFilters() {
   searchQuery.value = ''
 }
 
-function showDetails(groupId: number) {
-  selectedGroupId.value = groupId
-  viewMode.value = 'table'
+function showDetails(group: ModelPlazaGroup, model: PlazaModel) {
+  detailGroup.value = { ...group, models: [model] }
 }
+
+watch(() => props.response, () => { detailGroup.value = null })
 
 const searchActive = computed(() => searchQuery.value.trim() !== '')
 
