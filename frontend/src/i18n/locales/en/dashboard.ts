@@ -789,7 +789,7 @@ export default {
     },
     retry: 'Retry',
     title: 'Model Plaza',
-    description: 'Bring intelligence closer and make every call count. Choose what fits your application.',
+    description: 'Browse available models and pricing by group',
     card: {
       tagline: 'One API connects models and applications',
       filterTitle: 'Filter models',
@@ -848,7 +848,7 @@ export default {
       timePricingWeekdays: 'Weekdays',
       timePricingRateHint: 'Effective rate {rate} × period multiplier {multiplier}',
       paidPrice: 'Your Price (Discounted)',
-      officialPrice: 'Official Price',
+      officialPrice: 'Official Price (reference)',
       rate: 'Rate',
       unitPerMillion: '{currency} / 1M tokens',
       perUnitRequest: '/ request',

@@ -222,19 +222,10 @@ describe('GatewayLanding final handoff', () => {
     expect(writeText).toHaveBeenCalledWith(wrapper.find('pre').text())
   })
 
-  it('opens the configured contact details from navigation and copies them intact', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    vi.stubGlobal('navigator', { clipboard: { writeText } })
-    vi.stubGlobal('isSecureContext', true)
-    const { wrapper } = render({ contactInfo: 'QQ群号123456789' })
-    const dialog = wrapper.get('dialog').element as HTMLDialogElement
-    dialog.showModal = vi.fn()
-    await wrapper.get('#main-navigation button').trigger('click')
-    expect(dialog.showModal).toHaveBeenCalledOnce()
-    await wrapper.get('.contact-copy').trigger('click')
-    expect(writeText).toHaveBeenCalledWith('QQ群号123456789')
-    expect(wrapper.get('.contact-value').text()).toBe('QQ群号123456789')
-    expect(wrapper.find('dialog form').exists()).toBe(false)
+  it('opens the shared contact dialog from the footer', async () => {
+    const { wrapper } = render()
+    await wrapper.get('.footer-link-group button').trigger('click')
+    expect(wrapper.emitted('openContact')).toHaveLength(1)
   })
 
   it('preserves public routing and reactive translation', async () => {

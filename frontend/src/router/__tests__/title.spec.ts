@@ -7,6 +7,9 @@ vi.mock('@/i18n', () => {
     'nav.recharge': '充值',
     'nav.subscribe': '订阅',
     'nav.buySubscription': '充值/订阅',
+    'modelPlaza.title': '模型广场',
+    'tutorials.pageTitle': '教程文档',
+    'home.login': '登录',
   }
   return { i18n: { global: { t: (key: string) => messages[key] ?? key } } }
 })
@@ -35,6 +38,24 @@ describe('resolveDocumentTitle', () => {
 })
 
 describe('resolveRouteDocumentTitle', () => {
+  it.each(['迅奇（ZipKiwi）', 'ZipKiwi', '迅奇', '迅奇Zipkiwi'])('uses the homepage title for %s', (siteName) => {
+    expect(resolveRouteDocumentTitle({ name: 'Home', params: {}, meta: { title: 'Home' } }, siteName))
+      .toBe('迅奇Zipkiwi | 让智能更近成本更轻')
+  })
+
+  it.each([
+    ['ModelPlaza', 'modelPlaza.title', '模型广场-迅奇Zipkiwi'],
+    ['Tutorials', 'tutorials.pageTitle', '教程文档-迅奇Zipkiwi'],
+    ['Login', 'home.login', '登录-迅奇Zipkiwi']
+  ])('uses the page title and brand for %s', (name, titleKey, expected) => {
+    expect(resolveRouteDocumentTitle({ name, params: {}, meta: { titleKey } }, '迅奇（ZipKiwi）')).toBe(expected)
+  })
+
+  it('preserves the configured name for a custom homepage', () => {
+    expect(resolveRouteDocumentTitle({ name: 'Home', params: {}, meta: { title: 'Home' } }, 'My Site'))
+      .toBe('Home - My Site')
+  })
+
   it('自定义页面菜单加载后，使用菜单名称作为标题', () => {
     const route = {
       name: 'CustomPage',

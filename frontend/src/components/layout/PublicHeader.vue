@@ -64,6 +64,7 @@ const contactDialog = ref<InstanceType<typeof PublicContactDialog> | null>(null)
 const desktopPreference = window.matchMedia('(min-width: 1191px)')
 function closeMenu() { menuOpen.value = false }
 function openContact() {
+  if (menuOpen.value) menuToggle.value?.focus({ preventScroll: true })
   closeMenu()
   emit('openContact')
   contactDialog.value?.open()
@@ -87,7 +88,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', onEscape)
   document.removeEventListener('click', onOutsideClick)
 })
-defineExpose({ openContact })
+defineExpose({ openContact, closeMenu })
 </script>
 
 <style scoped src="./public-header.css"></style>

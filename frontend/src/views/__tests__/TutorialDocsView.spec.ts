@@ -89,6 +89,17 @@ describe('tutorial document center', () => {
     for (const link of wrapper.findAll('a[target="_blank"]')) expect(link.attributes('rel')).toBe('noopener noreferrer')
     wrapper.unmount()
   })
+
+  it.each(['zh', 'en'])('keeps the local WorkBuddy model ID guide in %s', async locale => {
+    const { wrapper } = await render('/tutorials?guide=workbuddy', locale)
+    const section = wrapper.get('#model-id')
+    expect(section.text()).toContain(locale === 'zh' ? '价格表' : 'pricing table')
+    expect(section.text()).toContain('https://zipkiwi.example/v1/models')
+    expect(section.find('a[href="/keys"]').exists()).toBe(true)
+    expect(section.find('a[href="/model-plaza"]').exists()).toBe(true)
+    expect(section.find('a[href="/tutorials?guide=api-models"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
 })
 
 describe('tutorial content and generated examples', () => {
