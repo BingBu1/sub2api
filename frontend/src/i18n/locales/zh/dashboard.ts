@@ -766,6 +766,33 @@ export default {
 
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
+    currency: {
+      deepseekPeakLabel: 'DeepSeek 峰谷计价',
+      deepseekPeakHelp: '开启后，工作日北京时间 09:00–12:00、14:00–18:00 按基础价的 2 倍计费；其他时段及周末使用基础价。',
+      deepseekPeakOn: '峰谷计价已选择开启：仅应用于 DeepSeek 平台默认 Token 价卡，不覆盖分组、渠道或上游自定义价；保存后生效。',
+      deepseekPeakOff: '当前选择全天同价：默认价卡不按峰谷加倍，保存后生效。管理员配置的其他分时规则仍生效。',
+      title: "平台计价策略",
+      adminOnly: "仅管理员",
+      selectPlatform: "请先选择一个平台，再设置该平台的实际扣费方式。",
+      scope: "应用于 {platform} 平台的全部分组与模型，独立于其他平台。",
+      active: "当前生效 · {currency}",
+      usd: "美元计价",
+      cny: "人民币计价",
+      rateLabel: "美元价格的人民币换算率",
+      rateHelp: "原价、折后价与实际扣费统一按美元价格 × 此汇率换算，DeepSeek 同样适用。保存后固定使用，不随市场汇率自动变动。",
+      invalidRate: "请输入 0.01–100 之间的有效换算率。",
+      preview: "扣费预览 · 倍率 1×",
+      usdExample: "美元价格 $1 → 扣除 1 个余额单位",
+      cnyExample: "美元价格 $1 → 按 ¥{amount} 计价，扣除 {amount} 个余额单位",
+      deductionHelp: "按价格数值扣除站内余额。充值仍为 ¥1 = 1 个余额单位；分组、用户及分时倍率继续生效。",
+      effectiveHelp: "保存后新请求生效；进行中的请求及已结算记录保持原价。",
+      save: "保存并应用",
+      saving: "正在保存…",
+      saved: "{platform} 已切换为 {currency} 计价，新请求按新价格扣费。",
+      loadFailed: "无法读取当前策略，请重试。",
+      saveFailed: "保存失败，请重试并核对当前生效策略。",
+    },
+    retry: '重新加载',
     title: '模型广场',
     description: '让智能更近，让成本更轻。为你的应用，选好每一次调用。',
     card: {
@@ -798,6 +825,7 @@ export default {
       subscription: '订阅'
     },
     detail: {
+      billingPriceNote: '{currency} · Token 实付价已含 {rate}× 倍率；媒体独立倍率及已配置时段以表内标注为准。',
       noModels: '该分组暂未配置模型',
       noPricing: '未配置定价',
       peakNote: '高峰时段 {window} 计费倍率 ×{multiplier}',
@@ -826,7 +854,7 @@ export default {
       paidPrice: '实付价格(折后)',
       officialPrice: '官方价格',
       rate: '折扣倍率',
-      unitPerMillion: '$ / 1M token',
+      unitPerMillion: '{currency} / 1M token',
       perUnitRequest: '/ 次',
       perUnitImage: '/ 张',
       perRequest: '按次计费',

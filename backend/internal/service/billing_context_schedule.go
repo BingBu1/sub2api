@@ -18,7 +18,7 @@ type ContextPricingBasis string
 // ContextPricingBasisWholeRequest 整单按所在档单价计价（目录阶梯、渠道区间）。
 const ContextPricingBasisWholeRequest ContextPricingBasis = "whole_request"
 
-// ContextPricingTier (MinTokens, MaxTokens] 区间内的有效 per-token 单价（USD）。
+// ContextPricingTier (MinTokens, MaxTokens] 区间内按平台币种计价的有效 per-token 单价。
 // nil 表示该项无价/不计费；MaxTokens 为 nil 表示无上限。
 type ContextPricingTier struct {
 	MinTokens    int
@@ -102,6 +102,20 @@ func (s *BillingService) ResolveContextPricingSchedule(ctx context.Context, reso
 	if resolved.Mode != "" && resolved.Mode != BillingModeToken {
 		return nil, nil
 	}
+	timePricing := resolvedTimePricingSchedule(resolved)
+	if cfg := resolvedDeepSeekPeakPricing(resolved, in.Model); cfg != nil {
+		timePricing = &TimePricingSchedule{Timezone: cfg.Timezone, WeekdaysOnly: cfg.WeekdaysOnly}
+		for _, p := range cfg.Periods {
+			timePricing.Periods = append(timePricing.Periods, TimePricingPeriod{
+				StartTime: p.StartTime, EndTime: p.EndTime, Multiplier: p.Multiplier,
+			})
+		}
+		// Always probe the base card, then disclose peak rows separately. Never
+		// mutate the request snapshot or bake the current hour into the base price.
+		base := *resolved
+		base.Currency.DeepSeekPeakEnabled = false
+		resolved = &base
+	}
 
 	req := TokenCostRequest{
 		Ctx:            ctx,
@@ -131,7 +145,7 @@ func (s *BillingService) ResolveContextPricingSchedule(ctx context.Context, reso
 	tiers = mergeEqualContextTiers(tiers)
 	applyContextTierLabels(tiers, plan)
 
-	return &ContextPricingSchedule{Basis: ContextPricingBasisWholeRequest, Tiers: tiers, TimePricing: resolvedTimePricingSchedule(resolved)}, nil
+	return &ContextPricingSchedule{Basis: ContextPricingBasisWholeRequest, Tiers: tiers, TimePricing: timePricing}, nil
 }
 
 // resolvedTimePricingSchedule 列出计费会生效的分时倍率时段。

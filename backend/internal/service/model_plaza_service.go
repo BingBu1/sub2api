@@ -7,8 +7,9 @@ import (
 	"strings"
 )
 
-// PlazaOfficialPricing 模型广场展示用的官方参考价（USD per token），与计费同源：
+// PlazaOfficialPricing 模型广场展示用的官方参考价（per token），与计费同源：
 // LiteLLM → 内置兜底价卡 → 模型策略。字段为 nil 表示该项缺失（0 视为未配置）。
+// 目录缓存保持 USD，响应按分组 BillingCurrency 换算。
 type PlazaOfficialPricing struct {
 	InputPrice        *float64
 	OutputPrice       *float64
@@ -41,6 +42,7 @@ type PlazaGroup struct {
 	Description        string
 	I18n               GroupI18n
 	Platform           string
+	BillingCurrency    string // 实付与官方参考单价的币种。
 	SubscriptionType   string
 	RateMultiplier     float64
 	PeakRateEnabled    bool
@@ -105,6 +107,7 @@ func NewModelPlazaService(
 //
 // 可见性过滤（专属分组）不在此层做，由 handler 按登录态裁剪。
 func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error) {
+	ctx = WithRequestPricingSnapshot(ctx)
 	channels, err := s.channelRepo.ListAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list channels: %w", err)
@@ -237,9 +240,14 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 			}
 			return pg.Models[i].Platform < pg.Models[j].Platform
 		})
+		currency, err := s.resolver.billingCurrency(ctx, g)
+		if err != nil {
+			return nil, err
+		}
+		pg.BillingCurrency = currency.Currency
 		for j := range pg.Models {
 			s.fillDisplayPricing(ctx, &pg.Models[j], g)
-			pg.Models[j].OfficialPricing = s.lookupOfficialPricing(ctx, pg.Models[j].Name, officialMemo)
+			pg.Models[j].OfficialPricing = currencyOfficialPricing(s.lookupOfficialPricing(ctx, pg.Models[j].Name, officialMemo), currency.multiplier())
 		}
 		out = append(out, *pg)
 	}
@@ -310,6 +318,13 @@ func (s *ModelPlazaService) accountModels(ctx context.Context, g *Group) ([]Supp
 // token 模型取计费阶梯表（单价与档位均由真实计费函数得出），
 // 图片/按次模型（或阶梯表不可用时）沿用渠道定价与分组图片档位价。
 func (s *ModelPlazaService) fillDisplayPricing(ctx context.Context, m *PlazaModel, g *Group) {
+	currency, _ := s.resolver.billingCurrency(ctx, g)
+	converted := false
+	defer func() {
+		if !converted {
+			m.Pricing = currencyDisplayPricing(m.Pricing, currency.multiplier())
+		}
+	}()
 	if groupPricing := matchGroupModelPricing(g, m.Name); groupPricing != nil {
 		m.Pricing = groupPricing
 	}
@@ -320,7 +335,8 @@ func (s *ModelPlazaService) fillDisplayPricing(ctx context.Context, m *PlazaMode
 			Platform: m.Platform,
 		})
 		if err == nil && sched != nil && len(sched.Tiers) > 0 {
-			m.Pricing = plazaPricingFromSchedule(m.Pricing, sched)
+			m.Pricing = plazaPricingFromSchedule(currencyDisplayPricing(m.Pricing, currency.multiplier()), sched)
+			converted = true
 			if len(sched.Tiers) > 1 {
 				m.LongContextBasis = sched.Basis
 			}
@@ -453,4 +469,22 @@ func (s *ModelPlazaService) lookupOfficialPricing(ctx context.Context, modelName
 	}
 	memo[modelName] = result
 	return result
+}
+
+// Convert a copy: the memoized USD reference may be shared by groups using
+// different currencies. Include every context tier without changing thresholds.
+func currencyOfficialPricing(p *PlazaOfficialPricing, factor float64) *PlazaOfficialPricing {
+	if p == nil || factor == 1 {
+		return p
+	}
+	converted := currencyDisplayPricing(&ChannelModelPricing{
+		InputPrice: p.InputPrice, OutputPrice: p.OutputPrice,
+		CacheWritePrice: p.CacheWritePrice, CacheWrite1hPrice: p.CacheWrite1hPrice,
+		CacheReadPrice: p.CacheReadPrice, Intervals: p.Intervals,
+	}, factor)
+	return &PlazaOfficialPricing{
+		InputPrice: converted.InputPrice, OutputPrice: converted.OutputPrice,
+		CacheWritePrice: converted.CacheWritePrice, CacheWrite1hPrice: converted.CacheWrite1hPrice,
+		CacheReadPrice: converted.CacheReadPrice, Intervals: converted.Intervals,
+	}
 }

@@ -90,7 +90,7 @@ func TestModelPlazaHandler_NilSettingServiceFailsClosed404(t *testing.T) {
 
 func TestToModelPlazaGroupDTO_UserRateAndFieldWhitelist(t *testing.T) {
 	g := service.PlazaGroup{
-		ID: 2, Name: "vip", Description: "d", Platform: "anthropic",
+		ID: 2, Name: "vip", Description: "d", Platform: "anthropic", BillingCurrency: "CNY",
 		SubscriptionType: "standard", RateMultiplier: 1, IsExclusive: true,
 		VideoRateIndependent: true, VideoRateMultiplier: 0.7,
 		Models: []service.PlazaModel{{
@@ -125,6 +125,7 @@ func TestToModelPlazaGroupDTO_UserRateAndFieldWhitelist(t *testing.T) {
 		require.Truef(t, exists, "plaza group DTO must expose %q", key)
 	}
 	require.InDelta(t, 0.5, decoded["user_rate_multiplier"].(float64), 1e-9)
+	require.Equal(t, "CNY", decoded["billing_currency"])
 	require.Equal(t, true, decoded["video_rate_independent"])
 	require.Equal(t, 0.7, decoded["video_rate_multiplier"])
 

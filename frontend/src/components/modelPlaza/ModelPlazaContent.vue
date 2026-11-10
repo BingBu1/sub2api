@@ -59,6 +59,7 @@
           />
         </aside>
         <div class="plaza-results">
+          <PlazaBillingCurrency v-if="authStore.isAdmin" :platform="selectedPlatform" @saved="emit('refresh')" />
           <div class="plaza-results-toolbar">
             <span>{{ t('modelPlaza.card.priceNote') }}</span>
             <div class="plaza-view-switch" role="group" :aria-label="t('modelPlaza.card.viewMode')">
@@ -92,6 +93,7 @@ import Icon from '@/components/icons/Icon.vue'
 import PlazaFilterBar from './PlazaFilterBar.vue'
 import PlazaGroupSection from './PlazaGroupSection.vue'
 import PlazaModelCard from './PlazaModelCard.vue'
+import PlazaBillingCurrency from './PlazaBillingCurrency.vue'
 import type { ModelPlazaGroup, ModelPlazaResponse } from '@/api/modelPlaza'
 import { useAuthStore } from '@/stores/auth'
 
@@ -103,6 +105,7 @@ const props = defineProps<{
   embedded?: boolean
 }>()
 
+const emit = defineEmits<{ refresh: [] }>()
 const { t } = useI18n()
 const authStore = useAuthStore()
 const isAuthenticated = computed(() => authStore.isAuthenticated)

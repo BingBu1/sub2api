@@ -64,6 +64,19 @@ afterEach(() => {
 })
 
 describe('GatewayLanding final handoff', () => {
+  it('keeps CNY quotes and their group together when USD groups also exist', async () => {
+    const usd = samplePlaza.groups[0]!
+    const cny = { ...usd, id: 2, name: '人民币', billing_currency: 'CNY' as const }
+    vi.mocked(getModelPlaza).mockResolvedValue({ ...samplePlaza, groups: [usd, cny] })
+    const { wrapper } = render()
+    await flushPromises()
+    const table = wrapper.get('.price-table')
+    expect(table.text()).toContain('¥0.06')
+    expect(table.text()).toContain('人民币')
+    expect(table.text()).not.toContain('$')
+    expect(wrapper.get('.model-guide').text()).not.toContain('USD')
+  })
+
   it('connects each network route to the facing edge of its model card', () => {
     const boxes = [
       [400, 240, 100, 50], [660, 320, 100, 50], [660, 540, 100, 50],

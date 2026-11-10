@@ -280,6 +280,12 @@ func (s *BatchImageSettlementService) recordUsageLog(ctx context.Context, job *B
 		SessionID:             job.SessionID,
 		CreatedAt:             createdAt,
 	}
+	if job.PricingSnapshotVersion >= 1 {
+		original := float64(job.SuccessCount) * job.BaseUnitPrice * job.GroupRateMultiplier * job.AccountRateMultiplier * job.BatchDiscountMultiplier
+		if original != actualCost {
+			usageLog.AccountStatsCost = &original
+		}
+	}
 	writeUsageLogBestEffort(ctx, s.UsageLogRepo, usageLog, "service.batch_image_settlement")
 }
 

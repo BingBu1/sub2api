@@ -7,7 +7,7 @@
 import { apiClient } from './client'
 import type { UserPricingInterval, UserSupportedModelPricing } from './channels'
 
-/** 官方参考价（USD per token，与计费目录同源；字段缺失 = 目录未覆盖）。 */
+/** 官方参考价（分组 billing_currency per token，与计费目录同源；字段缺失 = 目录未覆盖）。 */
 export interface PlazaOfficialPricing {
   input_price: number | null
   output_price: number | null
@@ -60,6 +60,8 @@ export interface ModelPlazaGroup {
   name: string
   description: string
   platform: string
+  /** 实付与官方参考单价的币种；旧后端未返回时按 USD 显示。 */
+  billing_currency?: 'USD' | 'CNY'
   /** 'standard' | 'subscription' */
   subscription_type: string
   rate_multiplier: number
@@ -98,3 +100,21 @@ export async function getModelPlaza(options?: { signal?: AbortSignal }): Promise
 export const modelPlazaAPI = { getModelPlaza }
 
 export default modelPlazaAPI
+
+export interface PlatformBillingCurrency {
+  platform: string
+  currency: 'USD' | 'CNY'
+  usd_to_cny: number
+  updated_at?: string
+  deepseek_peak_enabled?: boolean
+}
+
+export async function getPlatformBillingCurrency(platform: string): Promise<PlatformBillingCurrency> {
+  const { data } = await apiClient.get<PlatformBillingCurrency>(`/admin/model-plaza/billing-currency/${encodeURIComponent(platform)}`)
+  return data
+}
+
+export async function updatePlatformBillingCurrency(policy: PlatformBillingCurrency): Promise<PlatformBillingCurrency> {
+  const { data } = await apiClient.put<PlatformBillingCurrency>(`/admin/model-plaza/billing-currency/${encodeURIComponent(policy.platform)}`, policy)
+  return data
+}

@@ -761,6 +761,33 @@ export default {
 
   // Model Plaza (public group/model pricing showcase)
   modelPlaza: {
+    currency: {
+      deepseekPeakLabel: 'DeepSeek peak pricing',
+      deepseekPeakHelp: 'When enabled, weekdays 09:00–12:00 and 14:00–18:00 Asia/Shanghai cost 2× the base price. Other hours and weekends use the base price.',
+      deepseekPeakOn: 'Peak pricing selected: applies only to default DeepSeek platform token cards. Group, channel and upstream custom cards keep precedence. Save to apply.',
+      deepseekPeakOff: 'Peak pricing is off: default cards cost the same all day. Other explicitly configured time rules still apply.',
+      title: "Platform billing",
+      adminOnly: "Admin only",
+      selectPlatform: "Select one platform to configure its actual billing currency.",
+      scope: "Applies to all groups and models on {platform}, independently of other platforms.",
+      active: "Active · {currency}",
+      usd: "US dollar",
+      cny: "Renminbi",
+      rateLabel: "USD to CNY conversion rate",
+      rateHelp: "Reference prices, discounted prices and actual charges all use USD price × this saved rate, including DeepSeek. The rate stays fixed until you save a change.",
+      invalidRate: "Enter a valid conversion rate between 0.01 and 100.",
+      preview: "Billing preview · 1× multiplier",
+      usdExample: "USD price $1 → deduct 1 balance unit",
+      cnyExample: "USD price $1 → CNY ¥{amount}, deduct {amount} balance units",
+      deductionHelp: "The numeric price is deducted from the existing balance. Recharge remains ¥1 = 1 balance unit. Group, user and time multipliers still apply.",
+      effectiveHelp: "New requests use the saved policy. In-flight requests and settled history retain their prices.",
+      save: "Save and apply",
+      saving: "Saving…",
+      saved: "{platform} now bills in {currency}. New requests use the updated prices.",
+      loadFailed: "Could not load the current policy. Please retry.",
+      saveFailed: "Save failed. Please retry and verify the active policy.",
+    },
+    retry: 'Retry',
     title: 'Model Plaza',
     description: 'Bring intelligence closer and make every call count. Choose what fits your application.',
     card: {
@@ -793,6 +820,7 @@ export default {
       subscription: 'Subscription'
     },
     detail: {
+      billingPriceNote: 'Priced in {currency} · Token prices include the {rate}× rate. Independent media rates and configured time windows are shown in the table.',
       noModels: 'No models configured for this group',
       noPricing: 'Pricing not configured',
       peakNote: 'Peak hours {window}: billing rate ×{multiplier}',
@@ -822,7 +850,7 @@ export default {
       paidPrice: 'Your Price (Discounted)',
       officialPrice: 'Official Price',
       rate: 'Rate',
-      unitPerMillion: '$ / 1M tokens',
+      unitPerMillion: '{currency} / 1M tokens',
       perUnitRequest: '/ request',
       perUnitImage: '/ image',
       perRequest: 'Per request',

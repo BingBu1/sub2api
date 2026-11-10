@@ -672,6 +672,7 @@ func prepareGrokVideoCompletionBilling(
 	pending, loadErr := h.gatewayService.LoadGrokVideoPendingBilling(ctx, taskRequestID, subject.UserID, apiKey.ID)
 	if loadErr != nil {
 		reqLog.Warn("grok_media.video_pending_billing_load_failed", zap.String("request_id", taskRequestID), zap.Error(loadErr))
+		return nil
 	}
 	if pending == nil {
 		// Status omits resolution; without pending we would silently default to 480p and underbill.

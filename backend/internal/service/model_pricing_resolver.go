@@ -17,6 +17,8 @@ const (
 
 // ResolvedPricing 统一定价解析结果
 type ResolvedPricing struct {
+	Currency    PlatformBillingCurrency
+	currencyErr error
 	// Mode 计费模式
 	Mode BillingMode
 
@@ -47,8 +49,9 @@ type ResolvedPricing struct {
 // ModelPricingResolver 统一模型定价解析器。
 // 解析链：Group → Channel → LiteLLM → Fallback。
 type ModelPricingResolver struct {
-	channelService *ChannelService
-	billingService *BillingService
+	currencySettings *SettingService
+	channelService   *ChannelService
+	billingService   *BillingService
 }
 
 // NewModelPricingResolver 创建定价解析器实例
@@ -70,6 +73,12 @@ type PricingInput struct {
 // 1. 获取基础定价（LiteLLM → Fallback）
 // 2. 如果指定了 GroupID，查找渠道定价并覆盖
 func (r *ModelPricingResolver) Resolve(ctx context.Context, input PricingInput) *ResolvedPricing {
+	resolved := r.resolve(ctx, input)
+	resolved.Currency, resolved.currencyErr = r.billingCurrency(ctx, input.Group)
+	return resolved
+}
+
+func (r *ModelPricingResolver) resolve(ctx context.Context, input PricingInput) *ResolvedPricing {
 	longContextPricingEnabled := input.Group == nil || input.Group.LongContextPricingEnabled
 	if groupPricing := matchGroupModelPricing(input.Group, input.Model); groupPricing != nil {
 		// Group token cards only override the first-tier / flat rates.

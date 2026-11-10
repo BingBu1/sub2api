@@ -36,7 +36,7 @@ func NewModelPlazaHandler(
 	}
 }
 
-// modelPlazaOfficialPricing 官方参考价（USD per token，与计费目录同源）。
+// modelPlazaOfficialPricing 官方参考价（分组 billing_currency per token，与计费目录同源）。
 type modelPlazaOfficialPricing struct {
 	InputPrice        *float64 `json:"input_price"`
 	OutputPrice       *float64 `json:"output_price"`
@@ -80,6 +80,7 @@ type modelPlazaGroup struct {
 	Name               string   `json:"name"`
 	Description        string   `json:"description"`
 	Platform           string   `json:"platform"`
+	BillingCurrency    string   `json:"billing_currency"`
 	SubscriptionType   string   `json:"subscription_type"`
 	RateMultiplier     float64  `json:"rate_multiplier"`
 	UserRateMultiplier *float64 `json:"user_rate_multiplier,omitempty"`
@@ -228,6 +229,7 @@ func toModelPlazaGroupDTO(g *service.PlazaGroup, userRates map[int64]float64, de
 		Name:                      g.Name,
 		Description:               g.Description,
 		Platform:                  g.Platform,
+		BillingCurrency:           g.BillingCurrency,
 		SubscriptionType:          g.SubscriptionType,
 		RateMultiplier:            g.RateMultiplier,
 		PeakRateEnabled:           g.PeakRateEnabled,

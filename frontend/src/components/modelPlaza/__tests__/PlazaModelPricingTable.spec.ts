@@ -58,6 +58,20 @@ function mountTable(
 }
 
 describe('PlazaModelPricingTable', () => {
+  it('labels paid, official, cache and media quotes with the selected currency', () => {
+    const image = tokenModel({ name: 'image', official_pricing: null })
+    image.pricing = { ...image.pricing!, billing_mode: 'image', per_request_price: 0.7 }
+    const wrapper = mount(PlazaModelPricingTable, {
+      props: { models: [tokenModel(), image], rateMultiplier: 0.5, billingCurrency: 'CNY' }
+    })
+    expect(wrapper.text()).toContain('¥1.50')
+    expect(wrapper.text()).toContain('¥3.00')
+    expect(wrapper.text()).toContain('¥0.15')
+    expect(wrapper.text()).toContain('¥0.35')
+    expect(wrapper.text()).not.toContain('$')
+    wrapper.unmount()
+  })
+
   it.each([
     { enabled: true, multiplier: 1, userRate: 0.05, expected: 1 },
     { enabled: true, multiplier: 0.5, userRate: null, expected: 0.5 },

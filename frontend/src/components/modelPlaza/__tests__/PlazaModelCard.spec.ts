@@ -51,6 +51,17 @@ function render(g = group, m = model) {
 }
 
 describe('PlazaModelCard', () => {
+  it('uses the backend currency for both token and media quotes', () => {
+    const cny = { ...group, billing_currency: 'CNY' as const }
+    const token = render(cny)
+    expect(token.find('.plaza-card-prices').text()).toContain('¥0.50')
+    expect(token.find('.plaza-card-prices').text()).not.toContain('$')
+    token.unmount()
+    const image = render(cny, { ...model, pricing: { ...model.pricing!, billing_mode: 'image', per_request_price: 0.7 } })
+    expect(image.find('.plaza-card-prices').text()).toContain('¥0.35')
+    image.unmount()
+  })
+
   it('shows real base token prices with the group rate', () => {
     const wrapper = render()
     expect(wrapper.find('.plaza-card-prices').text()).toContain('$0.50')

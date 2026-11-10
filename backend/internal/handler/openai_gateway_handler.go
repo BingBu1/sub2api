@@ -518,7 +518,7 @@ func usageRecordContext(parent context.Context, base context.Context) context.Co
 	if requestID, _ := parent.Value(ctxkey.RequestID).(string); strings.TrimSpace(requestID) != "" {
 		base = context.WithValue(base, ctxkey.RequestID, strings.TrimSpace(requestID))
 	}
-	return requesttiming.With(base, requesttiming.From(parent))
+	return service.CopyRequestPricingSnapshot(parent, requesttiming.With(base, requesttiming.From(parent)))
 }
 
 // wrapUsageRecordTaskContext 包装计费任务：复制请求级 context 值，并接管请求的在途余额预留引用。
@@ -528,6 +528,7 @@ func wrapUsageRecordTaskContext(parent context.Context, task service.UsageRecord
 	if task == nil {
 		return nil, func() {}
 	}
+	parent = service.CopyRequestPricingSnapshot(parent, parent)
 	done := func() {}
 	if parent != nil {
 		done = service.InflightReservationFromContext(parent).Acquire()
@@ -2517,8 +2518,9 @@ type openAIWSTurnAPIKeyLookup interface {
 // 快照。只保留当前与上一个 turn：下一 turn 的 BeforeTurn 先于上一 turn 的
 // AfterTurn 执行时，上一 turn 仍取到自己的快照。
 type openAIWSTurnBillingAPIKeys struct {
-	mu   sync.Mutex
-	keys map[int]*service.APIKey
+	mu       sync.Mutex
+	keys     map[int]*service.APIKey
+	contexts map[int]context.Context
 }
 
 // begin 在 BeforeTurn 重装利润门前调用：后续 turn 重取计费分组并按 turn 记下，
@@ -2529,7 +2531,17 @@ func (k *openAIWSTurnBillingAPIKeys) begin(ctx context.Context, apiKeyService *s
 		turnKey = refreshOpenAIWSTurnBillingAPIKey(ctx, apiKeyService, conn)
 	}
 	k.set(turn, turnKey)
-	return withOpenAIWSTurnBillingGroup(ctx, turnKey)
+	ctx = withOpenAIWSTurnBillingGroup(ctx, turnKey)
+	if turn > 1 {
+		ctx = service.WithRequestPricingSnapshot(ctx)
+	}
+	k.mu.Lock()
+	if k.contexts == nil {
+		k.contexts = make(map[int]context.Context, 2)
+	}
+	k.contexts[turn] = ctx
+	k.mu.Unlock()
+	return ctx
 }
 
 func (k *openAIWSTurnBillingAPIKeys) set(turn int, key *service.APIKey) {
@@ -2541,6 +2553,7 @@ func (k *openAIWSTurnBillingAPIKeys) set(turn int, key *service.APIKey) {
 	for t := range k.keys {
 		if t < turn-1 {
 			delete(k.keys, t)
+			delete(k.contexts, t)
 		}
 	}
 	k.keys[turn] = key
@@ -2553,6 +2566,15 @@ func (k *openAIWSTurnBillingAPIKeys) forTurn(turn int, conn *service.APIKey) *se
 		return key
 	}
 	return conn
+}
+
+func (k *openAIWSTurnBillingAPIKeys) contextForTurn(turn int, fallback context.Context) context.Context {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if ctx := k.contexts[turn]; ctx != nil {
+		return ctx
+	}
+	return fallback
 }
 
 // refreshOpenAIWSTurnBillingAPIKey 返回本 turn 计费用的 API Key：分组取当前认证
@@ -3555,6 +3577,11 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 					return newOpenAIWSLocalAdmissionCloseError(cyberSessionBlockedClientMsg)
 				}
 				turnBillingCtx := turnBillingAPIKeys.begin(ctx, h.apiKeyService, turn, apiKey)
+				if turn > 1 {
+					if err := h.gatewayService.RequireBillingCurrency(turnBillingCtx, turnBillingAPIKeys.forTurn(turn, apiKey)); err != nil {
+						return service.NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "billing currency unavailable", err)
+					}
+				}
 				// MapRequestModel 已在当前 turn 的 payload 解析阶段完成。这里
 				// 再用最终出站模型做一次权威资格终检，确保账号被禁用、移组、
 				// 到期或该模型票据失效后，不会先抢槽再把请求交给旧账号。
@@ -3653,7 +3680,8 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				if cyberTurnContext.identity.Metadata.Status != "" {
 					cyberIdentityOverride = &cyberTurnContext.identity
 				}
-				h.recordCyberPolicyIfMarkedWithIdentity(c, apiKey, account, subscription, turnRequestedModel, turnErr != nil, cyberBlockBody, turnUsageFields, requestPayloadHash, cyberIdentityOverride)
+				turnBillingContext := turnBillingAPIKeys.contextForTurn(turn, ctx)
+				h.recordCyberPolicyIfMarkedWithIdentity(c, turnBillingAPIKeys.forTurn(turn, apiKey), account, subscription, turnRequestedModel, turnErr != nil, cyberBlockBody, turnUsageFields, requestPayloadHash, cyberIdentityOverride, turnBillingContext)
 				cyberBlockedThisConn, cyberBlockPendingAfterFailover = advanceOpenAIWSCyberBlockState(
 					cyberBlockedThisConn,
 					cyberBlockPendingAfterFailover,
@@ -3701,7 +3729,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				turnRecordPricingAt := turnPricing.currentOr(turnStart)
 				turnBillingAPIKey := turnBillingAPIKeys.forTurn(turn, apiKey)
 				cyberBlocked := service.GetOpsCyberPolicy(c) != nil
-				h.submitOpenAIUsageRecordTask(ctx, result, func(taskCtx context.Context) {
+				h.submitOpenAIUsageRecordTask(turnBillingContext, result, func(taskCtx context.Context) {
 					if err := h.gatewayService.RecordUsage(taskCtx, &service.OpenAIRecordUsageInput{
 						Result:             result,
 						APIKey:             turnBillingAPIKey,
@@ -5069,10 +5097,14 @@ func (h *OpenAIGatewayHandler) enqueueCyberSessionIdentityRejectedOpsEntry(c *gi
 // 当前请求已发给用户，本方法只做事后记录，不影响响应。forwardErrored 为 true 时才写用量行，
 // 避免与正常 RecordUsage(forward 成功路径)重复。每请求至多记录一次。
 func (h *OpenAIGatewayHandler) recordCyberPolicyIfMarked(c *gin.Context, apiKey *service.APIKey, account *service.Account, subscription *service.UserSubscription, model string, forwardErrored bool, cyberBlockBody []byte, channelFields service.ChannelUsageFields, requestPayloadHash string) {
-	h.recordCyberPolicyIfMarkedWithIdentity(c, apiKey, account, subscription, model, forwardErrored, cyberBlockBody, channelFields, requestPayloadHash, nil)
+	var billingContext context.Context
+	if c.Request != nil {
+		billingContext = c.Request.Context()
+	}
+	h.recordCyberPolicyIfMarkedWithIdentity(c, apiKey, account, subscription, model, forwardErrored, cyberBlockBody, channelFields, requestPayloadHash, nil, billingContext)
 }
 
-func (h *OpenAIGatewayHandler) recordCyberPolicyIfMarkedWithIdentity(c *gin.Context, apiKey *service.APIKey, account *service.Account, subscription *service.UserSubscription, model string, forwardErrored bool, cyberBlockBody []byte, channelFields service.ChannelUsageFields, requestPayloadHash string, identityOverride *service.CyberSessionIdentityResolution) {
+func (h *OpenAIGatewayHandler) recordCyberPolicyIfMarkedWithIdentity(c *gin.Context, apiKey *service.APIKey, account *service.Account, subscription *service.UserSubscription, model string, forwardErrored bool, cyberBlockBody []byte, channelFields service.ChannelUsageFields, requestPayloadHash string, identityOverride *service.CyberSessionIdentityResolution, billingContext context.Context) {
 	mark := service.GetOpsCyberPolicy(c)
 	if mark == nil {
 		return
@@ -5183,9 +5215,10 @@ func (h *OpenAIGatewayHandler) recordCyberPolicyIfMarkedWithIdentity(c *gin.Cont
 	if cmSvc != nil && cmSvc.CyberEvidence() != nil {
 		evidence = cmSvc.CyberEvidence().PrepareWithSession(cyberBlockBody, mark.Message, sessionID, mark.UpstreamStatus)
 	}
+	frozenBillingContext := service.CopyRequestPricingSnapshot(billingContext, context.Background())
 	go func() {
 		defer evidence.Release()
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(frozenBillingContext, 30*time.Second)
 		defer cancel()
 		if cmSvc != nil {
 			cmSvc.RecordCyberPolicyEvent(ctx, service.CyberPolicyRecordInput{

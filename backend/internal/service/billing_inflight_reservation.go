@@ -556,6 +556,14 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 		resolved = d.resolver.Resolve(ctx, in)
 	}
 
+	var currencyGroup *Group
+	if apiKey != nil {
+		currencyGroup = apiKey.Group
+	}
+	currency, currencyErr := d.resolver.billingCurrency(ctx, currencyGroup)
+	if currencyErr != nil {
+		return 0
+	}
 	inputTokens, outputTokens := tokenCounts(cfg, req.BodyBytes, req.MaxTokens)
 	tokenCost := func() float64 {
 		var pricing *ModelPricing
@@ -568,6 +576,7 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 		if pricing == nil {
 			return 0
 		}
+		pricing = currencyTokenPricing(pricing, currency)
 		return (float64(inputTokens)*pricing.InputPricePerToken + float64(outputTokens)*pricing.OutputPricePerToken) * textRate
 	}
 
@@ -576,12 +585,12 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 	switch req.Kind {
 	case InflightEstimateImage:
 		if perRequestMode {
-			cost = maxPerRequestPrice(resolved) * float64(units) * imageRate
+			cost = maxPerRequestPrice(resolved) * currency.multiplier() * float64(units) * imageRate
 		}
 		if d.billing != nil {
 			cfgImg := imagePriceConfigFromAPIKey(apiKey)
 			for _, tier := range []string{ImageBillingSize1K, ImageBillingSize2K, ImageBillingSize4K} {
-				if b := d.billing.CalculateImageCost(model, tier, units, cfgImg, imageRate); b != nil && b.ActualCost > cost {
+				if b := d.resolver.convertRawCost(ctx, currencyGroup, d.billing.CalculateImageCost(model, tier, units, cfgImg, imageRate)); b != nil && b.ActualCost > cost {
 					cost = b.ActualCost
 				}
 			}
@@ -591,10 +600,10 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 		}
 	case InflightEstimateVideo:
 		if perRequestMode {
-			cost = maxPerRequestPrice(resolved) * float64(units) * math.Max(textRate, imageRate)
+			cost = maxPerRequestPrice(resolved) * currency.multiplier() * float64(units) * math.Max(textRate, imageRate)
 		}
 		if d.billing != nil {
-			if b := d.billing.CalculateVideoCost(model, req.VideoResolution, units, req.VideoDurationSeconds, videoPriceConfigFromAPIKey(apiKey), math.Max(textRate, imageRate)); b != nil && b.ActualCost > cost {
+			if b := d.resolver.convertRawCost(ctx, currencyGroup, d.billing.CalculateVideoCost(model, req.VideoResolution, units, req.VideoDurationSeconds, videoPriceConfigFromAPIKey(apiKey), math.Max(textRate, imageRate))); b != nil && b.ActualCost > cost {
 				cost = b.ActualCost
 			}
 		}
@@ -604,10 +613,10 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 			if u <= 0 {
 				u = 1
 			}
-			cost = maxPerRequestPrice(resolved) * u * textRate
+			cost = maxPerRequestPrice(resolved) * currency.multiplier() * u * textRate
 		}
 		if d.billing != nil && req.AudioUnits > 0 {
-			if b := d.billing.CalculateAudioCost(req.AudioMode, req.AudioUnits, groupAudioPriceConfigFromAPIKey(apiKey), textRate); b != nil && b.ActualCost > cost {
+			if b := d.resolver.convertRawCost(ctx, currencyGroup, d.billing.CalculateAudioCost(req.AudioMode, req.AudioUnits, groupAudioPriceConfigFromAPIKey(apiKey), textRate)); b != nil && b.ActualCost > cost {
 				cost = b.ActualCost
 			}
 		}
@@ -617,14 +626,14 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 			if resolved.Mode == BillingModeImage {
 				rate = imageRate
 			}
-			cost = maxPerRequestPrice(resolved) * float64(units) * rate
+			cost = maxPerRequestPrice(resolved) * currency.multiplier() * float64(units) * rate
 		} else if req.Kind != InflightEstimatePerRequest {
 			cost = tokenCost()
 		}
 	}
 	if req.SearchCalls > 0 {
 		if d.billing != nil {
-			if b := d.billing.CalculateSearchCost(req.SearchCalls, groupSearchPricePer1kFromAPIKey(apiKey), textRate); b != nil && b.ActualCost > 0 {
+			if b := d.resolver.convertRawCost(ctx, currencyGroup, d.billing.CalculateSearchCost(req.SearchCalls, groupSearchPricePer1kFromAPIKey(apiKey), textRate)); b != nil && b.ActualCost > 0 {
 				cost += b.ActualCost
 			}
 		}
@@ -639,6 +648,11 @@ func (d inflightEstimateDeps) estimateOne(ctx context.Context, apiKey *APIKey, m
 func (d inflightEstimateDeps) estimate(ctx context.Context, apiKey *APIKey, req InflightEstimateRequest) (float64, bool) {
 	if req.MiniMaxH3BaseCost != nil && apiKey != nil && apiKey.Group != nil {
 		cost := *req.MiniMaxH3BaseCost * math.Max(0, apiKey.Group.RateMultiplier)
+		currency, err := d.resolver.billingCurrency(ctx, apiKey.Group)
+		if err != nil {
+			return 0, false
+		}
+		cost *= currency.multiplier()
 		return cost, validCost(cost)
 	}
 	if apiKey == nil || apiKey.User == nil {

@@ -14,48 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ---------------------------------------------------------------------------
-// deepseekPeakMultiplierAt：官方峰谷口径（2026-08-23 起生效）
-// 高峰时段 01:00–04:00 与 06:00–10:00 UTC（半开区间，仅工作日）；
-// 北京时间周六/周日全天低谷；高峰价 = 2× 低谷价。
-// 2026-08-24 为周一（工作日），2026-08-22 周六、2026-08-23 周日。
-// ---------------------------------------------------------------------------
-
-func TestDeepseekPeakMultiplierAt(t *testing.T) {
-	mon := func(hour, min int) time.Time { return time.Date(2026, 8, 24, hour, min, 0, 0, time.UTC) }
-	sat := func(hour, min int) time.Time { return time.Date(2026, 8, 22, hour, min, 0, 0, time.UTC) }
-	sun := func(hour, min int) time.Time { return time.Date(2026, 8, 23, hour, min, 0, 0, time.UTC) }
-
-	tests := []struct {
-		name string
-		now  time.Time
-		want float64
-	}{
-		// 工作日高峰窗口边界（半开区间）
-		{"weekday 01:00 peak start", mon(1, 0), 2.0},
-		{"weekday 03:59 peak upper bound", mon(3, 59), 2.0},
-		{"weekday 04:00 peak end", mon(4, 0), 1.0},
-		{"weekday 06:00 peak start", mon(6, 0), 2.0},
-		{"weekday 09:59 peak upper bound", mon(9, 59), 2.0},
-		{"weekday 10:00 peak end", mon(10, 0), 1.0},
-		// 工作日低谷时段
-		{"weekday 00:00 off-peak", mon(0, 0), 1.0},
-		{"weekday 05:00 off-peak", mon(5, 0), 1.0},
-		{"weekday 12:00 off-peak", mon(12, 0), 1.0},
-		{"weekday 23:59 off-peak", mon(23, 59), 1.0},
-		// 北京时间周末全天低谷（即使 UTC 处于高峰时段）
-		{"saturday utc 02:00 beijing sat 10:00", sat(2, 0), 1.0},
-		{"sunday utc 07:00 beijing sun 15:00", sun(7, 0), 1.0},
-		// 北京时间与 UTC 跨日边界：UTC 周六 16:30 = 北京周日 00:30 → 周末低谷
-		{"utc saturday 16:30 = beijing sunday 00:30", sat(16, 30), 1.0},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, deepseekPeakMultiplierAt(tt.now))
-		})
-	}
-}
-
 func TestIsDeepSeekModel(t *testing.T) {
 	deepseek := []string{
 		"deepseek-flash", "deepseek-v4-flash", "deepseek-v4-pro", "deepseek-v4-flash-vision-exp",
@@ -77,10 +35,10 @@ func TestIsDeepSeekModel(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 默认价卡（Source=LiteLLM）按官方峰谷倍率计费；分组/渠道自定义定价不叠加
+// 默认价卡（Source=LiteLLM）全天统一计费；分组/渠道自定义定价仍优先
 // ---------------------------------------------------------------------------
 
-func TestCalculateCostUnified_DeepseekDefaultCardPeakMultiplier(t *testing.T) {
+func TestCalculateCostUnified_DeepseekDefaultCardUniformPrice(t *testing.T) {
 	bs := newTestBillingService()
 	resolver := NewModelPricingResolver(nil, bs)
 
@@ -102,10 +60,10 @@ func TestCalculateCostUnified_DeepseekDefaultCardPeakMultiplier(t *testing.T) {
 		PricingAt: time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC), // 周一高峰
 	})
 	require.NoError(t, err)
-	require.InDelta(t, offPeakTotal*2, peak.TotalCost, 1e-10)
+	require.InDelta(t, offPeakTotal, peak.TotalCost, 1e-10)
 }
 
-func TestCalculateCostUnified_DeepseekProDefaultCardPeakMultiplier(t *testing.T) {
+func TestCalculateCostUnified_DeepseekProDefaultCardUniformPrice(t *testing.T) {
 	bs := newTestBillingService()
 	resolver := NewModelPricingResolver(nil, bs)
 
@@ -126,10 +84,10 @@ func TestCalculateCostUnified_DeepseekProDefaultCardPeakMultiplier(t *testing.T)
 		PricingAt: time.Date(2026, 8, 24, 6, 30, 0, 0, time.UTC), // 周一高峰
 	})
 	require.NoError(t, err)
-	require.InDelta(t, offPeakTotal*2, peak.TotalCost, 1e-10)
+	require.InDelta(t, offPeakTotal, peak.TotalCost, 1e-10)
 }
 
-func TestCalculateCostUnified_DeepseekVersionedNamePeakMultiplier(t *testing.T) {
+func TestCalculateCostUnified_DeepseekVersionedNameUniformPrice(t *testing.T) {
 	bs := newTestBillingService()
 	resolver := NewModelPricingResolver(nil, bs)
 
@@ -150,7 +108,7 @@ func TestCalculateCostUnified_DeepseekVersionedNamePeakMultiplier(t *testing.T) 
 		PricingAt: time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC), // 周一高峰
 	})
 	require.NoError(t, err)
-	require.InDelta(t, offPeakTotal*2, peak.TotalCost, 1e-10)
+	require.InDelta(t, offPeakTotal, peak.TotalCost, 1e-10)
 }
 
 func TestCalculateCostUnified_DeepseekGroupPricingNotScaledByPeak(t *testing.T) {

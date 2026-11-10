@@ -375,6 +375,7 @@ func (s *OpenAIGatewayService) SelectMediaVideoRequestAccount(
 // first observes a completed video URL. Status may omit model/duration; we fall
 // back to this snapshot, then defaults.
 type GrokVideoPendingBilling struct {
+	BillingCurrencies map[string]PlatformBillingCurrency `json:"billing_currencies,omitempty"`
 	// H3 prices requested seconds at submission; later edits cannot reprice a task.
 	MiniMaxH3BaseCost    *float64 `json:"minimax_h3_base_cost,omitempty"`
 	Model                string   `json:"model"`
@@ -471,6 +472,7 @@ func (s *OpenAIGatewayService) StoreGrokVideoPendingBilling(
 	} else {
 		pending.CreatedAt = strings.TrimSpace(pending.CreatedAt)
 	}
+	pending.BillingCurrencies = exportBillingCurrencySnapshot(ctx)
 	payload, err := json.Marshal(pending)
 	if err != nil {
 		return err
@@ -497,6 +499,9 @@ func (s *OpenAIGatewayService) LoadGrokVideoPendingBilling(
 	}
 	var pending GrokVideoPendingBilling
 	if err := json.Unmarshal(payload, &pending); err != nil {
+		return nil, err
+	}
+	if err := restoreBillingCurrencySnapshot(ctx, pending.BillingCurrencies); err != nil {
 		return nil, err
 	}
 	return &pending, nil

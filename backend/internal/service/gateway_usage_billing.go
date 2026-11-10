@@ -182,7 +182,7 @@ func postUsageBilling(ctx context.Context, p *postUsageBillingParams, deps *bill
 	}
 
 	if p.shouldUpdateAccountQuota() {
-		accountCost := cost.TotalCost * p.AccountRateMultiplier
+		accountCost := cost.sourceTotal() * p.AccountRateMultiplier
 		if err := deps.accountRepo.IncrementQuotaUsed(billingCtx, p.Account.ID, accountCost); err != nil {
 			slog.Error("increment account quota used failed", "account_id", p.Account.ID, "cost", accountCost, "error", err)
 		}
@@ -344,7 +344,7 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		cmd.APIKeyRateLimitCost = p.Cost.ActualCost
 	}
 	if p.shouldUpdateAccountQuota() {
-		cmd.AccountQuotaCost = p.Cost.TotalCost * p.AccountRateMultiplier
+		cmd.AccountQuotaCost = p.Cost.sourceTotal() * p.AccountRateMultiplier
 	}
 
 	cmd.Normalize()
@@ -550,7 +550,7 @@ func notifyAccountQuota(p *postUsageBillingParams, deps *billingDeps, result *Us
 		)
 		return
 	}
-	accountCost := p.Cost.TotalCost * p.AccountRateMultiplier
+	accountCost := p.Cost.sourceTotal() * p.AccountRateMultiplier
 	var quotaState *AccountQuotaState
 	if result != nil {
 		quotaState = result.QuotaState
@@ -894,11 +894,12 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 				CacheReadTokens:     result.Usage.CacheReadInputTokens,
 				ImageOutputTokens:   result.Usage.ImageOutputTokens,
 			},
-			cost.TotalCost-cacheStorageCost, pricingAt,
+			cost.sourceTotal()-cacheStorageCost, pricingAt,
 			accountStatsLongContextPricingEnabled(nil),
 		)
 		addCacheStorageToAccountStatsCost(usageLog, cacheStorageCost)
 	}
+	preserveCurrencyAccountStats(usageLog, cost)
 
 	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {
@@ -1087,7 +1088,7 @@ func (s *GatewayService) calculateRecordUsageCost(
 			}
 		}
 		cfg := groupAudioPriceConfigFromAPIKey(apiKey)
-		return s.billingService.CalculateAudioCost(result.AudioUsage.Mode, result.AudioUsage.DurationOrUnits, cfg, multiplier)
+		return s.resolver.convertRawCost(ctx, apiKey.Group, s.billingService.CalculateAudioCost(result.AudioUsage.Mode, result.AudioUsage.DurationOrUnits, cfg, multiplier))
 	}
 
 	// Token 计费；SearchCount 为叠加 surcharge（不替代 token）。纯存储费不是一次模型请求，不计 token / 按次费用。
@@ -1102,13 +1103,12 @@ func (s *GatewayService) calculateRecordUsageCost(
 		if price != nil && *price == 0 {
 			logger.LegacyPrintf("service.gateway", "[Billing] search_price_per_1k explicit 0; search free group_model=%s count=%d", billingModel, result.SearchCount)
 		}
-		searchCost := s.billingService.CalculateSearchCost(result.SearchCount, price, multiplier)
+		searchCost := s.resolver.convertRawCost(ctx, apiKey.Group, s.billingService.CalculateSearchCost(result.SearchCount, price, multiplier))
 		if searchCost != nil && (searchCost.TotalCost > 0 || searchCost.ActualCost > 0) {
 			if tokenCost == nil {
 				return searchCost
 			}
-			tokenCost.TotalCost += searchCost.TotalCost
-			tokenCost.ActualCost += searchCost.ActualCost
+			addBillingSurcharge(tokenCost, searchCost)
 		}
 	}
 	// 显式缓存存储费同为叠加 surcharge，与 token 费用使用同一计费模型与倍率。
@@ -1116,8 +1116,8 @@ func (s *GatewayService) calculateRecordUsageCost(
 		if tokenCost == nil {
 			tokenCost = &CostBreakdown{}
 		}
-		tokenCost.TotalCost += storageCost
-		tokenCost.ActualCost += storageCost * multiplier
+		storage := s.resolver.convertRawCost(ctx, apiKey.Group, &CostBreakdown{TotalCost: storageCost, ActualCost: storageCost * multiplier})
+		addBillingSurcharge(tokenCost, storage)
 	}
 	return tokenCost
 }
@@ -1226,7 +1226,7 @@ func (s *GatewayService) calculateImageCost(
 	}
 	groupConfig := imagePriceConfigFromAPIKey(apiKey)
 	if apiKeyHasConfiguredImagePrice(apiKey, sizeTier) {
-		return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
+		return s.resolver.convertRawCost(ctx, apiKey.Group, s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier))
 	}
 	if resolved != nil && resolved.Source == PricingSourceChannel {
 		tokens := UsageTokens{
@@ -1255,7 +1255,7 @@ func (s *GatewayService) calculateImageCost(
 		return cost
 	}
 
-	return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
+	return s.resolver.convertRawCost(ctx, apiKey.Group, s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier))
 }
 
 // calculateTokenCost 计算 Token 计费：路径选择（分组/渠道定价 → 内置定价）

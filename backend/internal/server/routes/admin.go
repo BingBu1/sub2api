@@ -38,6 +38,8 @@ func RegisterAdminRoutes(
 	admin.Use(h.Admin.Account.AuthorizeObserver)
 	admin.Use(middleware.AdminComplianceGuard(settingService))
 	{
+		admin.GET("/model-plaza/billing-currency/:platform", h.ModelPlaza.GetBillingCurrency)
+		admin.PUT("/model-plaza/billing-currency/:platform", h.ModelPlaza.UpdateBillingCurrency)
 		// Optional region-to-Pod routing, configured inside Gateway settings.
 		admin.GET("/serverless", h.Admin.Setting.GetServerless)
 		admin.PUT("/serverless", h.Admin.Setting.SaveServerless)

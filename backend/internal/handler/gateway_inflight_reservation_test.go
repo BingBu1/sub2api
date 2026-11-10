@@ -31,6 +31,20 @@ type countingEstimator struct {
 	priced bool
 }
 
+type invalidCurrencyEstimator struct{ countingEstimator }
+
+func (e *invalidCurrencyEstimator) RequireBillingCurrency(context.Context, *service.APIKey) error {
+	return service.ErrModelPricingUnavailable
+}
+
+func TestReserveInflightBalance_RejectsInvalidCurrencyEvenWithoutReservations(t *testing.T) {
+	est := &invalidCurrencyEstimator{}
+	_, done, err := reserveInflightBalanceCtx(context.Background(), nil, est, &service.APIKey{}, nil, service.InflightEstimateRequest{})
+	defer done()
+	require.ErrorIs(t, err, service.ErrModelPricingUnavailable)
+	require.Zero(t, est.calls)
+}
+
 func (e *countingEstimator) EstimateInflightReservation(context.Context, *service.APIKey, service.InflightEstimateRequest) (float64, bool) {
 	e.calls++
 	return e.cost, e.priced

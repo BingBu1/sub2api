@@ -999,6 +999,7 @@ func (s *BatchImagePublicService) ensureGroupAllowsBatchImage(ctx context.Contex
 
 func (s *BatchImagePublicService) resolvePricingSnapshot(ctx context.Context, owner BatchImageOwner, req BatchImageSubmitRequest, provider string, account *Account) (*BatchImagePricingSnapshot, error) {
 	unit := -1.0
+	platform := batchImageProviderPlatform(provider)
 	groupMultiplier := 1.0
 	discountMultiplier := defaultBatchImageDiscountMultiplier
 	holdMultiplier := defaultBatchImageHoldMultiplier
@@ -1013,6 +1014,7 @@ func (s *BatchImagePublicService) resolvePricingSnapshot(ctx context.Context, ow
 		if !group.AllowBatchImageGeneration {
 			return nil, ErrBatchImageGroupDisabled
 		}
+		platform = group.Platform
 		groupDefaultMultiplier := group.RateMultiplier
 		if groupDefaultMultiplier < 0 {
 			groupDefaultMultiplier = 0
@@ -1072,7 +1074,17 @@ func (s *BatchImagePublicService) resolvePricingSnapshot(ctx context.Context, ow
 	if accountMultiplier < 0 {
 		accountMultiplier = 0
 	}
-	standardUnitPrice := unit * groupMultiplier * accountMultiplier
+	currencyMultiplier := 1.0
+	if pricing, ok := s.Pricing.(*BatchImageModelPricingResolver); ok && pricing.Resolver != nil {
+		currency, err := pricing.Resolver.billingCurrency(ctx, &Group{Platform: platform})
+		if err != nil {
+			return nil, ErrBatchImageSettlementPricingMissing
+		}
+		currencyMultiplier = currency.multiplier()
+	}
+	// Keep the persisted base in USD for upstream cost statistics. The billable
+	// and hold snapshots carry currency conversion through asynchronous settlement.
+	standardUnitPrice := unit * currencyMultiplier * groupMultiplier * accountMultiplier
 	billableUnitPrice := standardUnitPrice * discountMultiplier
 	holdUnitPrice := standardUnitPrice * holdMultiplier
 	return &BatchImagePricingSnapshot{

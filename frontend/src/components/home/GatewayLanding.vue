@@ -99,7 +99,7 @@
       <section class="pricing-section module-section" id="models">
         <div class="container">
           <div class="price-heading"><div><p class="module-label">{{ t('gateway.modelsAndPricing') }}</p><h2>{{ t('gateway.chooseModelWithClarity') }}</h2><p>{{ t('gateway.pricingDescription') }}</p></div><router-link v-if="showModelPlaza" class="textlink" to="/model-plaza">{{ t('gateway.exploreAllModels') }} ↗</router-link></div>
-          <div class="model-guide"><span>{{ t('gateway.chooseByTask') }}</span><div role="group" :aria-label="t('gateway.chooseByTask')"><button v-for="task in priceTasks" :key="task.id" type="button" :aria-pressed="selectedTask === task.id" @click="selectedTask = task.id">{{ t(task.label) }}</button></div><small>USD / 1M Token</small></div>
+          <div class="model-guide"><span>{{ t('gateway.chooseByTask') }}</span><div role="group" :aria-label="t('gateway.chooseByTask')"><button v-for="task in priceTasks" :key="task.id" type="button" :aria-pressed="selectedTask === task.id" @click="selectedTask = task.id">{{ t(task.label) }}</button></div><small>/ 1M Token</small></div>
           <p class="model-guide-insight">✧ {{ t(taskInsight) }}</p>
           <div class="price-table-wrap"><table class="price-table"><thead><tr><th>{{ t('gateway.model') }}</th><th>{{ t('gateway.taskDirection') }}</th><th>{{ t('gateway.inputPrice') }}</th><th>{{ t('gateway.outputPrice') }}</th><th>{{ t('gateway.access') }}</th></tr></thead><tbody><tr v-for="model in filteredPriceModels" :key="model.name"><td><small>{{ model.maker }}</small><strong>{{ model.name }}</strong></td><td>{{ t(model.use) }}</td><td><strong>{{ model.input }}</strong></td><td><strong>{{ model.output }}</strong></td><td><a href="#integration" :aria-label="`${t('gateway.access')} ${model.name}`">↗</a><small>{{ model.group || t('gateway.priceUnavailable') }}</small></td></tr></tbody></table></div>
           <div class="price-snapshot"><span>{{ pricingStatus }}</span><router-link v-if="showModelPlaza" to="/model-plaza">{{ t('gateway.exploreAllModels') }} ↗</router-link></div>
@@ -458,9 +458,14 @@ const priceModels = computed(() => priceModelSpecs.map(spec => {
     .filter(group => group.subscription_type !== 'subscription')
     .flatMap(group => group.models.filter(model => model.name === spec.name).map(model => ({ group, input: unitPrice(group, model, 'input_price'), output: unitPrice(group, model, 'output_price') })))
     .filter(option => option.input !== null && option.output !== null)
-    .sort((a, b) => (a.input! + a.output!) - (b.input! + b.output!))
+    .sort((a, b) => {
+      // Currency amounts share the site's existing balance units. Prefer CNY
+      // quotes when available, then compare amounts within that currency.
+      const currencyOrder = Number(b.group.billing_currency === 'CNY') - Number(a.group.billing_currency === 'CNY')
+      return currencyOrder || (a.input! + a.output!) - (b.input! + b.output!)
+    })
   const choice = options[0]
-  return { ...spec, input: choice ? formatScaled(choice.input, 1_000_000, 2) : '—', output: choice ? formatScaled(choice.output, 1_000_000, 2) : '—', group: choice?.group.name ?? '' }
+  return { ...spec, input: choice ? formatScaled(choice.input, 1_000_000, 2, choice.group.billing_currency) : '—', output: choice ? formatScaled(choice.output, 1_000_000, 2, choice.group.billing_currency) : '—', group: choice?.group.name ?? '' }
 }))
 const filteredPriceModels = computed(() => selectedTask.value === 'all' ? priceModels.value : priceModels.value.filter(model => model.task === selectedTask.value))
 const taskInsight = computed(() => ({ all: 'gateway.allInsight', daily: 'gateway.dailyInsight', coding: 'gateway.codingInsight', longform: 'gateway.longformInsight' })[selectedTask.value] || 'gateway.allInsight')

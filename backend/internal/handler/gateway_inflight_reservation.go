@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// inflightReservationEstimator 估算单请求在途预留金额（USD）；false 表示无法定价。
+// inflightReservationEstimator 估算单请求在途预留的余额单位；false 表示无法定价。
 type inflightReservationEstimator interface {
 	EstimateInflightReservation(ctx context.Context, apiKey *service.APIKey, req service.InflightEstimateRequest) (float64, bool)
 }
@@ -71,6 +71,14 @@ func reserveInflightBalanceCtx(
 	subscription *service.UserSubscription,
 	req service.InflightEstimateRequest,
 ) (context.Context, func(), error) {
+	ctx = service.WithRequestPricingSnapshot(ctx)
+	if validator, ok := estimator.(interface {
+		RequireBillingCurrency(context.Context, *service.APIKey) error
+	}); ok {
+		if err := validator.RequireBillingCurrency(ctx, apiKey); err != nil {
+			return ctx, inflightNoop, err
+		}
+	}
 	if provider, ok := estimator.(interface {
 		RegionalFundsReadiness() *service.RegionalMetering
 	}); ok {

@@ -42,13 +42,14 @@ const rateConfig = computed<PlazaRateConfig>(() => ({
   videoRateIndependent: props.group.video_rate_independent,
   videoRateMultiplier: props.group.video_rate_multiplier
 }))
+const billingCurrency = computed(() => props.group.billing_currency === 'CNY' ? 'CNY' : 'USD')
 const effectiveRate = computed(() => plazaEffectiveRate(rateConfig.value))
 const appliedRate = computed(() => plazaRate(billingMode.value, rateConfig.value))
 function tokenPrice(value: number | null | undefined) {
-  return formatScaled(value == null ? null : value * effectiveRate.value, 1_000_000, 2)
+  return formatScaled(value == null ? null : value * effectiveRate.value, 1_000_000, 2, billingCurrency.value)
 }
 const requestPrice = computed(() => {
   const value = props.model.pricing?.per_request_price
-  return formatScaled(value == null ? null : value * appliedRate.value, 1, 2)
+  return formatScaled(value == null ? null : value * appliedRate.value, 1, 2, billingCurrency.value)
 })
 </script>

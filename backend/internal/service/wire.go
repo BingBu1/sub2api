@@ -101,6 +101,12 @@ func ProvideOAuthRefreshAPI(accountRepo AccountRepository, tokenCache GeminiToke
 	return NewOAuthRefreshAPI(accountRepo, tokenCache)
 }
 
+func ProvideModelPricingResolver(channel *ChannelService, billing *BillingService, settings *SettingService) *ModelPricingResolver {
+	resolver := NewModelPricingResolver(channel, billing)
+	resolver.currencySettings = settings
+	return resolver
+}
+
 func ProvideBatchImageModelPricingResolver(resolver *ModelPricingResolver) *BatchImageModelPricingResolver {
 	return &BatchImageModelPricingResolver{Resolver: resolver}
 }
@@ -1116,7 +1122,7 @@ var ProviderSet = wire.NewSet(
 	NewGroupCapacityService,
 	NewChannelService,
 	wire.Bind(new(ChannelCacheInvalidator), new(*ChannelService)),
-	NewModelPricingResolver,
+	ProvideModelPricingResolver,
 	NewModelPlazaService,
 	ProvideContentModerationService,
 	NewAffiliateService,

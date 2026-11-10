@@ -35,6 +35,12 @@
       <p v-if="group.description" class="mt-2 text-sm text-gray-500 dark:text-dark-400">
         {{ group.description }}
       </p>
+      <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-dark-400" data-testid="billing-price-note">
+        {{ t('modelPlaza.detail.billingPriceNote', {
+          currency: t(group.billing_currency === 'CNY' ? 'modelPlaza.currency.cny' : 'modelPlaza.currency.usd'),
+          rate: group.user_rate_multiplier ?? group.rate_multiplier
+        }) }}
+      </p>
       <p
         v-if="peakNote"
         class="mt-1.5 inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
@@ -57,6 +63,7 @@
         v-if="group.models.length > 0"
         :models="group.models"
         :platform="group.platform"
+        :billing-currency="group.billing_currency"
         :rate-multiplier="group.rate_multiplier"
         :user-rate-multiplier="group.user_rate_multiplier ?? null"
         :image-rate-independent="group.image_rate_independent"
