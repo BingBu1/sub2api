@@ -23,7 +23,6 @@ const props = withDefaults(defineProps<{
 })
 
 const icons = {
-  headphones: 'M4 14v-3a8 8 0 0116 0v3M4 13H3v7h4v-7H4zm16 0h1v7h-4v-7h3z',
   // Capture & Operations
   requestCapture: 'M12 3v10m-3-3 3 3 3-3M7 6H5a2 2 0 00-2 2v11a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-2M3 15h5l2 3h4l2-3h5',
   monitorPulse: 'M8 21h8m-4-4v4M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM6 10h3l2-4 2 8 2-4h3',

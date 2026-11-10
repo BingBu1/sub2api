@@ -92,14 +92,6 @@ function mountSection(g: ModelPlazaGroup) {
 const NOTE = 'modelPlaza.detail.longContextDisabledNote'
 
 describe('PlazaGroupSection 长上下文说明', () => {
-  it('starts with paid prices and lets users compare official references', async () => {
-    const wrapper = mountSection(group())
-    const table = wrapper.findComponent(PlazaModelPricingTable)
-    expect(table.props('showReferencePricing')).toBe(false)
-    await wrapper.get('.plaza-reference-toggle').trigger('click')
-    expect(table.props('showReferencePricing')).toBe(true)
-    expect(wrapper.get('.plaza-reference-toggle').attributes('aria-pressed')).toBe('true')
-  })
   it('passes video-specific rates to the pricing table', () => {
     const wrapper = mountSection(group({ video_rate_independent: true, video_rate_multiplier: 0 }))
     expect(wrapper.findComponent(PlazaModelPricingTable).props()).toMatchObject({

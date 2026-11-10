@@ -155,41 +155,4 @@ describe('useClipboard', () => {
     expect(copied.value).toBe(false)
     expect(mockShowError).toHaveBeenCalled()
   })
-
-  it('copies inside an open dialog and restores the focused button', async () => {
-    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('Clipboard denied'))
-    const dialog = document.createElement('dialog')
-    dialog.setAttribute('open', '')
-    const button = document.createElement('button')
-    dialog.appendChild(button)
-    document.body.appendChild(dialog)
-    button.focus()
-    Object.defineProperty(document, 'execCommand', {
-      configurable: true,
-      value: vi.fn(() => {
-        const textarea = dialog.querySelector('textarea')
-        expect(textarea?.value).toBe('3755821761')
-        expect(document.activeElement).toBe(textarea)
-        return true
-      })
-    })
-    try {
-      const { copyToClipboard } = useClipboard()
-      expect(await copyToClipboard('3755821761')).toBe(true)
-      expect(document.activeElement).toBe(button)
-      expect(dialog.querySelector('textarea')).toBeNull()
-    } finally {
-      dialog.remove()
-    }
-  })
-
-  it('lets a caller provide inline feedback without creating duplicate toast messages', async () => {
-    const { copyToClipboard } = useClipboard({ showToast: false })
-    expect(await copyToClipboard('3755821761')).toBe(true)
-    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('Clipboard denied'))
-    Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) })
-    expect(await copyToClipboard('3755821761')).toBe(false)
-    expect(mockShowSuccess).not.toHaveBeenCalled()
-    expect(mockShowError).not.toHaveBeenCalled()
-  })
 })

@@ -32,29 +32,13 @@ const routes: RouteRecordRaw[] = [
 
   // ==================== Public Routes ====================
   {
-    path: '/',
-    component: () => import('@/components/layout/PublicSiteLayout.vue'),
-    redirect: '/home',
-    children: [
-      {
-        path: 'home',
-        name: 'Home',
-        component: () => import('@/views/HomeView.vue'),
-        meta: { requiresAuth: false, title: 'Home' }
-      },
-      {
-        path: 'model-plaza',
-        name: 'ModelPlaza',
-        component: () => import('@/views/ModelPlazaView.vue'),
-        meta: { requiresAuth: false, title: 'Model Plaza', titleKey: 'modelPlaza.title' }
-      },
-      {
-        path: 'tutorials',
-        name: 'Tutorials',
-        component: () => import('@/views/TutorialDocsView.vue'),
-        meta: { requiresAuth: false, title: 'Tutorials', titleKey: 'tutorials.pageTitle' }
-      }
-    ]
+    path: '/home',
+    name: 'Home',
+    component: () => import('@/views/HomeView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Home'
+    }
   },
   {
     path: '/login',
@@ -192,7 +176,32 @@ const routes: RouteRecordRaw[] = [
       title: 'Legal Document'
     }
   },
+  {
+    path: '/model-plaza',
+    name: 'ModelPlaza',
+    component: () => import('@/views/ModelPlazaView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Model Plaza',
+      titleKey: 'modelPlaza.title'
+    }
+  },
+  {
+    path: '/tutorials',
+    name: 'Tutorials',
+    component: () => import('@/views/TutorialDocsView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Tutorials',
+      titleKey: 'tutorials.pageTitle'
+    }
+  },
+
   // ==================== User Routes ====================
+  {
+    path: '/',
+    redirect: '/home'
+  },
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -854,11 +863,10 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior(to, _from, savedPosition) {
-    const headerHeight = document.querySelector<HTMLElement>('.public-header')?.offsetHeight || 95
     // SettingsView waits for its async form and reveals the target tab first.
     if (to.path === '/admin/settings' && settingsLocation(to.query.tab, to.hash).linked) return false
-    if (!savedPosition && to.path === '/home' && ['#hero', '#platform', '#integration', '#enterprise'].includes(to.hash)) {
-      return { el: to.hash, top: headerHeight + 20, behavior: 'instant' }
+    if (!savedPosition && to.path === '/home' && ['#platform', '#integration', '#enterprise'].includes(to.hash)) {
+      return { el: to.hash, top: 91, behavior: 'instant' }
     }
     // Fresh homepage loads start at the hero; back/forward still restores position.
     if (to.path === '/home' && _from.matched.length === 0) {
@@ -869,7 +877,7 @@ const router = createRouter({
       return savedPosition
     }
     if (to.path === '/tutorials' && to.hash) {
-      return { el: to.hash, top: headerHeight + (window.matchMedia('(max-width: 800px)').matches ? 66 : 85), behavior: 'instant' }
+      return { el: to.hash, top: 155, behavior: 'instant' }
     }
     // Scroll to top for new routes
     return { top: 0 }

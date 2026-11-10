@@ -1,6 +1,5 @@
 export default {
   common: {
-    dedicatedSupport: 'Dedicated support',
     loading: 'Loading...',
     submitting: 'Submitting...',
     justNow: 'just now',

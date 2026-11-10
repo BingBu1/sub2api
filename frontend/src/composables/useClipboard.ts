@@ -16,14 +16,11 @@ function isClipboardSupported(): boolean {
  * 使用 textarea 而非 input，以正确处理多行文本
  */
 function fallbackCopy(text: string): boolean {
-  const previousFocus = document.activeElement
   const textarea = document.createElement('textarea')
   textarea.value = text
   textarea.setAttribute('readonly', 'true')
   textarea.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none'
-  // Modal dialogs make the rest of the document inert, so copy inside the open dialog.
-  const container = document.querySelector('dialog[open]') || document.body
-  container.appendChild(textarea)
+  document.body.appendChild(textarea)
   textarea.focus({ preventScroll: true })
   textarea.select()
   textarea.setSelectionRange(0, textarea.value.length)
@@ -32,12 +29,11 @@ function fallbackCopy(text: string): boolean {
   } catch {
     return false
   } finally {
-    textarea.remove()
-    if (previousFocus instanceof HTMLElement) previousFocus.focus({ preventScroll: true })
+    document.body.removeChild(textarea)
   }
 }
 
-export function useClipboard({ showToast = true } = {}) {
+export function useClipboard() {
   const appStore = useAppStore()
   const copied = ref(false)
 
@@ -62,12 +58,12 @@ export function useClipboard({ showToast = true } = {}) {
 
     if (success) {
       copied.value = true
-      if (showToast) appStore.showSuccess(successMessage || t('common.copiedToClipboard'))
+      appStore.showSuccess(successMessage || t('common.copiedToClipboard'))
       setTimeout(() => {
         copied.value = false
       }, 2000)
     } else {
-      if (showToast) appStore.showError(t('common.copyFailed'))
+      appStore.showError(t('common.copyFailed'))
     }
 
     return success

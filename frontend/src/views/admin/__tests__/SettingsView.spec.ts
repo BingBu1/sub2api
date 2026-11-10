@@ -754,43 +754,6 @@ describe("admin SettingsView payment visible method controls", () => {
     adminSettingsFetch.mockResolvedValue(undefined);
   });
 
-  it("loads and saves customer support contact info as one text value", async () => {
-    const contactInfo = "微信：Bzhuzhi QQ：3755821761";
-    getSettings.mockResolvedValueOnce({ ...baseSettingsResponse, contact_info: contactInfo });
-    const wrapper = mountView();
-    await flushPromises();
-    const input = wrapper.get<HTMLInputElement>("#site-contact-info");
-    expect(input.element.tagName).toBe("INPUT");
-    expect(input.attributes("type")).toBe("text");
-    expect(input.element.value).toBe(contactInfo);
-    const updatedContact = "QQ: 3755821761（工作时间联系）";
-    await input.setValue(updatedContact);
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-    expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ contact_info: updatedContact }));
-  });
-
-  it("loads, edits and clears dedicated backend support separately from public contact info", async () => {
-    getSettings.mockResolvedValueOnce({
-      ...baseSettingsResponse,
-      contact_info: "前台联系方式",
-      backend_support_contact: "后台专属客服",
-    });
-    const wrapper = mountView();
-    await flushPromises();
-    const input = wrapper.get<HTMLInputElement>("#site-backend-support-contact");
-    expect(input.element.value).toBe("后台专属客服");
-    for (const value of ["微信: 私享客服", ""]) {
-      await input.setValue(value);
-      await wrapper.find("form").trigger("submit.prevent");
-      await flushPromises();
-      expect(updateSettings).toHaveBeenLastCalledWith(expect.objectContaining({
-        contact_info: "前台联系方式",
-        backend_support_contact: value,
-      }));
-    }
-  });
-
   it("keeps the IP risk form on IP Audit without loading or saving it from Settings", async () => {
     settingsRoute.query = { tab: 'security' };
     const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: {} });

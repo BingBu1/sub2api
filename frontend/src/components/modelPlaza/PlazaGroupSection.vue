@@ -4,7 +4,6 @@
   >
     <!-- 分组头部:名称/平台/倍率徽章/专属/订阅徽章 + 描述 -->
     <header class="plaza-group-header border-b border-gray-100 px-5 py-5 dark:border-dark-700/60">
-      <button type="button" class="plaza-reference-toggle" :aria-pressed="showReferencePricing" @click="showReferencePricing = !showReferencePricing">{{ t('modelPlaza.card.compareOfficial') }}<Icon :name="showReferencePricing ? 'check' : 'plus'" size="xs" /></button>
       <div class="flex flex-wrap items-center gap-2">
         <GroupBadge
           :name="group.name"
@@ -73,7 +72,6 @@
         :video-rate-multiplier="group.video_rate_multiplier"
         :peak-window="peakWindow"
         :peak-rate-multiplier="group.peak_rate_multiplier"
-        :show-reference-pricing="showReferencePricing"
       />
       <p v-else class="px-5 py-4 text-center text-sm text-gray-400 dark:text-dark-500">
         {{ t('modelPlaza.detail.noModels') }}
@@ -83,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
@@ -99,7 +97,6 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const appStore = useAppStore()
-const showReferencePricing = ref(false)
 
 /** 高峰窗口描述(含倍率与服务器时区标注);分组未启用高峰为空串。 */
 const peakWindow = computed(() => {

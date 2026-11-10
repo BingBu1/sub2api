@@ -7,30 +7,17 @@ export default {
       colors: {
         // 主色调 - Zipkiwi 官网蓝色系
         primary: {
-          50: '#edf3fc',
+          50: '#edf2fc',
           100: '#e1e9fb',
           200: '#c6d6fb',
-          300: '#9ab4ff',
+          300: '#9bb8ff',
           400: '#7399f1',
-          500: '#315fe9',
-          600: '#2952ce',
-          700: '#2347b5',
+          500: '#315ed0',
+          600: '#284fb5',
+          700: '#234398',
           800: '#203a78',
           900: '#1f325e',
           950: '#14213d'
-        },
-        gray: {
-          50: '#f7f9fd',
-          100: '#edf3fc',
-          200: '#d8e1ef',
-          300: '#becbe0',
-          400: '#8192ad',
-          500: '#53647e',
-          600: '#475974',
-          700: '#344762',
-          800: '#243650',
-          900: '#182943',
-          950: '#101c30'
         },
         // 辅助色 - 深蓝灰
         accent: {
@@ -48,17 +35,17 @@ export default {
         },
         // 深色模式背景
         dark: {
-          50: '#f7f9fd',
-          100: '#edf3ff',
-          200: '#cfdaef',
-          300: '#a5b4cd',
-          400: '#9aaecb',
+          50: '#f8f9fd',
+          100: '#edf2fc',
+          200: '#d9e3f4',
+          300: '#b8c8e2',
+          400: '#9caecb',
           500: '#6e82a3',
-          600: '#43546d',
-          700: '#2b3a52',
-          800: '#16233a',
-          900: '#111c2f',
-          950: '#0b1220'
+          600: '#4c6185',
+          700: '#3c5173',
+          800: '#203353',
+          900: '#192a49',
+          950: '#101c33'
         }
       },
       fontFamily: {
@@ -88,8 +75,8 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-primary': 'linear-gradient(112deg, var(--zk-brand), var(--zk-brand-end))',
-        'gradient-dark': 'linear-gradient(135deg, #16233a 0%, #111c2f 100%)',
+        'gradient-primary': 'linear-gradient(135deg, #4a7ee8 0%, #315ed0 55%, #284fb5 100%)',
+        'gradient-dark': 'linear-gradient(135deg, #203353 0%, #192a49 100%)',
         'gradient-glass':
           'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
         'mesh-gradient':

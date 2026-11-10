@@ -1,8 +1,7 @@
 <template>
-  <div class="plaza-pricing-table" role="region" :aria-label="t('modelPlaza.table.model')">
-    <p class="plaza-table-unit">{{ t('modelPlaza.table.unitPerMillion') }}</p>
-    <table class="w-full table-fixed border-collapse text-sm tabular-nums">
-      <colgroup v-if="showReferencePricing">
+  <div class="plaza-pricing-table overflow-x-auto" role="region" tabindex="0" :aria-label="t('modelPlaza.table.model')">
+    <table class="w-full min-w-[1000px] table-auto border-collapse text-sm tabular-nums">
+      <colgroup>
         <col class="w-[25%]" />
         <col class="w-[11%]" />
         <col class="w-[9%]" />
@@ -12,7 +11,6 @@
         <col class="w-[14%]" />
         <col class="w-[8%]" />
       </colgroup>
-      <colgroup v-else><col style="width: 32%" /><col style="width: 16%" /><col style="width: 16%" /><col style="width: 24%" /><col style="width: 12%" /></colgroup>
       <thead>
         <tr
           class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400"
@@ -30,7 +28,6 @@
             </div>
           </th>
           <th
-            v-if="showReferencePricing"
             colspan="3"
             class="border-l border-gray-100 pt-2 text-center dark:border-dark-700/60"
           >
@@ -52,11 +49,11 @@
           <th class="pz-bg px-3 py-2 font-medium">{{ t('modelPlaza.table.input') }}</th>
           <th class="pz-bg px-3 py-2 font-medium">{{ t('modelPlaza.table.output') }}</th>
           <th class="pz-bg px-3 py-2 font-medium">{{ t('modelPlaza.table.cache') }}</th>
-          <th v-if="showReferencePricing" class="border-l border-gray-100 px-3 py-2 font-medium dark:border-dark-700/60">
+          <th class="border-l border-gray-100 px-3 py-2 font-medium dark:border-dark-700/60">
             {{ t('modelPlaza.table.input') }}
           </th>
-          <th v-if="showReferencePricing" class="px-3 py-2 font-medium">{{ t('modelPlaza.table.output') }}</th>
-          <th v-if="showReferencePricing" class="px-3 py-2 font-medium">{{ t('modelPlaza.table.cache') }}</th>
+          <th class="px-3 py-2 font-medium">{{ t('modelPlaza.table.output') }}</th>
+          <th class="px-3 py-2 font-medium">{{ t('modelPlaza.table.cache') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -116,7 +113,7 @@
 
           <!-- token 计费:输入 / 输出 / 缓存(写/读),有阶梯时每档一行;档位标签只放输入列,其余列按行对齐 -->
           <template v-if="billingMode(m) === BILLING_MODE_TOKEN">
-            <td :data-label="t('modelPlaza.table.input')" class="pz-cell px-3 py-2.5 align-middle font-mono font-semibold text-gray-900 dark:text-gray-50">
+            <td class="pz-cell px-3 py-2.5 align-middle font-mono font-semibold text-gray-900 dark:text-gray-50">
               <template v-if="tokenIntervals(m).length">
                 <div
                   v-for="(iv, idx) in tokenIntervals(m)"
@@ -129,7 +126,7 @@
               </template>
               <template v-else>{{ paidPerMillion(m.pricing?.input_price, period) }}</template>
             </td>
-            <td :data-label="t('modelPlaza.table.output')" class="pz-cell px-3 py-2.5 align-middle font-mono font-semibold text-gray-900 dark:text-gray-50">
+            <td class="pz-cell px-3 py-2.5 align-middle font-mono font-semibold text-gray-900 dark:text-gray-50">
               <template v-if="tokenIntervals(m).length">
                 <div
                   v-for="(iv, idx) in tokenIntervals(m)"
@@ -142,7 +139,7 @@
               </template>
               <template v-else>{{ paidPerMillion(m.pricing?.output_price, period) }}</template>
             </td>
-            <td :data-label="t('modelPlaza.table.cache')" class="pz-cell px-3 py-2.5 align-middle">
+            <td class="pz-cell px-3 py-2.5 align-middle">
               <template v-if="hasTierCachePricing(tokenIntervals(m))">
                 <div
                   v-for="(iv, idx) in tokenIntervals(m)"
@@ -186,7 +183,7 @@
 
           <!-- 按次 / 按图片计费:实付区整体合并,阶梯芯片或单一按次价 -->
           <template v-else>
-            <td :data-label="billingModeLabel(m)" colspan="3" class="pz-cell px-3 py-2.5 align-middle">
+            <td colspan="3" class="pz-cell px-3 py-2.5 align-middle">
               <div
                 v-if="requestIntervals(m).length"
                 class="flex flex-wrap items-center gap-1.5"
@@ -212,9 +209,7 @@
           </template>
 
           <!-- 官方价格(参考价,不乘倍率;官方有阶梯时每档一行) -->
-          <template v-if="showReferencePricing">
           <td
-            :data-label="`${t('modelPlaza.table.officialPrice')} · ${t('modelPlaza.table.input')}`"
             class="border-l border-gray-100 px-3 py-2.5 align-middle font-mono text-xs text-gray-500 dark:border-dark-700/60 dark:text-dark-400"
           >
             <template v-if="officialIntervals(m).length">
@@ -229,7 +224,7 @@
             </template>
             <template v-else>{{ official(m.official_pricing?.input_price) }}</template>
           </td>
-          <td :data-label="`${t('modelPlaza.table.officialPrice')} · ${t('modelPlaza.table.output')}`" class="px-3 py-2.5 align-middle font-mono text-xs text-gray-500 dark:text-dark-400">
+          <td class="px-3 py-2.5 align-middle font-mono text-xs text-gray-500 dark:text-dark-400">
             <template v-if="officialIntervals(m).length">
               <div
                 v-for="(iv, idx) in officialIntervals(m)"
@@ -242,7 +237,7 @@
             </template>
             <template v-else>{{ official(m.official_pricing?.output_price) }}</template>
           </td>
-          <td :data-label="`${t('modelPlaza.table.officialPrice')} · ${t('modelPlaza.table.cache')}`" class="px-3 py-2.5 align-middle">
+          <td class="px-3 py-2.5 align-middle">
             <template v-if="hasTierCachePricing(officialIntervals(m))">
               <div
                 v-for="(iv, idx) in officialIntervals(m)"
@@ -282,11 +277,9 @@
             </div>
             <span v-else class="text-gray-400 dark:text-dark-500">-</span>
           </td>
-          </template>
 
           <!-- 折扣倍率(分时时段行展示 生效倍率×时段倍率;生图独立倍率行展示独立倍率;专属倍率划线展示原倍率) -->
           <td
-            :data-label="t('modelPlaza.table.rate')"
             class="border-l border-gray-100 py-2.5 pl-3 pr-5 text-right align-middle font-mono text-xs dark:border-dark-700/60"
           >
             <span
@@ -337,8 +330,7 @@ function reasoningEffortMultipliers(model: PlazaModel): [string, number][] {
   })
 }
 
-const props = withDefaults(defineProps<{
-  showReferencePricing?: boolean
+const props = defineProps<{
   models: PlazaModel[]
   /** 分组平台;用于标注混合分组内的模型来源。 */
   platform?: string
@@ -360,7 +352,7 @@ const props = withDefaults(defineProps<{
    */
   peakWindow?: string
   peakRateMultiplier?: number | null
-}>(), { showReferencePricing: true })
+}>()
 
 const { t } = useI18n()
 const billingCurrency = computed(() => props.billingCurrency === 'CNY' ? 'CNY' : 'USD')
@@ -563,8 +555,6 @@ function trimZero(n: number): string {
 <style scoped>
 /* 实付分区沿用首页品牌蓝,与官方参考价格分区区分。 */
 .plaza-pricing-table {
-  container-type: inline-size;
-  min-width: 0;
   --plaza-accent: #315ed0;
   --pz-title: color-mix(in srgb, var(--plaza-accent) 88%, black);
   --pz-bg: color-mix(in srgb, var(--plaza-accent) 7%, transparent);
@@ -600,19 +590,5 @@ tbody tr:hover .pz-cell {
 
 .pz-unit {
   color: var(--plaza-muted, #52627e);
-}
-
-.plaza-pricing-table :is(th, td) { overflow-wrap: anywhere; }
-.plaza-pricing-table .whitespace-nowrap { white-space: normal; }
-.plaza-table-unit { display: none; }
-@container (max-width: 760px) {
-  .plaza-table-unit { display: block; padding: 10px 20px; color: var(--plaza-muted, var(--zk-muted)); font-size: 12px; }
-  table, tbody { display: block; }
-  colgroup, thead { display: none; }
-  tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 12px 8px; }
-  tbody td { min-width: 0; border: 0; padding: 10px 12px; text-align: left; }
-  tbody td:first-child, tbody td[colspan], tbody td:last-child { grid-column: 1 / -1; }
-  tbody td:first-child { padding-top: 4px; padding-bottom: 14px; }
-  tbody td[data-label]::before { display: block; margin-bottom: 5px; color: var(--plaza-muted, var(--zk-muted)); font: 12px 'Segoe UI', 'Microsoft YaHei', sans-serif; content: attr(data-label); }
 }
 </style>

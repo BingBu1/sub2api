@@ -165,7 +165,6 @@ type SystemSettings struct {
 	SiteSubtitle                string           `json:"site_subtitle"`
 	APIBaseURL                  string           `json:"api_base_url"`
 	ContactInfo                 string           `json:"contact_info"`
-	BackendSupportContact       string           `json:"backend_support_contact"`
 	DocURL                      string           `json:"doc_url"`
 	HomeContent                 string           `json:"home_content"`
 	CompactHomeEnabled          bool             `json:"compact_home_enabled"`
@@ -446,7 +445,6 @@ type PublicSettings struct {
 	SiteSubtitle                        string                   `json:"site_subtitle"`
 	APIBaseURL                          string                   `json:"api_base_url"`
 	ContactInfo                         string                   `json:"contact_info"`
-	BackendSupportContact               string                   `json:"backend_support_contact"`
 	DocURL                              string                   `json:"doc_url"`
 	HomeContent                         string                   `json:"home_content"`
 	CompactHomeEnabled                  bool                     `json:"compact_home_enabled"`

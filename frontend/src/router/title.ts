@@ -1,5 +1,4 @@
 import { i18n } from '@/i18n'
-import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import type { CustomMenuItem } from '@/types'
 import type { SiteBillingMode } from '@/utils/siteBillingMode'
@@ -10,21 +9,19 @@ import type { SiteBillingMode } from '@/utils/siteBillingMode'
  */
 export function resolveDocumentTitle(routeTitle: unknown, siteName?: string, titleKey?: string): string {
   const normalizedSiteName = typeof siteName === 'string' && siteName.trim() ? siteName.trim() : 'Sub2API'
-  const isZipkiwi = isSelectedZipkiwiBrand(normalizedSiteName, '')
-  const suffix = isZipkiwi ? '-迅奇Zipkiwi' : ` - ${normalizedSiteName}`
 
   if (typeof titleKey === 'string' && titleKey.trim()) {
     const translated = i18n.global.t(titleKey)
     if (translated && translated !== titleKey) {
-      return `${translated}${suffix}`
+      return `${translated} - ${normalizedSiteName}`
     }
   }
 
   if (typeof routeTitle === 'string' && routeTitle.trim()) {
-    return `${routeTitle.trim()}${suffix}`
+    return `${routeTitle.trim()} - ${normalizedSiteName}`
   }
 
-  return isZipkiwi ? '迅奇Zipkiwi' : normalizedSiteName
+  return normalizedSiteName
 }
 
 export interface RouteTitleOptions {
@@ -71,9 +68,6 @@ export function resolveRouteDocumentTitle(
   customMenuItems: CustomMenuItem[] = [],
   options: RouteTitleOptions = {},
 ): string {
-  if (route.name === 'Home' && isSelectedZipkiwiBrand(siteName || '', '')) {
-    return '迅奇Zipkiwi | 让智能更近成本更轻'
-  }
   const id = typeof route.params.id === 'string' ? route.params.id : ''
   const menuItem = route.name === 'CustomPage' && id
     ? customMenuItems.find((item) => item.id === id)

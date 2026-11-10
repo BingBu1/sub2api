@@ -2,7 +2,7 @@
   <div ref="header" class="public-header" :style="{ '--page-progress': pageProgress }">
     <header class="public-header-inner">
       <RouterLink class="public-brand" to="/home" :aria-label="siteName">
-        <img v-if="selectedBrand" class="public-lockup" :src="isDark ? '/zipkiwi-lockup-white.svg' : '/zipkiwi-lockup-primary.svg'" alt="" />
+        <img v-if="selectedBrand" class="public-lockup" src="/zipkiwi-lockup-white.svg" alt="" />
         <template v-else><img v-if="siteLogo" :src="siteLogo" alt="" /><BirdMark v-else /><span>{{ siteName }}</span></template>
       </RouterLink>
       <nav id="main-navigation" :class="{ open: menuOpen }" :aria-label="t('gateway.mainNavigation')" @click="closeMenu">
@@ -64,7 +64,6 @@ const contactDialog = ref<InstanceType<typeof PublicContactDialog> | null>(null)
 const desktopPreference = window.matchMedia('(min-width: 1191px)')
 function closeMenu() { menuOpen.value = false }
 function openContact() {
-  if (menuOpen.value) menuToggle.value?.focus({ preventScroll: true })
   closeMenu()
   emit('openContact')
   contactDialog.value?.open()
@@ -88,7 +87,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', onEscape)
   document.removeEventListener('click', onOutsideClick)
 })
-defineExpose({ openContact, closeMenu })
+defineExpose({ openContact })
 </script>
 
 <style scoped src="./public-header.css"></style>

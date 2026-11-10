@@ -23,7 +23,6 @@
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
       <div class="flex shrink-0 items-center gap-1 sm:gap-3">
-        <HeaderSupportContact v-if="user && backendSupportContact.trim()" :contact-info="backendSupportContact" :site-name="appStore.siteName" />
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
 
@@ -261,7 +260,6 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
-import HeaderSupportContact from './HeaderSupportContact.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
@@ -280,7 +278,6 @@ const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)
-const backendSupportContact = computed(() => appStore.backendSupportContact)
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')

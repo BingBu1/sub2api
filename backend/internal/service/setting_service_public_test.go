@@ -54,31 +54,6 @@ func (s *settingPublicRepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
 }
 
-func TestSettingService_BackendSupportContactIndependent(t *testing.T) {
-	for _, contact := range []string{"Console contact", ""} {
-		t.Run(contact, func(t *testing.T) {
-			svc := NewSettingService(&settingPublicRepoStub{values: map[string]string{
-				SettingKeyContactInfo:           "Public contact",
-				SettingKeyBackendSupportContact: contact,
-			}}, &config.Config{})
-			settings, err := svc.GetPublicSettings(context.Background())
-			require.NoError(t, err)
-			require.Equal(t, "Public contact", settings.ContactInfo)
-			require.Equal(t, contact, settings.BackendSupportContact)
-			raw, err := svc.GetPublicSettingsForInjection(context.Background())
-			require.NoError(t, err)
-			payload, err := json.Marshal(raw)
-			require.NoError(t, err)
-			require.True(t, gjson.GetBytes(payload, "backend_support_contact").Exists())
-			require.Equal(t, contact, gjson.GetBytes(payload, "backend_support_contact").String())
-		})
-	}
-	svc := NewSettingService(&settingPublicRepoStub{values: map[string]string{SettingKeyContactInfo: "Public contact"}}, &config.Config{})
-	settings, err := svc.GetPublicSettings(context.Background())
-	require.NoError(t, err)
-	require.Empty(t, settings.BackendSupportContact)
-}
-
 func TestSettingService_GetPublicSettings_ExposesRegistrationEmailSuffixWhitelist(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{

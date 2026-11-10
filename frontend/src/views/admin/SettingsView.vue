@@ -6828,35 +6828,15 @@
                 >
                   {{ t("admin.settings.site.contactInfo") }}
                 </label>
-                <input
+                <textarea
                   id="site-contact-info"
                   v-model="form.contact_info"
-                  type="text"
-                  class="input"
+                  rows="3"
+                  class="input resize-y"
                   :placeholder="t('admin.settings.site.contactInfoPlaceholder')"
                 />
                 <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   {{ t("admin.settings.site.contactInfoHint") }}
-                </p>
-              </div>
-
-              <!-- Backend Support Contact -->
-              <div>
-                <label
-                  for="site-backend-support-contact"
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.backendSupportContact") }}
-                </label>
-                <input
-                  id="site-backend-support-contact"
-                  v-model="form.backend_support_contact"
-                  type="text"
-                  class="input"
-                  :placeholder="t('admin.settings.site.backendSupportContactPlaceholder')"
-                />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.backendSupportContactHint") }}
                 </p>
               </div>
 
@@ -10301,7 +10281,6 @@ const form = reactive<SettingsForm>({
   site_subtitle: "Subscription to API Conversion Platform",
   api_base_url: "",
   contact_info: "",
-  backend_support_contact: "",
   doc_url: "",
   home_content: "",
   compact_home_enabled: false,
@@ -12093,7 +12072,6 @@ async function saveSettings() {
       site_subtitle: form.site_subtitle,
       api_base_url: form.api_base_url,
       contact_info: form.contact_info,
-      backend_support_contact: form.backend_support_contact,
       doc_url: form.doc_url,
       home_content: form.home_content,
       compact_home_enabled: form.compact_home_enabled,

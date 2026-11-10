@@ -1,22 +1,31 @@
 .gateway-landing {
-  --ink: var(--zk-ink);
-  --muted: var(--zk-muted);
-  --blue: var(--zk-blue);
-  --line: var(--zk-line);
-  --bg: var(--zk-bg);
+  --ink: #1a2744;
+  --muted: #52627e;
+  --blue: #315ed0;
+  --line: #cdd8ed;
+  --bg: #e9eefb;
   min-height: 100svh;
   overflow: clip;
   color: var(--ink);
-  background: var(--zk-bg);
+  background: #f8f9fd;
   font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
   font-size: 15px;
   line-height: 1.6;
 }
+.gateway-landing.is-dark {
+  --ink: #f7f9fd;
+  --muted: #c2cde0;
+  --blue: #9bb8ff;
+  --line: #4c6185;
+  --bg: #23385f;
+  background: #192a49;
+  color-scheme: dark;
+}
 .container {
-  width: var(--zk-content-width);
-  max-width: none;
+  width: 100%;
+  max-width: 1240px;
   margin-inline: auto;
-  padding-inline: 0;
+  padding-inline: 44px;
 }
 a {
   color: inherit;
@@ -51,7 +60,7 @@ a {
   width: 36px;
   height: 32px;
   object-fit: contain;
-  color: var(--zk-blue);
+  color: var(--blue);
 }
 .brand img.brand-lockup {
   width: 150px;
@@ -66,16 +75,15 @@ a {
   padding: 13px 20px;
   font-size: 14px;
   font-weight: 600;
-  background: linear-gradient(112deg, var(--zk-brand), var(--zk-brand-end));
+  background: #315ed0;
   color: white;
   transition:
     transform 0.2s,
     background 0.2s;
 }
 .button:hover {
-  background: linear-gradient(112deg, var(--zk-brand), var(--zk-brand-end));
+  background: #234cac;
   transform: translateY(-2px);
-  filter: brightness(1.08);
 }
 .hero {
   display: grid;
@@ -332,7 +340,8 @@ a {
   inset: 0 calc((100% - 100vw) / 2);
   z-index: -1;
   background:
-    var(--zk-bg);
+    radial-gradient(ellipse at 90% 10%, #88a7f830, transparent 60%),
+    linear-gradient(145deg, #f8f9fd, #e9eefb);
 }
 .value-section {
   padding-block: 80px;
@@ -814,11 +823,10 @@ summary::-webkit-details-marker {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: var(--zk-surface);
+  background: #fff;
   color: var(--blue);
-  box-shadow: none;
+  box-shadow: 0 4px 20px #1a274418;
   transition: background .2s, transform .2s;
-  border: 1px solid var(--zk-line);
 }
 .home-float-button:hover {
   background: var(--bg);
@@ -833,11 +841,39 @@ summary::-webkit-details-marker {
   opacity: 0;
   transform: translateY(10px) scale(.92);
 }
+.is-dark .backtop-trigger {
+  border: 1px solid #6d8fda;
+  background: #304d7c;
+  color: #e1e9fb;
+  box-shadow: 0 4px 20px #315ed04d, inset 0 0 0 1px #9bb8ff30;
+}
+.is-dark .backtop-trigger:hover {
+  background: #3b5d91;
+}
 @media (max-width: 640px) {
   .home-float-actions {
     right: max(16px, env(safe-area-inset-right));
     bottom: max(16px, env(safe-area-inset-bottom));
   }
+}
+.is-dark .cta-shell,
+.is-dark .site-footer {
+  background: #192a49;
+  color: var(--ink);
+}
+.is-dark #platform::before,
+.is-dark #audiences::before,
+.is-dark #faq::before {
+  background:
+    radial-gradient(ellipse at 90% 10%, #315ed022, transparent 60%),
+    linear-gradient(145deg, #192a49, #23385f 66%, #192a49);
+}
+.is-dark .integration {
+  background: linear-gradient(150deg, #192a49, #283b60 62%, #192a49);
+}
+.is-dark .feature-visual,
+.is-dark .scenario-scene {
+  background: #2b4063;
 }
 .motion-paused *,
 .motion-paused *::before,
@@ -920,6 +956,11 @@ summary::-webkit-details-marker {
     transform: translateX(400%);
   }
 }
+@media (min-width: 1600px) {
+  .container {
+    max-width: 1360px;
+  }
+}
 @media (max-width: 1190px) {
   .feature-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -933,6 +974,9 @@ summary::-webkit-details-marker {
   }
 }
 @media (max-width: 700px) {
+  .container {
+    padding-inline: 22px;
+  }
   .brand {
     font-size: 22px;
     gap: 5px;
@@ -941,7 +985,6 @@ summary::-webkit-details-marker {
   .brand :is(svg, img) {
     width: 26px;
     height: 25px;
-    color: var(--zk-blue);
   }
   .brand img.brand-lockup {
     width: 118px;
@@ -1072,6 +1115,11 @@ summary::-webkit-details-marker {
   }
   .codebar {
     padding: 14px;
+  }
+}
+@media (max-width: 380px) {
+  .container {
+    padding-inline: 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
