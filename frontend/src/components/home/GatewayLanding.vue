@@ -5,24 +5,10 @@
     data-testid="gateway-landing"
     @click="onAnchorClick"
   >
-    <PublicHeader
-      ref="header"
-      :site-name="siteName"
-      :site-logo="siteLogo"
-      :destination="destination"
-      :is-dark="isDark"
-      :show-model-plaza="showModelPlaza"
-      :contact-info="contactInfo"
-      :active-chapter="activeChapter"
-      :page-progress="pageProgress"
-      home
-      @toggle-theme="emit('toggleTheme')"
-      @open-contact="emit('openContact')"
-    />
     <main>
       <div class="hero-shell">
         <div class="container">
-          <section class="hero">
+          <section id="hero" class="hero">
             <div class="hero-copy">
               <h1>
                 {{ t('gateway.heroTitleFirst') }}
@@ -370,8 +356,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
-import PublicHeader from '@/components/layout/PublicHeader.vue'
-import { publicChapters as chapters } from '@/components/layout/publicNavigation'
 import { sanitizeUrl } from '@/utils/url'
 import { isSelectedZipkiwiBrand } from '@/utils/zipkiwiBrand'
 import { getPublicTelemetry, type PublicTelemetry } from '@/api/publicTelemetry'
@@ -383,14 +367,13 @@ const props = defineProps<{
   siteName: string
   siteLogo?: string
   apiBaseUrl?: string
-  contactInfo?: string
   isDark: boolean
   isAuthenticated: boolean
   dashboardPath: string
   registrationEnabled: boolean
   showModelPlaza: boolean
 }>()
-const emit = defineEmits<{ toggleTheme: []; openContact: [] }>()
+const emit = defineEmits<{ openContact: [] }>()
 const { t, locale } = useI18n()
 const selectedBrand = computed(() => isSelectedZipkiwiBrand(props.siteName, props.siteLogo || ''))
 const destination = computed(() =>
@@ -413,11 +396,6 @@ const models = [
   { name: 'Kimi', maker: 'Moonshot AI', description: 'gateway.readingCreation' }
 ]
 
-const activeChapter = ref('')
-let chapterElements: HTMLElement[] = []
-const header = ref<InstanceType<typeof PublicHeader> | null>(null)
-const pageProgress = ref(0)
-let scrollFrame: number | null = null
 let networkFrame: number | null = null
 let networkResizeObserver: ResizeObserver | null = null
 let networkVisibilityObserver: IntersectionObserver | null = null
@@ -609,7 +587,7 @@ async function copyCode() {
   }
 }
 function openContactDialog() {
-  header.value?.openContact()
+  emit('openContact')
 }
 async function copyEndpoint() {
   try { await navigator.clipboard.writeText(endpointUrl.value); endpointCopied.value = true }
@@ -631,28 +609,13 @@ function onAnchorClick(event: MouseEvent) {
   const link = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null
   const id = link?.getAttribute('href')?.slice(1)
   if (!id) return
-  const target = chapterElements.find((section) => section.id === id)
+  const target = document.getElementById(id)
   if (!target) return
   event.preventDefault()
   window.scrollTo({
-    top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - (header.value?.$el.offsetHeight || 0) - 20),
+    top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - (document.querySelector<HTMLElement>('.public-header')?.offsetHeight || 0) - 20),
     behavior: reducedMotion.value ? 'instant' : 'smooth'
   })
-}
-function updatePageProgress() {
-  const scrollable = document.documentElement.scrollHeight - window.innerHeight
-  pageProgress.value =
-    scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0
-  activeChapter.value = ''
-  for (const section of chapterElements) {
-    if (section.getBoundingClientRect().top <= window.innerHeight * 0.32)
-      activeChapter.value = section.id
-  }
-  scrollFrame = null
-}
-function queuePageProgress() {
-  if (scrollFrame === null)
-    scrollFrame = window.requestAnimationFrame(updatePageProgress)
 }
 function startNetworkAnimation() {
   const canvas = networkCanvas.value
@@ -759,13 +722,6 @@ onMounted(() => {
   pricingTimer = setInterval(() => { void loadPricing() }, 60_000)
   document.addEventListener('visibilitychange', loadPricing)
   startNetworkAnimation()
-  chapterElements = chapters.flatMap(({ id }) => {
-    const section = document.querySelector<HTMLElement>(`#${id}`)
-    return section ? [section] : []
-  })
-  updatePageProgress()
-  window.addEventListener('scroll', queuePageProgress, { passive: true })
-  window.addEventListener('resize', queuePageProgress)
   motionPreference.addEventListener('change', updateMotion)
 })
 onBeforeUnmount(() => {
@@ -776,9 +732,6 @@ onBeforeUnmount(() => {
   if (pricingTimer !== null) clearInterval(pricingTimer)
   pricingRequest?.abort()
   document.removeEventListener('visibilitychange', loadPricing)
-  window.removeEventListener('scroll', queuePageProgress)
-  window.removeEventListener('resize', queuePageProgress)
-  if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame)
   if (networkFrame !== null) window.cancelAnimationFrame(networkFrame)
   networkResizeObserver?.disconnect()
   networkVisibilityObserver?.disconnect()

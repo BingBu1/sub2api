@@ -1,3 +1,6 @@
+@import './styles/public-site-layout.css';
+@import './styles/support-contact.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

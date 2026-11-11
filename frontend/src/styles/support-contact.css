@@ -1,0 +1,31 @@
+.business-dialog, .header-support {
+  --support-bg: #f8f9fd;
+  --support-surface: #ffffff;
+  --support-surface-alt: #edf2fc;
+  --support-surface-hover: #e1e9fb;
+  --support-ink: #1a2744;
+  --support-muted: #52627e;
+  --support-blue: #315ed0;
+  --support-line: #d8e1f0;
+  --support-brand: #315ed0;
+  --support-brand-end: #284fb5;
+  --support-accent: #187153;
+  --support-success: #187153;
+  --support-danger: #b83d32;
+  --support-hero-halo: #e1e9fb;
+}
+
+.dark :is(.business-dialog, .header-support) {
+  --support-bg: #192a49;
+  --support-surface: #203353;
+  --support-surface-alt: #293f63;
+  --support-surface-hover: #3c5173;
+  --support-ink: #f7f9fd;
+  --support-muted: #b8c8e2;
+  --support-blue: #9bb8ff;
+  --support-line: #4c6185;
+  --support-accent: #77d1af;
+  --support-success: #77d1af;
+  --support-danger: #ffb5a9;
+  --support-hero-halo: #293f63;
+}

@@ -1,9 +1,9 @@
 <template>
   <section
-    class="plaza-group overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800/50"
+    class="plaza-group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-card dark:border-dark-700 dark:bg-dark-800/50"
   >
     <!-- 分组头部:名称/平台/倍率徽章/专属/订阅徽章 + 描述 -->
-    <header class="plaza-group-header border-b border-gray-100 px-5 py-5 dark:border-dark-700/60">
+    <header class="plaza-group-header border-b border-gray-100 px-5 py-4 dark:border-dark-700/60">
       <div class="flex flex-wrap items-center gap-2">
         <GroupBadge
           :name="group.name"

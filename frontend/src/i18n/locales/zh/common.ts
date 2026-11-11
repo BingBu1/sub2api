@@ -1,5 +1,6 @@
 export default {
   common: {
+    dedicatedSupport: '专属客服',
     loading: '加载中...',
     submitting: '提交中...',
     justNow: '刚刚',

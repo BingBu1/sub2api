@@ -317,7 +317,7 @@
 .price-snapshot { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-top: 17px; color: #4c6888; font-size: 12px; }
 .price-snapshot a { flex-shrink: 0; color: #2c64c9; text-decoration: underline; }
 
-.gateway-landing #platform { background: #102641; color: #edf5ff; max-width: none; padding-inline: max(44px, calc((100vw - 1152px)/2)); }
+.gateway-landing #platform { background: #102641; color: #edf5ff; width: 100%; max-width: none; padding-inline: max(var(--public-page-gutter), calc((100% - var(--public-content-max))/2)); }
 #platform::before { display: none; }
 #platform .module-label, #platform .textlink { color: #85b5ff !important; }
 #platform .feature-grid { gap: 24px; }
@@ -488,7 +488,6 @@
 .gateway-landing.motion-paused .network-core-platform { animation: none; transform: rotateX(57deg) rotateZ(-35deg); }
 @media (max-width: 900px) {
   .telemetry-shell, .integration-layout, .enterprise-layout { grid-template-columns: 1fr; gap: 28px; }
-  .gateway-landing #platform { padding-inline: 34px; }
   .connection-paths { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
@@ -505,7 +504,6 @@
   .model-guide small { margin-left: 0; }
   .price-table { min-width: 650px; }
   .price-snapshot { flex-direction: column; }
-  .gateway-landing #platform { padding-inline: 22px; }
   #platform .feature-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   #platform .product-visual { height: 220px; }
   .integration-copy h2, .enterprise-copy h2 { font-size: 30px; }

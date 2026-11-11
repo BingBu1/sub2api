@@ -1,6 +1,5 @@
 <template>
   <div class="tutorial-page">
-    <PublicSiteHeader />
     <a class="docs-skip-link" href="#docs-article">{{ t('tutorials.skipToArticle') }}</a>
     <div class="docs-toolbar">
       <div class="docs-toolbar-inner">
@@ -63,7 +62,6 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import Icon from '@/components/icons/Icon.vue'
-import PublicSiteHeader from '@/components/layout/PublicSiteHeader.vue'
 import TutorialCodeBlock from '@/components/tutorialDocs/TutorialCodeBlock.vue'
 import { tutorialContent, tutorialSearchText, type TutorialGroup } from '@/components/tutorialDocs/tutorialContent'
 import { tutorialEndpoints, type TutorialShell } from '@/components/tutorialDocs/tutorialExamples'

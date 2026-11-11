@@ -1,0 +1,9 @@
+:root {
+  --public-content-max: 1152px;
+  --public-page-gutter: 44px;
+  --public-content-width: min(var(--public-content-max), calc(100% - var(--public-page-gutter) * 2));
+}
+
+@media (min-width: 1600px) { :root { --public-content-max: 1272px; } }
+@media (max-width: 700px) { :root { --public-page-gutter: 22px; } }
+@media (max-width: 380px) { :root { --public-page-gutter: 16px; } }

@@ -1,35 +1,5 @@
 <template>
-  <div class="plaza-filters">
-    <!-- 模型名搜索(纯前端过滤) -->
-    <div v-if="!hideSearch" class="plaza-search-row">
-      <label for="plaza-model-search" class="sr-only">
-        {{ t('modelPlaza.filters.modelLabel') }}
-      </label>
-      <div class="plaza-search relative">
-        <Icon
-          name="search"
-          size="sm"
-          class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-500"
-        />
-        <input
-          id="plaza-model-search"
-          :value="search"
-          type="search"
-          :placeholder="t('modelPlaza.filters.searchPlaceholder')"
-          class="plaza-search-input"
-          @input="$emit('update:search', ($event.target as HTMLInputElement).value)"
-        />
-        <button
-          v-if="search"
-          :aria-label="t('common.clear')"
-          type="button"
-          class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:text-dark-500 dark:hover:text-gray-300"
-          @click="$emit('update:search', '')"
-        >
-          <Icon name="x" size="xs" class="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
+  <div class="plaza-filters space-y-3">
     <!-- 一级:平台 -->
     <div class="plaza-filter-row">
       <span class="plaza-filter-label">
@@ -47,7 +17,7 @@
           @click="$emit('update:platform', p)"
         >
           <PlatformIcon v-if="p !== 'all'" :platform="p as GroupPlatform" size="xs" />
-          {{ p === 'all' ? t('modelPlaza.filters.all') : platformLabel(p) }}
+          {{ p === 'all' ? t('modelPlaza.filters.all') : p }}
         </button>
       </div>
     </div>
@@ -111,6 +81,37 @@
         </button>
       </div>
     </div>
+
+    <!-- 模型名搜索(纯前端过滤) -->
+    <div class="plaza-filter-row plaza-search-row">
+      <label for="plaza-model-search" class="plaza-filter-label">
+        {{ t('modelPlaza.filters.modelLabel') }}
+      </label>
+      <div class="plaza-search relative w-full sm:w-72">
+        <Icon
+          name="search"
+          size="sm"
+          class="absolute left-3 top-1/2 -translate-y-1/2"
+        />
+        <input
+          id="plaza-model-search"
+          :value="search"
+          type="search"
+          :placeholder="t('modelPlaza.filters.searchPlaceholder')"
+          class="plaza-search-input"
+          @input="$emit('update:search', ($event.target as HTMLInputElement).value)"
+        />
+        <button
+          v-if="search"
+          :aria-label="t('common.clear')"
+          type="button"
+          class="absolute right-2.5 top-1/2 -translate-y-1/2"
+          @click="$emit('update:search', '')"
+        >
+          <Icon name="x" size="xs" class="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -118,7 +119,6 @@
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
-import { platformLabel } from '@/utils/platformColors'
 import type { GroupPlatform } from '@/types'
 
 const props = defineProps<{
@@ -133,7 +133,6 @@ const props = defineProps<{
   rate: number | 'all'
   /** 模型名搜索词(纯前端过滤)。 */
   search: string
-  hideSearch?: boolean
 }>()
 
 defineEmits<{

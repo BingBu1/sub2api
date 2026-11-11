@@ -35,7 +35,8 @@ describe('public navigation', () => {
     ])
     expect(home.get('a[href="#integration"]').attributes('aria-current')).toBe('location')
     const destinations = plaza.findAllComponents(RouterLinkStub).map(link => link.props('to'))
-    expect(destinations).toEqual(expect.arrayContaining(['/home', '/model-plaza', '/home#platform', '/home#integration', '/home#enterprise', '/login']))
+    expect(destinations).toEqual(expect.arrayContaining(['/home', '/model-plaza', '/home#hero', '/home#integration', '/home#enterprise', '/login']))
+    expect(home.get('a[href="#hero"]').text()).toBe('核心功能')
     expect(plaza.get('nav [aria-current="page"]').text()).toBe('模型广场')
     expect(home.get('.public-nav-chapters').text()).toBe('核心功能快速接入企业服务')
     expect(home.get('.public-nav-resources').text()).toBe('模型广场教程文档联系我们')
@@ -56,9 +57,11 @@ describe('public navigation', () => {
     const dialog = wrapper.get('dialog').element as HTMLDialogElement
     dialog.showModal = vi.fn()
     await toggle.trigger('click')
+    wrapper.get<HTMLButtonElement>('nav button').element.focus()
     await wrapper.get('nav button').trigger('click')
     expect(dialog.showModal).toHaveBeenCalledOnce()
     expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(toggle.element)
   })
   it('respects catalog visibility and supports pages without homepage sections', async () => {
     const wrapper = render({ showModelPlaza: false, showChapters: false, destination: '/admin/dashboard' })

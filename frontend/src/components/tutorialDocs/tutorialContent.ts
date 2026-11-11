@@ -219,9 +219,19 @@ export function tutorialContent(language: string, root: string, api: string, she
       sections: [
         s('add', '添加自定义模型', 'Add a custom model', list([
           ['从官方页面安装并打开 WorkBuddy，进入设置中的模型配置。', 'Install and open WorkBuddy from its official page and open model settings.'],
-          ['新增模型，选择自定义 API / Custom，名称填写迅奇（ZipKiwi）。', 'Add a model using Custom API / Custom and name the provider 迅奇（ZipKiwi）.'],
-          [`按标准 OpenAI 兼容方式填写 ${api}、本站 API Key 和准确模型 ID。`, `For standard OpenAI compatibility, enter ${api}, your Zipkiwi key, and the exact model ID.`],
+          ['新增模型，在“自定义 API”中选择“自定义 / Custom”。', 'Add a model and choose Custom under Custom API.'],
+          [`接口地址填写 ${api}，API Key 填写在本站创建的密钥；“模型名称”填写从本站模型广场复制的完整模型 ID，获取方法见下一节。`, `Enter ${api} as the API URL and a key created in Zipkiwi as the API Key. In Model name, paste the full model ID copied from Model Plaza; follow the steps in the next section.`],
           ['保存后在对话模型选择器中选中这个自定义模型，再新建任务测试。', 'Save, select the custom model in the conversation picker, and test in a new task.'],
+        ])),
+        s('model-id', '获取并填写模型 ID', 'Find and enter the model ID', p('模型 ID 是接口请求中识别模型的准确名称。WorkBuddy 的“模型名称”字段需要填写这个 ID。', 'A model ID is the exact name used to identify a model in API requests. Enter this ID in WorkBuddy’s Model name field.'), list([
+          ['登录本站控制台，打开“API 密钥”，找到准备填入 WorkBuddy 的那枚 Key，确认它所属的分组。', 'Sign in to the Zipkiwi console, open API Keys, and check the group of the key you will use in WorkBuddy.'],
+          ['打开本站“模型广场”，按该 Key 的分组筛选，选择支持聊天与工具调用的模型；可以搜索模型名称缩小范围。', 'Open Model Plaza, filter by the key’s group, and choose a model supporting chat and tool calling. Search by model name to narrow the list.'],
+          ['在目标分组的价格表中，选中并复制“模型”列的完整模型 ID。', 'In the target group’s pricing table, select and copy the full model ID from the Model column.'],
+          ['回到 WorkBuddy，将复制的内容原样粘贴到“模型名称”字段，保留大小写、连字符、版本号及后缀，然后保存。', 'Return to WorkBuddy and paste the copied ID unchanged into Model name. Keep its case, hyphens, version, and suffix, then save.'],
+        ]), note('“模型名称”填写模型 ID，例如从价格表“模型”列复制的完整内容；不能填写“迅奇”或“ZipKiwi”这样的站点名称，也不要自行添加前缀或空格。', 'Model name must contain the full model ID copied from the pricing table. Do not use the site name 迅奇 or ZipKiwi, or add your own prefix or spaces.'), p(`如果模型广场没有找到目标模型，或配置后提示 model_not_found，请使用准备填入 WorkBuddy 的同一枚 Key 查询 ${api}/models，复制响应中 data 数组内对应模型的 id 值。具体命令见“查询可用模型”教程；目录中的模型仍需通过一次实际请求验证协议和能力。`, `If you cannot find the model in Model Plaza or receive model_not_found, query ${api}/models with the same key you will use in WorkBuddy. Copy the relevant model’s id value from the response’s data array. See List available models for the commands, then verify the protocol and capabilities with an actual request.`), links([
+          ['查看 API 密钥与分组', 'Check API keys and groups', '/keys'],
+          ['打开模型广场复制 ID', 'Copy an ID from Model Plaza', '/model-plaza'],
+          ['查看查询可用模型教程', 'List available models with your key', '/tutorials?guide=api-models'],
         ])),
         s('url', '自定义协议开关', 'The custom-protocol switch', p(`WorkBuddy 默认使用标准 /chat/completions 路径并处理地址补全。若开启“自定义协议”，工具会直接使用填写的完整地址；此时应核对最终请求是否为 ${api}/chat/completions。不要同时手动和自动追加路径。`, `WorkBuddy normally handles the standard /chat/completions suffix. Its custom-protocol option uses the supplied URL directly; then check that the full endpoint is ${api}/chat/completions. Avoid duplicating an automatic suffix.`)),
         s('capabilities', '能力与用量', 'Capabilities and usage', p('工具调用、图片输入和推理选项应按实际模型能力设置。模型名称保存成功不代表请求成功；费用和限制以迅奇用量记录为准。', 'Set tools, image input, and reasoning options to match the model’s capabilities. Saving a model name does not verify requests; inspect Zipkiwi usage and limits.')), verification,

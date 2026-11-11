@@ -794,7 +794,7 @@ export default {
     },
     retry: '重新加载',
     title: '模型广场',
-    description: '让智能更近，让成本更轻。为你的应用，选好每一次调用。',
+    description: '按分组浏览可用模型与价格',
     card: {
       tagline: '一个 API，连接模型与应用',
       filterTitle: '筛选模型',
@@ -852,7 +852,7 @@ export default {
       timePricingWeekdays: '工作日',
       timePricingRateHint: '生效倍率 {rate} × 时段倍率 {multiplier}',
       paidPrice: '实付价格(折后)',
-      officialPrice: '官方价格',
+      officialPrice: '官方原价（参考）',
       rate: '折扣倍率',
       unitPerMillion: '{currency} / 1M token',
       perUnitRequest: '/ 次',
