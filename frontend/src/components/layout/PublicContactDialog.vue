@@ -3,7 +3,6 @@
     ref="businessDialog"
     class="business-dialog"
     aria-labelledby="business-title"
-    aria-describedby="contact-description"
     @click="closeDialogBackdrop"
     @close="resetCopy"
   >
@@ -13,7 +12,6 @@
     <div class="contact-avatar" aria-hidden="true"><Icon name="chat" size="xl" /><span class="contact-dot" /></div>
     <p class="contact-brand">{{ siteName }}</p>
     <h2 id="business-title">{{ t('gateway.contactGreeting') }}</h2>
-    <p id="contact-description">{{ t('gateway.contactDescription') }}</p>
     <div v-if="contactValue.trim()" class="contact-details">
       <div class="contact-account">
         <p class="contact-label">{{ t('gateway.contactDetails') }}</p>
