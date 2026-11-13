@@ -48,6 +48,7 @@
         @update:search="searchQuery = $event"
       />
       <PlazaBillingCurrency v-if="authStore.isAdmin" :platform="selectedPlatform" @saved="emit('refresh')" />
+      <p v-if="filteredGroups.length > 0" class="plaza-price-note text-xs">{{ t('modelPlaza.table.displayNote') }}</p>
       <div v-if="filteredGroups.length > 0" class="plaza-groups space-y-5">
         <PlazaGroupSection v-for="g in filteredGroups" :key="g.id" :group="g" />
       </div>

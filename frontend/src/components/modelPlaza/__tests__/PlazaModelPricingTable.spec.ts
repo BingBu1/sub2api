@@ -58,6 +58,42 @@ function mountTable(
 }
 
 describe('PlazaModelPricingTable', () => {
+  it('omits a duplicate 1h cache quote', () => {
+    const model = tokenModel()
+    model.pricing!.cache_write_1h_price = model.pricing!.cache_write_price
+    model.official_pricing!.cache_write_1h_price = model.official_pricing!.cache_write_price
+    const wrapper = mountTable([model], 0.32)
+    expect(wrapper.text()).not.toContain('(1h')
+    expect(wrapper.findAll('tbody td')[3].text()).toContain('$1.20')
+    wrapper.unmount()
+  })
+
+  it('shortens long GLM quotes but preserves both context tiers and precise prices', () => {
+    const model = tokenModel({ name: 'glm-5-turbo', platform: 'zhipu' })
+    model.pricing!.intervals = [0.7370174378e-6, 1.031824413e-6].map((price, index) => ({
+      min_tokens: index === 0 ? 0 : 32000,
+      max_tokens: index === 0 ? 32000 : null,
+      input_price: price, output_price: price * 4,
+      cache_write_price: price, cache_write_1h_price: price,
+      cache_read_price: price / 4, per_request_price: null
+    }))
+    const original = JSON.stringify(model)
+    const wrapper = mountTable([model], 0.32)
+    expect(wrapper.text()).toContain('≤32K')
+    expect(wrapper.text()).toContain('>32K')
+    expect(wrapper.text()).toContain('$0.2358')
+    expect(wrapper.text()).toContain('$0.3302')
+    expect(wrapper.findAll('tbody td')[3].text()).not.toContain('(1h')
+    for (const cell of [2, 3]) {
+      expect(wrapper.findAll('tbody td')[cell].findAll('[data-tier]').map(row => row.attributes('data-tier')))
+        .toEqual(['≤32K', '>32K'])
+    }
+    expect(wrapper.get('caption').text()).toBe('modelPlaza.table.unitPerMillion')
+    expect(wrapper.find('[title="$0.2358455801"]').exists()).toBe(true)
+    expect(JSON.stringify(model)).toBe(original)
+    wrapper.unmount()
+  })
+
   it('labels paid, official, cache and media quotes with the selected currency', () => {
     const image = tokenModel({ name: 'image', official_pricing: null })
     image.pricing = { ...image.pricing!, billing_mode: 'image', per_request_price: 0.7 }
@@ -665,7 +701,7 @@ describe('PlazaModelPricingTable 长上下文阶梯', () => {
       }
     })
     const rows = mountTable([model], 1).findAll('tbody td')[1].findAll('.leading-5')
-    expect(rows.map((r) => r.text().split(/\s+/)[0])).toEqual(['≤100K', '≤200K', '≤1M', '>1M'])
+    expect(rows.map((r) => r.get('span[title="modelPlaza.table.tierHint"]').text())).toEqual(['≤100K', '≤200K', '≤1M', '>1M'])
   })
 
   it('官方无 intervals 字段(旧响应)时官方列保持平价,实付无阶梯时缓存列保持两行', () => {

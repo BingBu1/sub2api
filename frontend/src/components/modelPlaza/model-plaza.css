@@ -46,7 +46,7 @@
 .plaza-content .plaza-pricing-table :is(.text-gray-900, .text-gray-50, .text-gray-800, .text-gray-200) { color: var(--plaza-ink); }
 .plaza-content .plaza-pricing-table :is(td, th) { border-color: var(--plaza-line); }
 .plaza-content .plaza-pricing-table tbody tr:hover { background: var(--plaza-soft); }
-.plaza-content .plaza-pricing-table tbody td:first-child { overflow-wrap: anywhere; }
+.plaza-price-note { color: var(--plaza-muted); }
 .plaza-group-header > p { color: var(--plaza-muted); }
 .plaza-empty { border-color: var(--plaza-line); color: var(--plaza-muted); }
 
