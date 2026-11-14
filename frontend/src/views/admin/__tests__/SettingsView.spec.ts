@@ -754,16 +754,15 @@ describe("admin SettingsView payment visible method controls", () => {
     adminSettingsFetch.mockResolvedValue(undefined);
   });
 
-  it("loads and saves customer support contact info as one text value", async () => {
-    const contactInfo = "微信：Bzhuzhi QQ：3755821761";
+  it("loads and saves customer support contact info with manual line breaks", async () => {
+    const contactInfo = "QQ 交流群：678277929";
     getSettings.mockResolvedValueOnce({ ...baseSettingsResponse, contact_info: contactInfo });
     const wrapper = mountView();
     await flushPromises();
-    const input = wrapper.get<HTMLInputElement>("#site-contact-info");
-    expect(input.element.tagName).toBe("INPUT");
-    expect(input.attributes("type")).toBe("text");
+    const input = wrapper.get<HTMLTextAreaElement>("#site-contact-info");
+    expect(input.element.tagName).toBe("TEXTAREA");
     expect(input.element.value).toBe(contactInfo);
-    const updatedContact = "QQ: 3755821761（工作时间联系）";
+    const updatedContact = "QQ 交流群：678277929\n客服QQ：3755821761";
     await input.setValue(updatedContact);
     await wrapper.find("form").trigger("submit.prevent");
     await flushPromises();

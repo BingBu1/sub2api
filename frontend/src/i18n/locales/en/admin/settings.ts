@@ -773,7 +773,7 @@ export default {
         },
         contactInfo: 'Contact Info',
         contactInfoPlaceholder: 'e.g., QQ: 123456789',
-        contactInfoHint: 'Customer support contact info, displayed on redeem page, profile, etc.',
+        contactInfoHint: 'Press Enter for a new line. Saved line breaks are shown in the contact dialog, redeem page, profile, etc.',
         backendSupportContact: 'Console Dedicated Support Contact',
         backendSupportContactPlaceholder: 'e.g., WeChat: ZipkiwiSupport',
         backendSupportContactHint: 'Shown in the dedicated support entry at the top of the console. Leave empty to hide it.',
