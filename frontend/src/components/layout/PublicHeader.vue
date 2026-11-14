@@ -2,8 +2,10 @@
   <div ref="header" class="public-header" :style="{ '--page-progress': pageProgress }">
     <header class="public-header-inner">
       <RouterLink class="public-brand" to="/home" :aria-label="siteName">
-        <img v-if="selectedBrand" class="public-lockup" src="/zipkiwi-lockup-white.svg" alt="" />
-        <template v-else><img v-if="siteLogo" :src="siteLogo" alt="" /><BirdMark v-else /><span>{{ siteName }}</span></template>
+        <img v-if="selectedBrand" src="/zipkiwi-symbol-white.svg" alt="" />
+        <img v-else-if="siteLogo" :src="siteLogo" alt="" />
+        <BirdMark v-else />
+        <span>{{ siteName }}</span>
       </RouterLink>
       <nav id="main-navigation" :class="{ open: menuOpen }" :aria-label="t('gateway.mainNavigation')" @click="closeMenu">
         <div v-if="showChapters" class="public-nav-chapters">
