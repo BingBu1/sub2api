@@ -206,7 +206,7 @@
                     />
                   </svg>
                   <span>{{ t('common.contactSupport') }}:</span>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{
+                  <span class="min-w-0 whitespace-pre-line break-words font-medium text-gray-700 dark:text-gray-300">{{
                     contactInfo
                   }}</span>
                 </div>

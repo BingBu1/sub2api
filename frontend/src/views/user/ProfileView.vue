@@ -23,11 +23,11 @@
           <div class="rounded-xl bg-primary-100 p-3 text-primary-600">
             <Icon name="chat" size="lg" />
           </div>
-          <div>
+          <div class="min-w-0">
             <h3 class="font-semibold text-primary-800 dark:text-primary-200">
               {{ t('common.contactSupport') }}
             </h3>
-            <p class="text-sm font-medium">{{ contactInfo }}</p>
+            <p class="whitespace-pre-line break-words text-sm font-medium">{{ contactInfo }}</p>
           </div>
         </div>
       </div>

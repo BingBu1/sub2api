@@ -186,7 +186,7 @@
                   {{ t('redeem.codeRule3') }}
                   <span
                     v-if="contactInfo"
-                    class="ml-1.5 inline-flex items-center rounded-md bg-primary-200/50 px-2 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-800/40 dark:text-primary-200"
+                    class="ml-1.5 inline-block max-w-full whitespace-pre-line break-words rounded-md bg-primary-200/50 px-2 py-0.5 align-middle text-xs font-medium text-primary-800 dark:bg-primary-800/40 dark:text-primary-200"
                   >
                     {{ contactInfo }}
                   </span>

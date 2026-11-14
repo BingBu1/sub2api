@@ -6828,14 +6828,15 @@
                 >
                   {{ t("admin.settings.site.contactInfo") }}
                 </label>
-                <input
+                <textarea
                   id="site-contact-info"
                   v-model="form.contact_info"
-                  type="text"
-                  class="input"
+                  rows="3"
+                  class="input resize-y"
+                  aria-describedby="site-contact-info-hint"
                   :placeholder="t('admin.settings.site.contactInfoPlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <p id="site-contact-info-hint" class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   {{ t("admin.settings.site.contactInfoHint") }}
                 </p>
               </div>

@@ -765,7 +765,7 @@ export default {
         },
         contactInfo: '客服联系方式',
         contactInfoPlaceholder: '例如：QQ: 123456789',
-        contactInfoHint: '填写客服联系方式，将展示在兑换页面、个人资料等位置',
+        contactInfoHint: '支持按 Enter 换行，保存后将按行展示在联系我们弹窗、兑换页面、个人资料等位置',
         backendSupportContact: '后台专属客服联系方式',
         backendSupportContactPlaceholder: '例如：微信: ZipkiwiSupport',
         backendSupportContactHint: '显示在后台顶部的“专属客服”入口，留空则隐藏该入口',
