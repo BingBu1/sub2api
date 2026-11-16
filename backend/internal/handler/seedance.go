@@ -4,6 +4,7 @@ import (
 	"context"
 	"mime"
 	"net/http"
+	"strings"
 	"time"
 
 	middleware "github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -34,7 +35,30 @@ func (h *OpenAIGatewayHandler) SeedanceTasks(c *gin.Context) {
 		if c.Request.Method == http.MethodDelete {
 			endpoint = service.SeedanceEndpointDelete
 		}
+		if strings.HasSuffix(c.Request.URL.Path, "/content") {
+			endpoint = service.SeedanceVideosEndpointContent
+		}
 	}
+	h.handleGrokMedia(c, endpoint, taskID)
+}
+
+// SeedanceVideos exposes JSON /v1/videos for explicitly enabled Videos relays.
+func (h *OpenAIGatewayHandler) SeedanceVideos(c *gin.Context) {
+	endpoint, taskID := service.SeedanceVideosEndpointCreate, ""
+	if c.Request.Method != http.MethodPost {
+		taskID = service.SeedanceTaskKey(c.Param("request_id"))
+		endpoint = service.SeedanceVideosEndpointStatus
+		if strings.HasSuffix(c.Request.URL.Path, "/content") {
+			endpoint = service.SeedanceVideosEndpointContent
+		}
+	} else {
+		mediaType, _, err := mime.ParseMediaType(c.GetHeader("Content-Type"))
+		if err != nil || mediaType != "application/json" {
+			h.errorResponse(c, http.StatusUnsupportedMediaType, "invalid_request_error", "Seedance Videos requires application/json")
+			return
+		}
+	}
+	setActualUpstreamEndpoint(c, "/v1/videos")
 	h.handleGrokMedia(c, endpoint, taskID)
 }
 
@@ -48,11 +72,20 @@ func prepareSeedanceCompletionBilling(ctx context.Context, h *OpenAIGatewayHandl
 	if err != nil || pending == nil {
 		return nil
 	}
+	var costCNY *float64
+	if pending.SeedanceVideosTariff != nil || result.SeedanceVideosUsage != nil {
+		cost, costErr := pending.SeedanceVideosTariff.CostCNY(result.SeedanceVideosUsage)
+		if costErr != nil {
+			return nil
+		}
+		costCNY = &cost
+	}
 	claimed, err := h.gatewayService.ClaimGrokVideoBilling(ctx, taskID, subject.UserID, key.ID)
 	if err != nil || !claimed {
 		return nil
 	}
 	merged := *result
+	merged.SeedanceVideosCostCNY = costCNY
 	merged.Model = pending.Model
 	merged.BillingModel = firstNonEmptyString(pending.BillingModel, pending.Model)
 	merged.UpstreamModel = firstNonEmptyString(pending.UpstreamModel, result.UpstreamModel)

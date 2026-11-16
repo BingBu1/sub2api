@@ -232,6 +232,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	baseMultiplier := multiplier
 	pricingAt := openAIUsagePricingAt(input)
 	multiplier, imageMultiplier := computePeakAwareMultipliers(apiKey, baseMultiplier, pricingAt)
+	if result.SeedanceVideosCostCNY != nil {
+		multiplier = baseMultiplier
+	}
 	videoMultiplier := resolveVideoRateMultiplier(apiKey, baseMultiplier)
 	if result.MiniMaxH3BaseCost != nil && apiKey.Group != nil {
 		videoMultiplier = math.Max(0, apiKey.Group.RateMultiplier)
@@ -642,6 +645,18 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	pricingAt time.Time,
 ) (*CostBreakdown, error) {
 	billingModel := firstUsageBillingModel(billingModels)
+	if result != nil && result.SeedanceVideosCostCNY != nil {
+		baseCNY := *result.SeedanceVideosCostCNY
+		if baseCNY <= 0 || math.IsNaN(baseCNY) || math.IsInf(baseCNY, 0) {
+			return nil, fmt.Errorf("invalid Seedance actual-token cost")
+		}
+		policy, err := s.resolver.billingCurrency(ctx, apiKey.Group)
+		if err != nil {
+			return nil, err
+		}
+		baseUSD := baseCNY / policy.USDToCNY
+		return s.resolver.convertRawCost(ctx, apiKey.Group, &CostBreakdown{OutputCost: baseUSD, TotalCost: baseUSD, ActualCost: baseUSD * multiplier, BillingMode: string(BillingModeToken)}), nil
+	}
 	if result != nil && result.MiniMaxH3BaseCost != nil && result.VideoCount > 0 {
 		return s.calculateOpenAIVideoCost(ctx, billingModel, apiKey, result, videoMultiplier), nil
 	}

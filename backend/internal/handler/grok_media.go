@@ -137,6 +137,13 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 			return
 		}
 	}
+	if endpoint == service.SeedanceVideosEndpointCreate {
+		requestInfo, err = service.ParseSeedanceVideosRequest(body)
+		if err != nil {
+			h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+			return
+		}
+	}
 	requestModel := requestInfo.Model
 	routingModel := service.NormalizeGrokMediaModelForEndpoint(endpoint, requestModel, requestInfo.HasInputImage())
 	if endpoint.IsGenerationRequest() && strings.TrimSpace(requestModel) == "" {
@@ -415,6 +422,13 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 		result, err := func() (*service.OpenAIForwardResult, error) {
 			defer releaseAccount()
 			if endpoint.IsSeedance() {
+				if endpoint.IsVideoLookupRequest() && account.SupportsOpenAIEndpointCapability(service.OpenAIEndpointCapabilitySeedanceVideos) {
+					pending, loadErr := h.gatewayService.LoadGrokVideoPendingBilling(requestCtx, requestID, subject.UserID, apiKey.ID)
+					if loadErr != nil || pending == nil || pending.SeedanceVideosTariff == nil {
+						return nil, errors.New("Seedance Videos billing snapshot unavailable")
+					}
+					requestCtx = service.WithSeedanceVideosTariff(requestCtx, pending.SeedanceVideosTariff)
+				}
 				return h.gatewayService.ForwardSeedance(requestCtx, c, account, endpoint, requestID, body)
 			}
 			if endpoint.IsMiniMaxH3() {
@@ -525,6 +539,7 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 			// model/duration/resolution so status can still price if upstream omits them.
 			// Retry once: missing pending causes silent underpricing (status omits resolution).
 			pending := service.GrokVideoPendingBilling{
+				SeedanceVideosTariff: result.SeedanceVideosTariff,
 				MiniMaxH3BaseCost:    result.MiniMaxH3BaseCost,
 				Model:                requestModel,
 				BillingModel:         firstNonEmptyString(result.BillingModel, requestModel),
@@ -558,7 +573,7 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 			if billResult := prepareMiniMaxH3CompletionBilling(requestCtx, h, apiKey, subject, requestID, result); billResult != nil {
 				recordGrokMediaUsage(c, h, reqLog, apiKey, subject, subscription, account, billResult, billResult.Model, body, requestID)
 			}
-		} else if endpoint == service.SeedanceEndpointStatus {
+		} else if endpoint == service.SeedanceEndpointStatus || endpoint == service.SeedanceVideosEndpointStatus || endpoint == service.SeedanceVideosEndpointContent {
 			if billResult := prepareSeedanceCompletionBilling(requestCtx, h, apiKey, subject, requestID, result); billResult != nil {
 				recordGrokMediaUsage(c, h, reqLog, apiKey, subject, subscription, account, billResult, billResult.Model, body, requestID)
 			}
@@ -593,6 +608,9 @@ func (h *OpenAIGatewayHandler) ensureGrokMediaAccountEligibility(ctx context.Con
 }
 
 func grokMediaRequiredCapability(endpoint service.GrokMediaEndpoint) service.OpenAIEndpointCapability {
+	if endpoint.IsSeedanceVideos() {
+		return service.OpenAIEndpointCapabilitySeedanceVideos
+	}
 	if endpoint.IsMiniMaxH3() {
 		return service.OpenAIEndpointCapabilityMiniMaxH3
 	}
@@ -617,7 +635,7 @@ func grokMediaScheduleModel(account *service.Account, routingModel string, resul
 
 func isGrokVideoCreateEndpoint(endpoint service.GrokMediaEndpoint) bool {
 	switch endpoint {
-	case service.MiniMaxH3EndpointCreate, service.SeedanceEndpointCreate, service.GrokMediaEndpointVideosGenerations,
+	case service.MiniMaxH3EndpointCreate, service.SeedanceEndpointCreate, service.SeedanceVideosEndpointCreate, service.GrokMediaEndpointVideosGenerations,
 		service.GrokMediaEndpointVideosEdits,
 		service.GrokMediaEndpointVideosExtensions:
 		return true
