@@ -139,6 +139,10 @@ func RegisterGatewayRoutes(
 		}
 	}
 	videoGenerationHandler := func(c *gin.Context) {
+		if getGroupPlatform(c) == service.PlatformOpenAI {
+			h.OpenAIGateway.SeedanceVideos(c)
+			return
+		}
 		if getGroupPlatform(c) == service.PlatformMiniMax {
 			h.OpenAIGateway.MiniMaxH3Videos(c)
 			return
@@ -159,6 +163,10 @@ func RegisterGatewayRoutes(
 		})
 	}
 	videoStatusHandler := func(c *gin.Context) {
+		if getGroupPlatform(c) == service.PlatformOpenAI {
+			h.OpenAIGateway.SeedanceVideos(c)
+			return
+		}
 		if getGroupPlatform(c) == service.PlatformMiniMax {
 			h.OpenAIGateway.MiniMaxH3Videos(c)
 			return
@@ -179,6 +187,10 @@ func RegisterGatewayRoutes(
 		})
 	}
 	videoContentHandler := func(c *gin.Context) {
+		if getGroupPlatform(c) == service.PlatformOpenAI {
+			h.OpenAIGateway.SeedanceVideos(c)
+			return
+		}
 		if getGroupPlatform(c) == service.PlatformMiniMax {
 			h.OpenAIGateway.MiniMaxH3Videos(c)
 			return
@@ -451,6 +463,7 @@ func RegisterGatewayRoutes(
 	for _, prefix := range []string{"/api/v3", "/v3", "/v1", ""} {
 		rootRoute(http.MethodPost, prefix+"/contents/generations/tasks", bodyLimit, h.OpenAIGateway.SeedanceTasks)
 		rootRoute(http.MethodGet, prefix+"/contents/generations/tasks/:task_id", bodyLimit, h.OpenAIGateway.SeedanceTasks)
+		rootRoute(http.MethodGet, prefix+"/contents/generations/tasks/:task_id/content", bodyLimit, h.OpenAIGateway.SeedanceTasks)
 		rootRoute(http.MethodDelete, prefix+"/contents/generations/tasks/:task_id", bodyLimit, h.OpenAIGateway.SeedanceTasks)
 	}
 	rootRoute(http.MethodPost, "/responses", bodyLimit, responsesHandler)

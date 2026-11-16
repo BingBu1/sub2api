@@ -32,3 +32,21 @@ func TestSeedanceRejectsOtherPlatforms(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, w.Code)
 	}
 }
+
+func TestSeedanceVideosRoutesDispatchOpenAI(t *testing.T) {
+	for _, prefix := range []string{"/v1", ""} {
+		for _, suffix := range []string{"", "/task-1", "/task-1/content"} {
+			method := http.MethodGet
+			if suffix == "" {
+				method = http.MethodPost
+			}
+			path := prefix + "/videos" + suffix
+			req := httptest.NewRequest(method, path, strings.NewReader(`{"model":"doubao-seedance-2-0-260128","prompt":"waves"}`))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			newGatewayRoutesTestRouter(service.PlatformOpenAI).ServeHTTP(w, req)
+			require.NotEqual(t, http.StatusNotFound, w.Code, path)
+			require.NotContains(t, w.Body.String(), "Videos API is not supported")
+		}
+	}
+}

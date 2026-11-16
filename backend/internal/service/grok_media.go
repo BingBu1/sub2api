@@ -41,11 +41,14 @@ func (e GrokMediaEndpoint) RequiresRequestBody() bool {
 }
 
 func (e GrokMediaEndpoint) IsVideoLookupRequest() bool {
+	if e == SeedanceVideosEndpointStatus || e == SeedanceVideosEndpointContent {
+		return true
+	}
 	return e == GrokMediaEndpointVideoStatus || e == GrokMediaEndpointVideoContent || e == SeedanceEndpointStatus || e == SeedanceEndpointDelete || e == MiniMaxH3EndpointStatus || e == MiniMaxH3EndpointContent
 }
 
 func (e GrokMediaEndpoint) IsGenerationRequest() bool {
-	if e == SeedanceEndpointCreate || e == MiniMaxH3EndpointCreate {
+	if e == SeedanceEndpointCreate || e == SeedanceVideosEndpointCreate || e == MiniMaxH3EndpointCreate {
 		return true
 	}
 	switch e {
@@ -375,7 +378,8 @@ func (s *OpenAIGatewayService) SelectMediaVideoRequestAccount(
 // first observes a completed video URL. Status may omit model/duration; we fall
 // back to this snapshot, then defaults.
 type GrokVideoPendingBilling struct {
-	BillingCurrencies map[string]PlatformBillingCurrency `json:"billing_currencies,omitempty"`
+	SeedanceVideosTariff *SeedanceVideosTariff              `json:"seedance_videos_tariff,omitempty"`
+	BillingCurrencies    map[string]PlatformBillingCurrency `json:"billing_currencies,omitempty"`
 	// H3 prices requested seconds at submission; later edits cannot reprice a task.
 	MiniMaxH3BaseCost    *float64 `json:"minimax_h3_base_cost,omitempty"`
 	Model                string   `json:"model"`
