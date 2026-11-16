@@ -30,6 +30,18 @@ type PlazaModel struct {
 	LongContextBasis ContextPricingBasis
 	// TimePricing 计费会生效的分时倍率时段；无分时为 nil。
 	TimePricing *TimePricingSchedule
+	// VideoTokenTiers describes actual-output-token video tariffs, not context tiers.
+	VideoTokenTiers []PlazaVideoTokenTier
+	seedanceTariff  *SeedanceVideosTariff
+}
+
+// Prices are per output token, before the group/user multiplier. SourcePriceCNY
+// retains the native tariff so customers can compare against the upstream page.
+type PlazaVideoTokenTier struct {
+	Resolution     string
+	ReferenceVideo bool
+	OutputPrice    float64
+	SourcePriceCNY float64
 }
 
 // PlazaGroup 模型广场中以分组为顶层的条目。
@@ -217,11 +229,12 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 		}
 		for _, m := range accountModels {
 			key := modelKey{platform: m.Platform, name: m.Name}
-			if _, seen := idx[key]; seen {
+			if at, seen := idx[key]; seen {
+				pg.Models[at].seedanceTariff = m.seedanceTariff
 				continue
 			}
 			idx[key] = len(pg.Models)
-			pg.Models = append(pg.Models, PlazaModel{Name: m.Name, Platform: m.Platform})
+			pg.Models = append(pg.Models, m)
 		}
 		// 渠道模型同样遵守分组准入限制；通配模式不能作为可调用模型卡片展示。
 		models := make([]PlazaModel, 0, len(pg.Models))
@@ -246,6 +259,11 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 		}
 		pg.BillingCurrency = currency.Currency
 		for j := range pg.Models {
+			if tariff := pg.Models[j].seedanceTariff; tariff != nil {
+				pg.Models[j].VideoTokenTiers = plazaSeedanceVideoTokenTiers(tariff, currency)
+				pg.Models[j].Pricing = nil // ordinary token/seconds overrides do not bill this adapter
+				continue
+			}
 			s.fillDisplayPricing(ctx, &pg.Models[j], g)
 			pg.Models[j].OfficialPricing = currencyOfficialPricing(s.lookupOfficialPricing(ctx, pg.Models[j].Name, officialMemo), currency.multiplier())
 		}
@@ -263,7 +281,7 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 
 // accountModels 使用网关的账号枚举和平台目录，不向上游发起模型发现请求。
 // 无可调度账号的平台不生成目录；现有渠道条目仍独立展示。
-func (s *ModelPlazaService) accountModels(ctx context.Context, g *Group) ([]SupportedModel, error) {
+func (s *ModelPlazaService) accountModels(ctx context.Context, g *Group) ([]PlazaModel, error) {
 	if s.gatewayService == nil || s.gatewayService.accountRepo == nil {
 		return nil, nil
 	}
@@ -282,7 +300,7 @@ func (s *ModelPlazaService) accountModels(ctx context.Context, g *Group) ([]Supp
 		}
 		platforms[platform] = struct{}{}
 	}
-	var out []SupportedModel
+	var out []PlazaModel
 	for platform := range platforms {
 		ids := s.gatewayService.GetAvailableModels(ctx, &g.ID, platform)
 		// 复用 /v1/models 对未映射账号的平台目录；CN 供应商仅枚举账号映射。
@@ -305,7 +323,8 @@ func (s *ModelPlazaService) accountModels(ctx context.Context, g *Group) ([]Supp
 					continue
 				}
 				if account.IsModelSupportedInGroup(&g.ID, id) {
-					out = append(out, SupportedModel{Name: id, Platform: platform})
+					out = append(out, PlazaModel{Name: id, Platform: platform,
+						seedanceTariff: plazaSeedanceTariff(accounts, g.ID, platform, id)})
 					break
 				}
 			}

@@ -53,6 +53,17 @@ export interface PlazaModel {
   long_context_basis?: PlazaLongContextBasis
   /** 仅配置了分时倍率的模型返回。 */
   time_pricing?: PlazaTimePricing
+  /** Actual output-token video tariffs; per token, before group/user rate. */
+  video_token_tiers?: PlazaVideoTokenTier[]
+}
+
+export interface PlazaVideoTokenTier {
+  resolution: string
+  reference_video: boolean
+  /** Price in the group's billing currency. */
+  output_price: number
+  /** Native CNY price for comparison with the upstream tariff. */
+  source_price_cny: number
 }
 
 export interface ModelPlazaGroup {

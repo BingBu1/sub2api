@@ -1,6 +1,13 @@
 <template>
   <div class="plaza-pricing-table overflow-x-auto" role="region" tabindex="0" :aria-label="t('modelPlaza.table.model')">
-    <table class="w-full table-auto border-collapse text-sm tabular-nums">
+    <PlazaVideoTokenPricingTable
+      v-if="videoTokenModels.length"
+      :models="videoTokenModels"
+      :billing-currency="billingCurrency"
+      :rate-multiplier="rateMultiplier"
+      :user-rate-multiplier="userRateMultiplier"
+    />
+    <table v-if="sortedModels.length" class="w-full table-auto border-collapse text-sm tabular-nums">
       <caption class="plaza-compact-unit px-5 pt-3 text-left text-xs">{{ t('modelPlaza.table.unitPerMillion', { currency: billingCurrency }) }}</caption>
       <colgroup>
         <col class="w-[25%]" />
@@ -308,6 +315,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { plazaEffectiveRate, plazaRate, resolveIntervalPrices } from '@/utils/pricing'
 import PlazaPrice from './PlazaPrice.vue'
+import PlazaVideoTokenPricingTable from './PlazaVideoTokenPricingTable.vue'
 import { platformBadgeLightClass, platformLabel } from '@/utils/platformColors'
 import {
   BILLING_MODE_TOKEN,
@@ -355,6 +363,9 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const billingCurrency = computed(() => props.billingCurrency === 'CNY' ? 'CNY' : 'USD')
+const videoTokenModels = computed(() => props.models
+  .filter(m => m.video_token_tiers?.length)
+  .sort((a, b) => b.name.localeCompare(a.name)))
 
 /**
  * 展示顺序:
@@ -363,7 +374,7 @@ const billingCurrency = computed(() => props.billingCurrency === 'CNY' ? 'CNY' :
  * 3. 同价按名称降序(新版本号在前,如 gpt-5.6 先于 gpt-5.5)。
  */
 const sortedModels = computed(() => {
-  return [...props.models].sort((a, b) => {
+  return props.models.filter(m => !m.video_token_tiers?.length).sort((a, b) => {
     const ta = billingMode(a) === BILLING_MODE_TOKEN
     const tb = billingMode(b) === BILLING_MODE_TOKEN
     if (ta !== tb) return ta ? -1 : 1
