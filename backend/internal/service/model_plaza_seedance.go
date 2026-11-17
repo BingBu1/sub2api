@@ -26,7 +26,7 @@ func plazaSeedanceTariff(accounts []Account, groupID int64, platform, model stri
 	return tariff
 }
 
-func plazaSeedanceVideoTokenTiers(tariff *SeedanceVideosTariff, currency PlatformBillingCurrency) []PlazaVideoTokenTier {
+func plazaSeedanceVideoTokenTiers(tariff *SeedanceVideosTariff) []PlazaVideoTokenTier {
 	var tiers []PlazaVideoTokenTier
 	for _, resolution := range []string{"480p", "720p", "1080p", "4k"} {
 		rates, ok := tariff.Rates[resolution]
@@ -35,8 +35,8 @@ func plazaSeedanceVideoTokenTiers(tariff *SeedanceVideosTariff, currency Platfor
 		}
 		for i, price := range rates {
 			source := price / 1e6
-			// Same conversion as calculateOpenAIRecordUsageCost's Seedance path.
-			converted := source / currency.USDToCNY * currency.multiplier()
+			// Seedance quotes are always native CNY, including mixed groups.
+			converted := source
 			tiers = append(tiers, PlazaVideoTokenTier{
 				Resolution: resolution, ReferenceVideo: i == 1,
 				OutputPrice: converted, SourcePriceCNY: source,

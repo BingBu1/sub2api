@@ -3,7 +3,6 @@
     <PlazaVideoTokenPricingTable
       v-if="videoTokenModels.length"
       :models="videoTokenModels"
-      :billing-currency="billingCurrency"
       :rate-multiplier="rateMultiplier"
       :user-rate-multiplier="userRateMultiplier"
     />

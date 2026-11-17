@@ -507,6 +507,14 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 
 	// 添加 SessionID（客户端显式会话标识；缺失/无效时保持 nil）
 	usageLog.SessionID = optionalTrimmedStringPtr(input.SessionID)
+	if strings.HasPrefix(result.ResponseID, "seedance:") {
+		policy, err := s.resolver.billingCurrency(ctx, apiKey.Group)
+		if err != nil {
+			return err
+		}
+		usageLog.BillingCurrency = &policy.Currency
+		usageLog.BillingUSDToCNY = &policy.USDToCNY
+	}
 
 	if apiKey.GroupID != nil {
 		usageLog.GroupID = apiKey.GroupID

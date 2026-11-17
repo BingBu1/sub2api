@@ -1943,6 +1943,9 @@ export type ImageSizeSource = 'output' | 'input' | 'default' | 'legacy'
 export type ImageSizeBreakdown = Record<string, number>
 
 export interface UsageLog {
+  /** Settlement-time currency; absent on historical records. */
+  billing_currency?: 'USD' | 'CNY' | null
+  billing_usd_to_cny?: number | null
   id: number
   user_id: number
   api_key_id: number

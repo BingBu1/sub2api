@@ -1,6 +1,7 @@
 export const TOKENS_PER_MILLION = 1_000_000
 
 interface TokenPriceFormatOptions {
+  currency?: 'USD' | 'CNY' | null
   fractionDigits?: number
   withCurrencySymbol?: boolean
   emptyValue?: string
@@ -45,5 +46,8 @@ export function formatTokenPricePerMillion(
 
   const fractionDigits = options.fractionDigits ?? 4
   const formatted = pricePerMillion.toFixed(fractionDigits)
-  return options.withCurrencySymbol == false ? formatted : `$${formatted}`
+  return options.withCurrencySymbol == false ? formatted : `${options.currency === 'CNY' ? '¥' : '$'}${formatted}`
 }
+
+export const usageCurrencySymbol = (row?: { billing_currency?: string | null } | null): string =>
+  row?.billing_currency === 'CNY' ? '¥' : '$'

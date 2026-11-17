@@ -207,6 +207,9 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 	}
 
 	// 余额模式在途预留（与计费同口径估算；计费任务扣减余额缓存后才释放）。
+	if endpoint.IsSeedance() && endpoint.IsGenerationRequest() {
+		c.Request = c.Request.WithContext(service.WithSeedanceBillingCurrency(c.Request.Context()))
+	}
 	inflightEstimate := grokMediaInflightEstimate(endpoint, routingModel, requestInfo, body)
 	inflightEstimate.MiniMaxH3BaseCost = miniMaxH3BaseCost
 	inflightDone, inflightErr := reserveInflightBalance(c, h.billingCacheService, h.gatewayService, apiKey, subscription, inflightEstimate)

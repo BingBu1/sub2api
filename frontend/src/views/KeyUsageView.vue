@@ -857,7 +857,7 @@ const showDailyUsage = computed(() => Boolean(resultData.value && Array.isArray(
 
 function usd(value: number | null | undefined): string {
   if (value == null || value < 0) return '-'
-  return '$' + Number(value).toFixed(2)
+  return (resultData.value?.unit === 'CNY' ? '¥' : '$') + Number(value).toFixed(2)
 }
 
 function fmtNum(val: number | null | undefined): string {

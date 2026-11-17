@@ -58,6 +58,7 @@ export interface PlazaModel {
 }
 
 export interface PlazaVideoTokenTier {
+  billing_currency?: 'CNY'
   resolution: string
   reference_video: boolean
   /** Price in the group's billing currency. */
