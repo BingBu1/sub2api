@@ -258,9 +258,16 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 			return nil, err
 		}
 		pg.BillingCurrency = currency.Currency
+		seedanceOnly := true
+		for j := range pg.Models {
+			seedanceOnly = seedanceOnly && pg.Models[j].seedanceTariff != nil
+		}
+		if seedanceOnly {
+			pg.BillingCurrency = "CNY"
+		}
 		for j := range pg.Models {
 			if tariff := pg.Models[j].seedanceTariff; tariff != nil {
-				pg.Models[j].VideoTokenTiers = plazaSeedanceVideoTokenTiers(tariff, currency)
+				pg.Models[j].VideoTokenTiers = plazaSeedanceVideoTokenTiers(tariff)
 				pg.Models[j].Pricing = nil // ordinary token/seconds overrides do not bill this adapter
 				continue
 			}

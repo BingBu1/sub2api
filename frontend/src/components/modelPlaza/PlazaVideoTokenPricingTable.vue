@@ -2,7 +2,6 @@
   <div class="video-token-pricing" data-testid="video-token-pricing">
     <p class="px-5 py-3 text-xs leading-5 text-gray-500 dark:text-dark-400">
       {{ t('modelPlaza.table.videoTokenNote') }}
-      <span v-if="billingCurrency !== 'CNY'">{{ t('modelPlaza.table.videoTokenCurrencyNote') }}</span>
     </p>
     <section v-for="model in models" :key="`${model.platform}:${model.name}`" class="border-t border-gray-100 dark:border-dark-700">
       <h3 class="break-words px-5 py-3 text-sm font-semibold text-gray-900 dark:text-white">{{ model.name }}</h3>
@@ -25,15 +24,9 @@
             </td>
             <td :data-label="t('modelPlaza.table.paidPrice')" class="paid px-3 py-3 font-mono font-semibold text-gray-900 dark:text-gray-50">
               <PlazaPrice :value="tier.output_price * effectiveRate" :currency="billingCurrency" />
-              <div v-if="billingCurrency !== 'CNY'" class="mt-0.5 text-xs font-normal text-gray-500 dark:text-dark-400">
-                <PlazaPrice :value="tier.source_price_cny * effectiveRate" currency="CNY" />
-              </div>
             </td>
             <td :data-label="t('modelPlaza.table.officialPrice')" class="px-3 py-3 font-mono text-gray-500 dark:text-dark-400">
               <PlazaPrice :value="tier.output_price" :currency="billingCurrency" />
-              <div v-if="billingCurrency !== 'CNY'" class="mt-0.5 text-xs">
-                <PlazaPrice :value="tier.source_price_cny" currency="CNY" />
-              </div>
             </td>
             <td :data-label="t('modelPlaza.table.rate')" class="px-5 py-3 text-right font-mono text-xs">
               <span v-if="hasCustomRate" class="mr-1 text-gray-400 line-through">{{ rateMultiplier }}x</span>
@@ -55,11 +48,11 @@ import PlazaPrice from './PlazaPrice.vue'
 
 const props = defineProps<{
   models: PlazaModel[]
-  billingCurrency: 'USD' | 'CNY'
   rateMultiplier: number
   userRateMultiplier?: number | null
 }>()
 const { t } = useI18n()
+const billingCurrency = 'CNY'
 // This adapter bills actual tokens using the group/user rate. Independent
 // per-second video and peak rates are not part of its settlement path.
 const effectiveRate = computed(() => plazaEffectiveRate(props))

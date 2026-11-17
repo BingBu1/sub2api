@@ -76,17 +76,19 @@ type modelPlazaModel struct {
 }
 
 type modelPlazaVideoTokenTier struct {
-	Resolution     string  `json:"resolution"`
-	ReferenceVideo bool    `json:"reference_video"`
-	OutputPrice    float64 `json:"output_price"`
-	SourcePriceCNY float64 `json:"source_price_cny"`
+	BillingCurrency string  `json:"billing_currency"`
+	Resolution      string  `json:"resolution"`
+	ReferenceVideo  bool    `json:"reference_video"`
+	OutputPrice     float64 `json:"output_price"`
+	SourcePriceCNY  float64 `json:"source_price_cny"`
 }
 
 func toModelPlazaVideoTokenTiers(tiers []service.PlazaVideoTokenTier) []modelPlazaVideoTokenTier {
 	var out []modelPlazaVideoTokenTier
 	for _, tier := range tiers {
 		out = append(out, modelPlazaVideoTokenTier{
-			Resolution: tier.Resolution, ReferenceVideo: tier.ReferenceVideo,
+			BillingCurrency: "CNY",
+			Resolution:      tier.Resolution, ReferenceVideo: tier.ReferenceVideo,
 			OutputPrice: tier.OutputPrice, SourcePriceCNY: tier.SourcePriceCNY,
 		})
 	}

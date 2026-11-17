@@ -735,6 +735,8 @@ func usageLogFromServiceUser(l *service.UsageLog) UsageLog {
 		CacheReadCost:             l.CacheReadCost,
 		TotalCost:                 l.TotalCost,
 		ActualCost:                l.ActualCost,
+		BillingCurrency:           l.BillingCurrency,
+		BillingUSDToCNY:           l.BillingUSDToCNY,
 		RateMultiplier:            l.RateMultiplier,
 		LongContextBillingApplied: l.LongContextBillingApplied,
 		BillingType:               l.BillingType,

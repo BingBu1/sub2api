@@ -111,7 +111,7 @@ func (s *SettingService) UpdatePlatformBillingCurrency(ctx context.Context, p Pl
 
 func (r *ModelPricingResolver) billingCurrency(ctx context.Context, group *Group) (PlatformBillingCurrency, error) {
 	if group == nil || r == nil || r.currencySettings == nil {
-		return defaultPlatformBillingCurrency(""), nil
+		return seedanceBillingCurrency(ctx, defaultPlatformBillingCurrency("")), nil
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -128,6 +128,9 @@ func (r *ModelPricingResolver) billingCurrency(ctx context.Context, group *Group
 		}
 	}
 	p, err := r.currencySettings.GetPlatformBillingCurrency(ctx, platform)
+	if err == nil {
+		p = seedanceBillingCurrency(ctx, p)
+	}
 	if err == nil && snapshot != nil {
 		if snapshot.currencies == nil {
 			snapshot.currencies = make(map[string]PlatformBillingCurrency)

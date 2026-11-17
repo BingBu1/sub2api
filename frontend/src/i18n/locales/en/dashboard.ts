@@ -373,6 +373,7 @@ export default {
 
   // Usage
   usage: {
+    balanceUnits: 'balance units',
     title: 'Usage Records',
     description: 'View and analyze your API usage history',
     costDetails: 'Cost Breakdown',

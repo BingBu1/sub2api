@@ -1622,9 +1622,18 @@ func (h *GatewayHandler) buildAPIKeyDailyUsage(c *gin.Context, userID, apiKeyID 
 	return stats
 }
 
+// Report Seedance balance deductions in the same RMB unit as its price cards.
+func (h *GatewayHandler) usageAmountUnit(ctx context.Context, key *service.APIKey) string {
+	if key != nil && h.gatewayService.IsSeedanceVideosOnlyGroup(ctx, key.Group) {
+		return "CNY"
+	}
+	return "USD"
+}
+
 // usageQuotaLimited 处理 quota_limited 模式的响应
 func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, apiKey *service.APIKey, usageData gin.H, dailyUsage any, modelStats any) {
 	resp := gin.H{
+		"unit":    h.usageAmountUnit(ctx, apiKey),
 		"mode":    "quota_limited",
 		"isValid": apiKey.Status == service.StatusAPIKeyActive || apiKey.Status == service.StatusAPIKeyQuotaExhausted || apiKey.Status == service.StatusAPIKeyExpired,
 		"status":  apiKey.Status,
@@ -1637,10 +1646,9 @@ func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, 
 			"limit":     apiKey.Quota,
 			"used":      apiKey.QuotaUsed,
 			"remaining": remaining,
-			"unit":      "USD",
+			"unit":      resp["unit"],
 		}
 		resp["remaining"] = remaining
-		resp["unit"] = "USD"
 	}
 
 	// 速率限制信息（从 DB 获取实时用量）
@@ -1723,7 +1731,7 @@ func (h *GatewayHandler) usageUnrestricted(c *gin.Context, ctx context.Context, 
 			"mode":     "unrestricted",
 			"isValid":  true,
 			"planName": apiKey.Group.Name,
-			"unit":     "USD",
+			"unit":     h.usageAmountUnit(ctx, apiKey),
 		}
 
 		// 订阅信息可能不在 context 中（/v1/usage 路径跳过了中间件的计费检查）
@@ -1768,7 +1776,7 @@ func (h *GatewayHandler) usageUnrestricted(c *gin.Context, ctx context.Context, 
 		"isValid":   true,
 		"planName":  "钱包余额",
 		"remaining": latestUser.Balance,
-		"unit":      "USD",
+		"unit":      h.usageAmountUnit(ctx, apiKey),
 		"balance":   latestUser.Balance,
 	}
 	if usageData != nil {
