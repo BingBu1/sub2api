@@ -262,6 +262,9 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 	}
 	routingStart := time.Now()
 	requiredCapability := grokMediaRequiredCapability(endpoint)
+	if endpoint == service.SeedanceVideosEndpointCreate && service.SeedanceVideosRequiresArk(body) {
+		requiredCapability = service.OpenAIEndpointCapabilitySeedanceArkLogs
+	}
 	var accountReleaseFunc func()
 	releaseAccount := func() {
 		if accountReleaseFunc != nil {

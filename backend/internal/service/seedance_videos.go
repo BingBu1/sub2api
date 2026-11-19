@@ -130,6 +130,11 @@ func seedanceVideosBody(body []byte, ark bool) ([]byte, GrokMediaRequestInfo, er
 			return nil, info, err
 		}
 	}
+	var normalizeErr error
+	body, normalizeErr = normalizeSeedanceVideosOptions(body)
+	if normalizeErr != nil {
+		return nil, info, normalizeErr
+	}
 	model := gjson.GetBytes(body, "model")
 	if model.Type != gjson.String || strings.TrimSpace(model.String()) == "" {
 		return nil, info, fmt.Errorf("model is required")
@@ -324,15 +329,28 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 		return nil, err
 	}
 	base = strings.TrimSuffix(strings.TrimSuffix(seedanceVideosBase(base), "/api/v3"), "/v3")
-	nativeArk := account.UsesSeedanceArkLogs() && (endpoint == SeedanceEndpointCreate || endpoint == SeedanceEndpointStatus)
+	videosViaArk := account.UsesSeedanceArkLogs() && endpoint == SeedanceVideosEndpointCreate
+	nativeArk := account.UsesSeedanceArkLogs() && (endpoint == SeedanceEndpointCreate || endpoint == SeedanceEndpointStatus || videosViaArk)
 	create := endpoint == SeedanceEndpointCreate || endpoint == SeedanceVideosEndpointCreate
 	ark := endpoint == SeedanceEndpointCreate || endpoint == SeedanceEndpointStatus
 	content := endpoint == SeedanceVideosEndpointContent
 	id := strings.TrimPrefix(taskID, "seedance:")
 	target, method := base+"/v1/videos", http.MethodGet
 	result := &OpenAIForwardResult{ResponseID: taskID, UpstreamEndpoint: "/v1/videos"}
+	var videosInfo GrokMediaRequestInfo
 	if create {
 		var info GrokMediaRequestInfo
+		if videosViaArk {
+			body, videosInfo, err = seedanceVideosToArk(body)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request_error", "message": err.Error()}})
+				return nil, err
+			}
+		} else if endpoint == SeedanceVideosEndpointCreate && SeedanceVideosRequiresArk(body) {
+			err = fmt.Errorf("Seedance options require an Ark + actual token logs account")
+			c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request_error", "message": err.Error()}})
+			return nil, err
+		}
 		if nativeArk {
 			info, err = ParseSeedanceRequest(body)
 			info.Resolution = strings.ToLower(strings.TrimSpace(gjson.GetBytes(body, "resolution").String()))
@@ -380,7 +398,11 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 		target += "/" + id
 	}
 	if nativeArk {
-		target, err = buildSeedanceURL(base, endpoint, id)
+		upstreamEndpoint := endpoint
+		if videosViaArk {
+			upstreamEndpoint = SeedanceEndpointCreate
+		}
+		target, err = buildSeedanceURL(base, upstreamEndpoint, id)
 		if err != nil {
 			return nil, err
 		}
@@ -410,6 +432,10 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 	result.ResponseHeaders = resp.Header.Clone()
 	result.ResponseID = SeedanceTaskKey(responseID)
 	status := gjson.GetBytes(responseBody, "status").String()
+	if videosViaArk {
+		// Ark creation returns an ID; keep the downstream Videos contract.
+		responseBody, _ = json.Marshal(map[string]any{"id": responseID, "object": "video", "status": "queued", "model": videosInfo.Model, "seconds": videosInfo.DurationSeconds})
+	}
 	if !create && (status == "completed" || (nativeArk && status == "succeeded")) {
 		result.UpstreamModel = gjson.GetBytes(responseBody, "model").String()
 		if nativeArk {

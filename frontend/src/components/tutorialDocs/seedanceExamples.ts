@@ -33,7 +33,7 @@ export function seedanceExamples(root: string, shell: TutorialShell) {
     reference: JSON.stringify({ ...body, content: [body.content[0], { type: 'video_url', video_url: { url: 'https://media.example.com/reference.mp4' }, role: 'reference_video' }], omni_reference_task_type: 'reference' }, null, 2),
     videosCreate: create(videos, {
       model: body.model, prompt: body.content[0]!.text, seconds: 5,
-      metadata: { resolution: '720p', ratio: '16:9', watermark: false },
+      metadata: { resolution: '720p', ratio: '16:9' },
     }),
     videosQuery: query(videos),
     download: powershell
