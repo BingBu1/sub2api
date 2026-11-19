@@ -1965,7 +1965,7 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 	}
 	if capability == OpenAIEndpointCapabilitySeedance || capability == OpenAIEndpointCapabilitySeedanceVideos {
 		configured, _ := a.openAIEndpointCapabilitySet()
-		enabled := configured["seedance_videos"] || (capability == OpenAIEndpointCapabilitySeedance && configured["seedance"])
+		enabled := configured["seedance_videos"] || configured["seedance_ark_logs"] || (capability == OpenAIEndpointCapabilitySeedance && configured["seedance"])
 		return enabled && a.Platform == PlatformOpenAI && a.Type == AccountTypeAPIKey &&
 			strings.TrimSpace(a.GetCredential("base_url")) != ""
 	}

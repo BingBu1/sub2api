@@ -56,7 +56,7 @@ func TestSeedanceVideosUsesFinalTokensNotPrechargeOrAdjustment(t *testing.T) {
 		_, err = parseSeedanceVideosSettlement([]byte(logs), "task-1", videosTestModel)
 		require.Error(t, err)
 	}
-	refund := videosTestLog("task-1", 50638, true)
+	refund := videosTestLog("task-1", 50638, false)
 	refund["type"] = 6
 	_, err = parseSeedanceVideosSettlement([]byte(videosTestLogs(final, refund)), "task-1", videosTestModel)
 	require.Error(t, err)
