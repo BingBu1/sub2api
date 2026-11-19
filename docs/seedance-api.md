@@ -64,7 +64,7 @@ curl "$SUB2API_BASE_URL/v1/videos/$TASK_ID/content" \
 
 - Ark 的文本合并为 `prompt`，图片/视频/音频内容及角色放入 `metadata.content`，`duration` 转为 `seconds`。Videos 客户端文本放在 `prompt`，非文本媒体放在 `metadata.content`，分辨率与比例放在 `metadata.resolution/ratio`。不支持 multipart、任务删除、callback 或 web_search。未知 Ark 字段明确报错。
 - Ark 状态转换为 `queued/running/succeeded/failed`；成功结果的 `content.video_url` 是本站 `/api/v3/contents/generations/tasks/{id}/content` 相对路径，下载时仍须携带原本站 API Key。Videos 状态保留 `queued/in_progress/completed/failed`，并补充核实后的 `usage.completion_tokens/total_tokens`。
-- 用原上游 API Key 查询日志，严格匹配 `other.task_id` 和原生模型名。只接受 `type=2`、`billing_mode=tiered_expr`、`is_task=true` 且同时具有 `actual_quota`、`pre_consumed_quota` 的最终结算记录；实际 tokens、分辨率、是否包含参考视频取自 `usage_facts`。忽略预扣记录，不以 `quota` 补扣差额推算整笔费用，也不按时长估算 tokens。
+- 用原上游 API Key 查询日志，严格匹配 `other.task_id` 和原生模型名。只接受 `type=2` 或带正数最终结算的 `type=6` 差额退款、`billing_mode=tiered_expr`、`is_task=true` 且同时具有 `actual_quota`、`pre_consumed_quota` 的最终结算记录；实际 tokens、分辨率、是否包含参考视频取自 `usage_facts`。忽略预扣记录，不以 `quota` 补扣差额推算整笔费用，也不按时长估算 tokens。
 - 原生模型官方基准价快照（2026-11-17 上游公示，单位 CNY/百万 tokens；前者无参考视频，后者有参考视频）：2.0 的 480p/720p 为 46/28，1080p 为 51/31，4k 为 26/16；2.5 的 480p/720p 为 70/42，1080p 为 77/46；fast 的 480p/720p 为 37/22；mini 的 480p/720p 为 23/14。仅支持代码中列出的四个完整原生模型 ID，拒绝无对应价格的模型。价格表在创建时保存，新增模型或调价应更新表并发布。
 - 实际 tokens × 对应人民币基准单价 × 本站用户/分组倍率；不采用上游 reseller 折扣，也不采用 Grok 视频按秒价或通用高峰因子。分组设置 `0.86` 就继续使用该倍率。新建 Seedance 任务固定按 CNY 结算，独立于 OpenAI/综合平台的文本模型币种设置；人民币数值直接扣除本站余额。创建时保存币种与汇率快照，升级前已创建任务仍按原快照完成结算。
 - 模型广场按分辨率及有/无参考视频列出人民币原价和折后价，复用上述计费价格表，综合分组中的 Seedance 表也固定为人民币。此表只应用于已配置 Videos 能力且原生模型映射一致的账号，不覆盖 Ark 线路的定价。
@@ -74,3 +74,16 @@ curl "$SUB2API_BASE_URL/v1/videos/$TASK_ID/content" \
 - 核实后的用量按账号和任务缓存 24 小时，后续查询/下载不依赖日志继续留存。查询与下载共用同一扣费去重 ID，任务所有权仍要求同一用户、Key、分组。保留 Redis 持久化状态。
 
 上线需另行启用此账号、选择 Videos 能力并打开分组媒体权限；本次代码发布不会自动修改现有账号状态或分组倍率。上游文档与价格来源：`https://91token.299551.com/apidoc/`、`/api/pricing`；实际用量来源为用户授权的只读日志查询。生产代码无需保存上游登录密码。
+
+
+## 91token 方舟原生转发 + 最终 token 日志
+
+2026-11-19 使用已完成任务核实：`/api/v3/contents/generations/tasks/{id}` 可以返回原生方舟结果，但它的 `usage.completion_tokens` 可能填入计费额度，而非真实 token。同一任务方舟响应为 275052，最终日志 `usage_facts.tokens` 和原始生成记录均为 87299。公开按秒文档不能替代该账号的实际结算证据。
+
+- 账号能力选择 **Seedance (Ark + actual token logs)**（`seedance_ark_logs`）；根地址或 `/api/v3` 均可。只适用于提供同一套任务 ID 与 `/api/log/token` 最终日志的兼容上游，不要用于普通官方方舟账号。
+- 本站方舟入口直接调用上游方舟创建/查询接口，保留 `content`、参考素材角色、镜头、末帧和扩展字段，仅改写模型名。支持模型以该密钥 `/v1/models` 为准；本次核实为 2.0 和 2.5。
+- 创建时冻结原生模型和人民币 token 阶梯价；查询时允许上游省略模型或返回私有模型 ID，按冻结模型匹配最终日志。成功响应的 `usage.completion_tokens` 与 `usage.total_tokens` 均替换为核实后的真实 token，视频直链保留。
+- `type=6` 且带正数 `actual_quota`、`pre_consumed_quota` 的记录可能是成功任务的预扣差额退款，仍按最终 `usage_facts` 结算。无最终字段或最终额度为零的退款不收费。只在任务已成功时读取和结算；日志缺失返回 `503 usage_pending`，不以额度、预扣 token 或时长补造实际用量。
+- 继续使用人民币数值扣本站余额、现有用户/分组倍率、任务归属检查和持久化扣费去重。标准 `/v1/videos` 创建、查询和下载继续走原有 Videos 协议，仍核实实际 token。
+- 不提供上游任务列表与删除；暂不接受 `draft_task` 引用，避免共享上游账号的跨用户任务引用。素材上传不在本次范围，请传公网素材 URL。必须轮询本站直到完成；只依赖上游回调不会触发本站结算。
+- 本次只准备代码和后台选项，不修改线上密钥、账号能力和分组。部署与线路启用需用户确认；换密钥时需保留旧任务原账号的查询能力。

@@ -215,10 +215,14 @@ func parseSeedanceVideosSettlement(body []byte, taskID, model string) (*Seedance
 		if other.Get("task_id").String() != taskID {
 			continue
 		}
-		if log.Get("type").Int() == 6 {
+		logType := log.Get("type").Int()
+		final := other.Get("actual_quota").Type == gjson.Number && other.Get("pre_consumed_quota").Type == gjson.Number
+		// A type=6 row may be a partial refund after an overestimated hold.
+		// Only a successful task's final, positive settlement is chargeable.
+		if logType == 6 && (!final || other.Get("actual_quota").Float() <= 0) {
 			return nil, fmt.Errorf("Seedance task was refunded")
 		}
-		if log.Get("type").Int() != 2 || other.Get("billing_mode").String() != "tiered_expr" || !other.Get("is_task").Bool() || !other.Get("actual_quota").Exists() || !other.Get("pre_consumed_quota").Exists() {
+		if (logType != 2 && logType != 6) || !final || other.Get("actual_quota").Float() <= 0 || other.Get("billing_mode").String() != "tiered_expr" || !other.Get("is_task").Bool() {
 			continue
 		}
 		tokens := other.Get("usage_facts.tokens")
@@ -319,7 +323,8 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 	if err != nil {
 		return nil, err
 	}
-	base = seedanceVideosBase(base)
+	base = strings.TrimSuffix(strings.TrimSuffix(seedanceVideosBase(base), "/api/v3"), "/v3")
+	nativeArk := account.UsesSeedanceArkLogs() && (endpoint == SeedanceEndpointCreate || endpoint == SeedanceEndpointStatus)
 	create := endpoint == SeedanceEndpointCreate || endpoint == SeedanceVideosEndpointCreate
 	ark := endpoint == SeedanceEndpointCreate || endpoint == SeedanceEndpointStatus
 	content := endpoint == SeedanceVideosEndpointContent
@@ -328,7 +333,23 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 	result := &OpenAIForwardResult{ResponseID: taskID, UpstreamEndpoint: "/v1/videos"}
 	if create {
 		var info GrokMediaRequestInfo
-		body, info, err = seedanceVideosBody(body, ark)
+		if nativeArk {
+			info, err = ParseSeedanceRequest(body)
+			info.Resolution = strings.ToLower(strings.TrimSpace(gjson.GetBytes(body, "resolution").String()))
+			if info.Resolution == "" {
+				info.Resolution = "720p"
+			}
+			info.DurationSeconds = int(gjson.GetBytes(body, "duration").Int())
+			// A draft ID can refer to another customer's task on a shared account.
+			// Do not forward it until draft ownership is supported by the gateway.
+			for _, item := range gjson.GetBytes(body, "content").Array() {
+				if item.Get("type").String() == "draft_task" {
+					return nil, fmt.Errorf("Seedance draft task references are not supported")
+				}
+			}
+		} else {
+			body, info, err = seedanceVideosBody(body, ark)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -358,6 +379,13 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 		}
 		target += "/" + id
 	}
+	if nativeArk {
+		target, err = buildSeedanceURL(base, endpoint, id)
+		if err != nil {
+			return nil, err
+		}
+		result.UpstreamEndpoint = "/api/v3/contents/generations/tasks"
+	}
 	started := time.Now()
 	resp, err := s.seedanceVideosRequest(ctx, account, method, target, body)
 	if err != nil {
@@ -382,8 +410,17 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 	result.ResponseHeaders = resp.Header.Clone()
 	result.ResponseID = SeedanceTaskKey(responseID)
 	status := gjson.GetBytes(responseBody, "status").String()
-	if !create && status == "completed" {
+	if !create && (status == "completed" || (nativeArk && status == "succeeded")) {
 		result.UpstreamModel = gjson.GetBytes(responseBody, "model").String()
+		if nativeArk {
+			tariff, ok := ctx.Value(seedanceVideosTariffContextKey{}).(*SeedanceVideosTariff)
+			if !ok || tariff == nil {
+				return nil, fmt.Errorf("Seedance Ark billing snapshot unavailable")
+			}
+			// Ark may omit model or report a private upstream model ID. Use the
+			// admitted native model frozen at creation, never the quota-like usage.
+			result.UpstreamModel = tariff.Model
+		}
 		// This API is authenticated with the inference key; never depend on a
 		// human login session or store the upstream dashboard password.
 		var usageErr error
@@ -424,7 +461,7 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 		}
 		return result, nil
 	}
-	if ark {
+	if ark && !nativeArk {
 		if create {
 			responseBody, _ = json.Marshal(map[string]string{"id": responseID})
 		} else {
