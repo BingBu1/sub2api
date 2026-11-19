@@ -1963,9 +1963,12 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 		return a.Platform == PlatformMiniMax && a.Type == AccountTypeAPIKey && !a.IsCodingPlan() &&
 			strings.TrimSpace(a.GetCredential("base_url")) != ""
 	}
-	if capability == OpenAIEndpointCapabilitySeedance || capability == OpenAIEndpointCapabilitySeedanceVideos {
+	if capability == OpenAIEndpointCapabilitySeedance || capability == OpenAIEndpointCapabilitySeedanceVideos || capability == OpenAIEndpointCapabilitySeedanceArkLogs {
 		configured, _ := a.openAIEndpointCapabilitySet()
 		enabled := configured["seedance_videos"] || configured["seedance_ark_logs"] || (capability == OpenAIEndpointCapabilitySeedance && configured["seedance"])
+		if capability == OpenAIEndpointCapabilitySeedanceArkLogs {
+			enabled = configured["seedance_ark_logs"]
+		}
 		return enabled && a.Platform == PlatformOpenAI && a.Type == AccountTypeAPIKey &&
 			strings.TrimSpace(a.GetCredential("base_url")) != ""
 	}

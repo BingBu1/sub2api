@@ -14,7 +14,41 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
+
+func TestSeedanceVideosHandlerRoutesOptionsOnlyToArk(t *testing.T) {
+	for _, capability := range []string{"seedance_videos", "seedance_ark_logs"} {
+		t.Run(capability, func(t *testing.T) {
+			h, slots, bindings, upstream := newGrokMediaSlotHandler(t, false, false, service.PlatformOpenAI, capability)
+			upstream.call = func(req *http.Request, _ int64) (*http.Response, error) {
+				require.Equal(t, "/api/v3/contents/generations/tasks", req.URL.Path)
+				body, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+				require.Equal(t, "false", gjson.GetBytes(body, "watermark").Raw)
+				require.Equal(t, "0", gjson.GetBytes(body, "seed").Raw)
+				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"id":"task-options"}`))}, nil
+			}
+			c, w := grokMediaSlotContext(context.Background(), true)
+			key, _ := middleware.GetAPIKeyFromContext(c)
+			key.Group.Platform = service.PlatformOpenAI
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/videos", strings.NewReader(`{"model":"doubao-seedance-2-0-260128","prompt":"waves","metadata":{"watermark":false,"seed":0}}`))
+			c.Request.Header.Set("Content-Type", "application/json")
+			h.SeedanceVideos(c)
+			if capability == "seedance_ark_logs" {
+				require.Equal(t, 200, w.Code, w.Body.String())
+				require.Equal(t, 1, upstream.calls)
+				require.Equal(t, "video", gjson.Get(w.Body.String(), "object").String())
+				require.Len(t, bindings.pending, 1)
+			} else {
+				require.Equal(t, 503, w.Code, w.Body.String())
+				require.Zero(t, upstream.calls)
+				require.Empty(t, bindings.pending)
+			}
+			slots.assertReleased(t)
+		})
+	}
+}
 
 func TestSeedanceVideosHandlerOwnershipAndSettlementDedup(t *testing.T) {
 	h, slots, bindings, upstream := newGrokMediaSlotHandler(t, false, false, service.PlatformOpenAI, "seedance_videos")

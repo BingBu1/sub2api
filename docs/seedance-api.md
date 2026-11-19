@@ -2,6 +2,18 @@
 
 用户接入文档：`/tutorials?guide=seedance`（公开，无需登录）。该页面按 ZipKiwi 当前线路说明方舟与 JSON Videos、人民币 token 价格及支持限制。本文余下内容面向维护人员，涵盖不同账号能力；不能将普通 Ark 账号支持的删除等能力视作 91token 线路的承诺。
 
+## Videos 参数适配修正（2026-11-19）
+
+实测 91token 的 Videos 入口拒绝 `watermark/seed/generate_audio/camera_fixed/return_last_frame`，方舟入口可接收。本站 `seedance_ark_logs` 账号将 JSON Videos 创建转换为方舟创建：`prompt → content[].text`、`seconds → duration`、`metadata.content` 保留素材角色，`images` 转成 `reference_image`，支持的顶层或 metadata 参数转成方舟顶层字段。种子整数、false、0 均保留，不删除参数后重试生成。
+
+Videos 请求只要携带 Ark 扩展参数，即要求 `seedance_ark_logs` 调度能力，不能降级到旧 `seedance_videos` 账号。没有符合条件的账号返回 503；类型错误、同名字段冲突及未知字段在请求解析时返回 400。该限制不改变旧任务按原账号查询和下载。
+
+- `seconds` 仍要求 JSON 整数，不接受字符串；省略时为 5。
+- `watermark/generate_audio/camera_fixed/return_last_frame/draft` 为布尔；`seed/frames/execution_expires_after` 为整数；`service_tier/output_format/omni_reference_task_type` 为字符串。参数可位于顶层或 metadata，重复值必须一致。
+- `size` 支持 `1280x720`、`720x1280`、`1920x1080`、`1080x1920`，映射到相应分辨率与比例；与显式设置冲突时报错。
+- 创建响应仍返回 Videos 格式；查询 `/v1/videos/{id}`、下载 `/v1/videos/{id}/content` 保持现有协议和最终日志计费。回调、工具、样片任务引用及 multipart 上传仍不支持。
+- 公开指南默认使用已实测成功的最小 Videos 请求，单独说明可选参数。0.86 仅为算例，实际倍率取当前用户/分组。排队中的 usage 不能用作最终用量。
+
 支持火山方舟 Ark 的异步视频任务协议，无需把 `content[]` 转换成 OpenAI `messages` 或 Grok `prompt`。
 
 ## 配置
@@ -86,6 +98,6 @@ curl "$SUB2API_BASE_URL/v1/videos/$TASK_ID/content" \
 - 本站方舟入口直接调用上游方舟创建/查询接口，保留 `content`、参考素材角色、镜头、末帧和扩展字段，仅改写模型名。支持模型以该密钥 `/v1/models` 为准；本次核实为 2.0 和 2.5。
 - 创建时冻结原生模型和人民币 token 阶梯价；查询时允许上游省略模型或返回私有模型 ID，按冻结模型匹配最终日志。成功响应的 `usage.completion_tokens` 与 `usage.total_tokens` 均替换为核实后的真实 token，视频直链保留。
 - `type=6` 且带正数 `actual_quota`、`pre_consumed_quota` 的记录可能是成功任务的预扣差额退款，仍按最终 `usage_facts` 结算。无最终字段或最终额度为零的退款不收费。只在任务已成功时读取和结算；日志缺失返回 `503 usage_pending`，不以额度、预扣 token 或时长补造实际用量。
-- 继续使用人民币数值扣本站余额、现有用户/分组倍率、任务归属检查和持久化扣费去重。标准 `/v1/videos` 创建、查询和下载继续走原有 Videos 协议，仍核实实际 token。
+- 继续使用人民币数值扣本站余额、现有用户/分组倍率、任务归属检查和持久化扣费去重。标准 `/v1/videos` 创建在 `seedance_ark_logs` 账号上转换为 Ark 请求，公开响应仍是 Videos 的 id/object/status/model/seconds；查询与下载继续使用原有 Videos 协议并核实实际 token。
 - 不提供上游任务列表与删除；暂不接受 `draft_task` 引用，避免共享上游账号的跨用户任务引用。素材上传不在本次范围，请传公网素材 URL。必须轮询本站直到完成；只依赖上游回调不会触发本站结算。
-- 本次只准备代码和后台选项，不修改线上密钥、账号能力和分组。部署与线路启用需用户确认；换密钥时需保留旧任务原账号的查询能力。
+- 换密钥或停用账号时需保留旧任务原账号的查询能力。部署与账号调整独立执行。
