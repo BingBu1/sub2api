@@ -1,5 +1,7 @@
 # Seedance 原生 API
 
+用户接入文档：`/tutorials?guide=seedance`（公开，无需登录）。该页面按 ZipKiwi 当前线路说明方舟与 JSON Videos、人民币 token 价格及支持限制。本文余下内容面向维护人员，涵盖不同账号能力；不能将普通 Ark 账号支持的删除等能力视作 91token 线路的承诺。
+
 支持火山方舟 Ark 的异步视频任务协议，无需把 `content[]` 转换成 OpenAI `messages` 或 Grok `prompt`。
 
 ## 配置

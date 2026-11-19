@@ -1,5 +1,5 @@
 export default {
-  pageTitle: '教程文档', updated: '更新于 2026 年 11 月 6 日', skipToArticle: '跳到正文',
+  pageTitle: '教程文档', updated: '更新于 2026 年 11 月 6 日', updatedOn: '更新于 {date}', skipToArticle: '跳到正文',
   searchLabel: '搜索教程文档', searchPlaceholder: '搜索工具、配置或报错…', clearSearch: '清除搜索', createKey: '获取 API Key',
   openDirectory: '文档目录', closeDirectory: '收起目录', directory: '教程文档目录', onThisPage: '本篇目录',
   searchCount: '找到 {count} 篇相关文档', noResults: '没有找到相关文档', tryAnotherSearch: '试试工具名称、接口协议或状态码。',

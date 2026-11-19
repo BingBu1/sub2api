@@ -31,7 +31,7 @@ describe('tutorial document center', () => {
     const { wrapper, router } = await render()
     expect(wrapper.get('h1').text()).toBe('快速开始')
     expect(wrapper.findAll('.docs-nav-group')).toHaveLength(6)
-    expect(wrapper.findAll('.docs-nav-group > a')).toHaveLength(24)
+    expect(wrapper.findAll('.docs-nav-group > a')).toHaveLength(25)
     await wrapper.get('.docs-nav-group a[href="/tutorials?guide=codex"]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.query.guide).toBe('codex')
@@ -48,7 +48,7 @@ describe('tutorial document center', () => {
     await wrapper.get('input[type="search"]').setValue('nothing-matches-123456')
     expect(wrapper.get('.docs-no-results').text()).toContain('没有找到相关文档')
     await wrapper.get('.docs-no-results button').trigger('click')
-    expect(wrapper.findAll('.docs-nav-group > a')).toHaveLength(24)
+    expect(wrapper.findAll('.docs-nav-group > a')).toHaveLength(25)
     wrapper.unmount()
   })
 
@@ -117,7 +117,7 @@ describe('tutorial content and generated examples', () => {
     for (const locale of ['zh', 'en']) {
       const articles = tutorialContent(locale, 'https://zipkiwi.example', 'https://zipkiwi.example/v1', 'bash')
       const ids = articles.map(article => article.id)
-      expect(new Set(ids).size).toBe(24)
+      expect(new Set(ids).size).toBe(25)
       for (const article of articles) {
         expect(new Set(article.sections.map(section => section.id)).size).toBe(article.sections.length)
         expect(tutorialSearchText(article)).not.toMatch(/yoshub|api2\.yoshub/)
