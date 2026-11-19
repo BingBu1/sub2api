@@ -1,4 +1,5 @@
 import { tutorialExamples, type TutorialShell } from './tutorialExamples'
+import { seedanceArticle } from './seedanceContent'
 
 export type TutorialGroup = 'start' | 'agents' | 'apps' | 'api' | 'advanced' | 'help'
 export type TutorialBlock =
@@ -16,6 +17,7 @@ export interface TutorialArticle {
   description: string
   keywords: string
   shell?: boolean
+  updated?: string
   sections: { id: string; title: string; blocks: TutorialBlock[] }[]
   sources?: { label: string; href: string }[]
 }
@@ -63,6 +65,7 @@ export function tutorialContent(language: string, root: string, api: string, she
           ['OpenCode：自定义供应商', 'OpenCode: custom providers', '/tutorials?guide=opencode'],
           ['WorkBuddy / ZCode / Hermes', 'WorkBuddy / ZCode / Hermes', '/tutorials?guide=workbuddy'],
           ['开发自己的应用', 'Build your own application', '/tutorials?guide=api-responses'],
+          ['Seedance：视频生成 API', 'Seedance: video generation API', '/tutorials?guide=seedance'],
         ])),
         verification,
       ],
@@ -298,6 +301,7 @@ export function tutorialContent(language: string, root: string, api: string, she
         s('empty', '列表为空或请求失败', 'Empty list or failed request', p('401 先检查 Key，403 检查分组权限。模型出现在目录里也不保证每种功能都可用，仍需用最小请求验证目标协议。', 'For 401, check the key; for 403, check group permissions. A catalog entry does not verify every feature; test the target protocol with a minimal request.')),
       ], sources: [source('OpenAI Models API', 'https://developers.openai.com/api/reference/resources/models/methods/list')],
     },
+    seedanceArticle(language, root, api, shell),
     {
       id: 'api-responses', group: 'api', title: 'Responses API', shell: true,
       description: l('用 input 发送最小请求，也是 Codex 配置使用的协议。', 'Send a minimal input request using the protocol configured for Codex.'), keywords: 'POST responses input output_text Codex API',

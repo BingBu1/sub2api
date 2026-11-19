@@ -29,7 +29,7 @@
         <header class="docs-article-header">
           <p class="docs-breadcrumb"><RouterLink to="/tutorials">{{ t('tutorials.pageTitle') }}</RouterLink><Icon name="chevronRight" size="xs" /><span>{{ t(`tutorials.groups.${article.group}`) }}</span></p>
           <h1 ref="articleHeading" tabindex="-1">{{ article.title }}</h1><p class="docs-description">{{ article.description }}</p>
-          <div class="docs-article-meta"><span><Icon name="checkCircle" size="xs" />{{ t('tutorials.userGuide') }}</span><span>{{ t('tutorials.updated') }}</span></div>
+          <div class="docs-article-meta"><span><Icon name="checkCircle" size="xs" />{{ t('tutorials.userGuide') }}</span><span>{{ article.updated ? t('tutorials.updatedOn', { date: article.updated }) : t('tutorials.updated') }}</span></div>
         </header>
         <p v-if="unknownArticle" class="docs-note" role="status"><Icon name="infoCircle" size="sm" /><span>{{ t('tutorials.unknownArticle') }}</span></p>
         <div v-if="article.shell" class="docs-environment"><span>{{ t('tutorials.commandEnvironment') }}</span><div class="tutorial-segmented" role="group" :aria-label="t('tutorials.commandEnvironment')"><button type="button" :aria-pressed="shell === 'powershell'" @click="shell = 'powershell'">Windows PowerShell</button><button type="button" :aria-pressed="shell === 'bash'" @click="shell = 'bash'">macOS / Linux</button></div></div>

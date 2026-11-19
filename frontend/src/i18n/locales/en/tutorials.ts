@@ -1,5 +1,5 @@
 export default {
-  pageTitle: 'Tutorials', updated: 'Updated November 6, 2026', skipToArticle: 'Skip to article',
+  pageTitle: 'Tutorials', updated: 'Updated November 6, 2026', updatedOn: 'Updated {date}', skipToArticle: 'Skip to article',
   searchLabel: 'Search tutorials', searchPlaceholder: 'Search tools, configuration, or errors…', clearSearch: 'Clear search', createKey: 'Get an API key',
   openDirectory: 'Documentation menu', closeDirectory: 'Close menu', directory: 'Tutorial directory', onThisPage: 'On this page',
   searchCount: '{count} matching articles', noResults: 'No matching articles', tryAnotherSearch: 'Try a tool name, protocol, or status code.',
