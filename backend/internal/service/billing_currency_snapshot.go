@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -47,7 +49,7 @@ func CopyRequestPricingSnapshot(parent, base context.Context) context.Context {
 
 func restoreBillingCurrencySnapshot(ctx context.Context, policies map[string]PlatformBillingCurrency) error {
 	for platform, p := range policies {
-		if platform != p.Platform {
+		if !validBillingCurrencyScope(platform, p.Platform) {
 			return fmt.Errorf("billing platform mismatch")
 		}
 		if err := p.validate(); err != nil {
@@ -66,7 +68,7 @@ func restoreBillingCurrencySnapshot(ctx context.Context, policies map[string]Pla
 	// Pending videos created before this feature were admitted in USD.
 	if len(policies) == 0 {
 		for platform := range s.currencies {
-			s.currencies[platform] = defaultPlatformBillingCurrency(platform)
+			s.currencies[platform] = defaultPlatformBillingCurrency(s.currencies[platform].Platform)
 		}
 		return nil
 	}
@@ -95,4 +97,17 @@ func (s *GatewayService) RequireBillingCurrency(ctx context.Context, key *APIKey
 
 func (s *OpenAIGatewayService) RequireBillingCurrency(ctx context.Context, key *APIKey) error {
 	return s.inflightEstimateDeps().requireBillingCurrency(ctx, key)
+}
+
+// Scope names keep legacy platform snapshots readable while isolating group overrides.
+func validBillingCurrencyScope(scope, platform string) bool {
+	if scope == platform {
+		return true
+	}
+	prefix := platform + ":group:"
+	if !strings.HasPrefix(scope, prefix) {
+		return false
+	}
+	id, err := strconv.ParseInt(strings.TrimPrefix(scope, prefix), 10, 64)
+	return err == nil && id > 0 && scope == prefix+strconv.FormatInt(id, 10)
 }

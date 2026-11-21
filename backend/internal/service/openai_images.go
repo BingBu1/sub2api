@@ -604,10 +604,15 @@ func (s *OpenAIGatewayService) ForwardImages(
 	body []byte,
 	parsed *OpenAIImagesRequest,
 	channelMappedModel string,
-) (*OpenAIForwardResult, error) {
+) (result *OpenAIForwardResult, err error) {
 	if parsed == nil {
 		return nil, fmt.Errorf("parsed images request is required")
 	}
+	defer func() {
+		if result != nil {
+			result.ImageQuality = parsed.Quality
+		}
+	}()
 	requestModel := strings.TrimSpace(parsed.Model)
 	if mapped := strings.TrimSpace(channelMappedModel); mapped != "" {
 		requestModel = mapped
