@@ -10,6 +10,8 @@ Seedance 视频是独立例外：新任务固定按人民币结算，91token Vid
 
 平台策略持久化在 `settings` 的 `platform_billing_currency_<platform>` 键，无需数据库迁移。管理员接口为 GET/PUT `/api/v1/admin/model-plaza/billing-currency/:platform`，字段为 `currency`（USD/CNY）、`usd_to_cny`（0.01–100）、`deepseek_peak_enabled`（仅 DeepSeek）。保存固定汇率，不在模型请求内查询外部汇率服务；缺省参考值 6.6702 可以在保存前修改。读取无效策略时拒绝模型请求，避免按错误价格继续收费。
 
+需要只改变一个分组时，管理员可使用 GET/PUT `/api/v1/admin/model-plaza/group-billing-currency/:id`。例如 `{"enabled":true,"currency":"CNY","usd_to_cny":6.7}` 仅覆盖目标分组；平台由服务端读取，不接受客户端更换。`{"enabled":false}` 恢复继承平台策略。配置保存在 `group_billing_currency_<id>`，不修改平台开关、其他分组、余额或历史记录。模型广场和实际扣费共用该策略；每次请求按分组固定快照，保留旧异步任务的平台快照兼容性。当前覆盖配置通过管理员 API 管理。
+
 HTTP 请求首次准入时固定策略。WebSocket 每轮独立保存策略，即使下一轮已开始，上一轮延迟写入的用量也沿用自己的价格。异步视频持久化币种快照；批量图片提交时持久化转换后的预留与结算价格。流式用量、异常用量、语音、搜索、图片、视频及显式缓存存储费用使用相同换算。
 
 相关自动化验证覆盖 USD/CNY 报价与实际扣费、余额/Key 配额/使用记录一致性、平台隔离、阶梯/缓存/自定义价、进行中的请求、重启后策略读取、异步视频和批量图片，以及管理员接口的认证边界。两个网关的流式结算和 WebSocket 轮次交错均有回归测试。前端相关 68 项测试及生产构建通过；这些验证没有向线上客户发起测试收费。

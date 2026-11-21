@@ -95,6 +95,10 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		zap.String("img_size", parsed.Size),
 	)
 
+	if err := h.gatewayService.ValidateImageQualityPricing(c.Request.Context(), apiKey, routingModel, parsed.Quality); err != nil {
+		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+		return
+	}
 	if !service.GroupAllowsImageGeneration(apiKey.Group) {
 		h.errorResponse(c, http.StatusForbidden, "permission_error", service.ImageGenerationPermissionMessage())
 		return

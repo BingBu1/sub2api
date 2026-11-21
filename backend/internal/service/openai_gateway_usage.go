@@ -846,6 +846,9 @@ func (s *OpenAIGatewayService) calculateOpenAIImageCost(
 ) *CostBreakdown {
 	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
 	resolved := s.resolveOpenAIChannelPricing(ctx, billingModel, apiKey)
+	if hasImageQualityTiers(resolved) {
+		sizeTier = imageQualityTier(result.ImageQuality)
+	}
 	if resolved != nil && resolved.Source == PricingSourceGroup &&
 		(resolved.Mode == BillingModePerRequest || resolved.Mode == BillingModeImage) {
 		gid := apiKey.Group.ID

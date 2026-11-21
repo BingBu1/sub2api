@@ -26,17 +26,19 @@ func TestModelPlazaCurrencyRequiresAdminAuthentication(t *testing.T) {
 	RegisterAdminRoutes(router.Group("/api/v1"), h, adminAuth,
 		servermiddleware.AuditLogMiddleware(func(c *gin.Context) { c.Next() }),
 		servermiddleware.StepUpAuthMiddleware(func(c *gin.Context) { c.Next() }), nil, nil)
-	for _, method := range []string{http.MethodGet, http.MethodPut} {
-		for _, auth := range []string{"", "Bearer user-token"} {
-			request := httptest.NewRequest(method, "/api/v1/admin/model-plaza/billing-currency/openai", strings.NewReader(`{"currency":"CNY","usd_to_cny":7}`))
-			request.Header.Set("Content-Type", "application/json")
-			request.Header.Set("Authorization", auth)
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, request)
-			if auth == "" {
-				require.Equal(t, http.StatusUnauthorized, w.Code)
-			} else {
-				require.Equal(t, http.StatusForbidden, w.Code)
+	for _, path := range []string{"/api/v1/admin/model-plaza/billing-currency/openai", "/api/v1/admin/model-plaza/group-billing-currency/21"} {
+		for _, method := range []string{http.MethodGet, http.MethodPut} {
+			for _, auth := range []string{"", "Bearer user-token"} {
+				request := httptest.NewRequest(method, path, strings.NewReader(`{"currency":"CNY","usd_to_cny":7}`))
+				request.Header.Set("Content-Type", "application/json")
+				request.Header.Set("Authorization", auth)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, request)
+				if auth == "" {
+					require.Equal(t, http.StatusUnauthorized, w.Code)
+				} else {
+					require.Equal(t, http.StatusForbidden, w.Code)
+				}
 			}
 		}
 	}

@@ -1361,7 +1361,7 @@ func TestOpenAIImagesSSEClientErrorsAreNotRetryable(t *testing.T) {
 
 func TestOpenAIGatewayServiceForwardImages_APIKeyGenerationUsesConfiguredV1BaseURL(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat","response_format":"b64_json"}`)
+	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat","response_format":"b64_json","quality":"high"}`)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -1400,6 +1400,8 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyGenerationUsesConfiguredV1BaseU
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
+	require.Equal(t, "high", result.ImageQuality)
+	require.Equal(t, "high", gjson.GetBytes(svc.httpUpstream.(*httpUpstreamRecorder).lastBody, "quality").String())
 	require.Equal(t, "gpt-image-2", result.Model)
 	require.Equal(t, "gpt-image-2", result.UpstreamModel)
 

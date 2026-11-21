@@ -285,6 +285,7 @@ type OpenAIForwardResult struct {
 	Duration              time.Duration
 	FirstTokenMs          *int
 	ClientDisconnect      bool
+	ImageQuality          string
 	ImageCount            int
 	ImageSize             string
 	ImageInputSize        string

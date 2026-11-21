@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"strconv"
 	"time"
 
 	apperrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -119,15 +120,23 @@ func (r *ModelPricingResolver) billingCurrency(ctx context.Context, group *Group
 	// Platform means the group's platform, matching the plaza filter. Composite
 	// is its own scope; routing to DeepSeek must not change a composite policy.
 	platform := group.Platform
+	scope := platform
+	if group.ID > 0 {
+		scope += ":group:" + strconv.FormatInt(group.ID, 10)
+	}
 	snapshot, _ := ctx.Value(requestPricingSnapshotKey{}).(*requestPricingSnapshot)
 	if snapshot != nil {
 		snapshot.mu.Lock()
 		defer snapshot.mu.Unlock()
+		if p, ok := snapshot.currencies[scope]; ok {
+			return p, nil
+		}
+		// Legacy persisted jobs stored their admission policy by platform.
 		if p, ok := snapshot.currencies[platform]; ok {
 			return p, nil
 		}
 	}
-	p, err := r.currencySettings.GetPlatformBillingCurrency(ctx, platform)
+	p, err := r.currencySettings.GetGroupBillingCurrency(ctx, group)
 	if err == nil {
 		p = seedanceBillingCurrency(ctx, p)
 	}
@@ -135,7 +144,7 @@ func (r *ModelPricingResolver) billingCurrency(ctx context.Context, group *Group
 		if snapshot.currencies == nil {
 			snapshot.currencies = make(map[string]PlatformBillingCurrency)
 		}
-		snapshot.currencies[platform] = p
+		snapshot.currencies[scope] = p
 	}
 	return p, err
 }
