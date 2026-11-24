@@ -38,6 +38,7 @@ type PlazaModel struct {
 // Prices are per output token, before the group/user multiplier. SourcePriceCNY
 // retains the native tariff so customers can compare against the upstream page.
 type PlazaVideoTokenTier struct {
+	Estimated      bool
 	Resolution     string
 	ReferenceVideo bool
 	OutputPrice    float64

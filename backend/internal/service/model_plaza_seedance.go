@@ -40,6 +40,7 @@ func plazaSeedanceVideoTokenTiers(tariff *SeedanceVideosTariff) []PlazaVideoToke
 			tiers = append(tiers, PlazaVideoTokenTier{
 				Resolution: resolution, ReferenceVideo: i == 1,
 				OutputPrice: converted, SourcePriceCNY: source,
+				Estimated: isSeedanceDiscountModel(tariff.Model),
 			})
 		}
 	}
