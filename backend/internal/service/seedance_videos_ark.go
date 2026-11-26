@@ -39,7 +39,7 @@ func normalizeSeedanceVideosOptions(body []byte) ([]byte, error) {
 			return nil, fmt.Errorf("metadata must be an object")
 		}
 	}
-	options := map[string]bool{"resolution": true, "ratio": true}
+	options := map[string]bool{"resolution": true, "ratio": true, "reference_video_seconds": true}
 	for _, field := range seedanceVideosArkOptions {
 		options[field] = true
 	}

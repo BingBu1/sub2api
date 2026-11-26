@@ -861,6 +861,7 @@ export default {
       withReferenceVideo: 'With reference video',
       withoutReferenceVideo: 'Without reference video',
       videoTokenNote: 'Billed by actual output tokens. Prices depend on resolution and reference video use, and include the group or personal rate.',
+      videoTokenEstimatedNote: 'Estimated billing, successful tasks only. Estimated tokens = (requested output seconds + declared total reference video seconds) × width × height × 24 ÷ 1024, rounded up; this is not actual upstream token usage. 720p uses 1280×720; 1080p uses 1920×1080, landscape or portrait. 480p and 4K are unavailable. Reference video input requires reference_video_seconds and includes both input and output duration. Paid prices include the group or personal rate, in CNY per million tokens.',
       videoTokenCurrencyNote: 'The CNY reference per million tokens appears below each price. Charges use the billing currency shown above.',
       rate: 'Rate',
       unitPerMillion: '{currency} / 1M tokens',

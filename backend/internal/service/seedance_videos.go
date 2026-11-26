@@ -31,8 +31,9 @@ func (e GrokMediaEndpoint) IsSeedanceVideos() bool {
 // reseller discount. Freeze the table at submission, never price from log.quota
 // (a settlement log can contain only the adjustment to an earlier precharge).
 type SeedanceVideosTariff struct {
-	Model string                `json:"model"`
-	Rates map[string][2]float64 `json:"rates"` // no reference video, reference video
+	Model          string                `json:"model"`
+	Rates          map[string][2]float64 `json:"rates"` // no reference video, reference video
+	EstimatedUsage *SeedanceVideosUsage  `json:"estimated_usage,omitempty"`
 }
 
 type SeedanceVideosUsage struct {
@@ -51,6 +52,10 @@ func WithSeedanceVideosTariff(ctx context.Context, tariff *SeedanceVideosTariff)
 func seedanceVideosTariff(model string) (*SeedanceVideosTariff, error) {
 	t := &SeedanceVideosTariff{Model: model, Rates: map[string][2]float64{}}
 	switch model {
+	case "Seedance2.0-Discount":
+		t.Rates = map[string][2]float64{"720p": {46, 28}, "1080p": {51, 31}}
+	case "Seedance2.5-Discount":
+		t.Rates = map[string][2]float64{"720p": {70, 42}, "1080p": {77, 46}}
 	case "doubao-seedance-2-0-260128":
 		t.Rates = map[string][2]float64{"480p": {46, 28}, "720p": {46, 28}, "1080p": {51, 31}, "4k": {26, 16}}
 	case "doubao-seedance-2-5-260628":
@@ -114,7 +119,7 @@ func seedanceVideosBody(body []byte, ark bool) ([]byte, GrokMediaRequestInfo, er
 			case "model", "content":
 			case "duration":
 				payload["seconds"] = v.Value()
-			case "resolution", "ratio", "watermark", "seed", "generate_audio", "camera_fixed", "return_last_frame", "draft", "service_tier":
+			case "resolution", "ratio", "watermark", "seed", "generate_audio", "camera_fixed", "return_last_frame", "draft", "service_tier", "reference_video_seconds":
 				metadata[k.String()] = v.Value()
 			default:
 				unsupported = k.String()
@@ -377,10 +382,17 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 		if err != nil {
 			return nil, err
 		}
+		if isSeedanceDiscountModel(result.UpstreamModel) {
+			body, err = configureSeedanceDiscountEstimate(body, nativeArk, result.SeedanceVideosTariff)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request_error", "message": err.Error()}})
+				return nil, err
+			}
+		}
 		if _, ok := result.SeedanceVideosTariff.Rates[info.Resolution]; !ok {
 			return nil, fmt.Errorf("unsupported Seedance model resolution")
 		}
-		if result.UpstreamModel != "doubao-seedance-2-5-260628" && info.DurationSeconds > 15 {
+		if result.UpstreamModel != "doubao-seedance-2-5-260628" && result.UpstreamModel != "Seedance2.5-Discount" && info.DurationSeconds > 15 {
 			return nil, fmt.Errorf("this Seedance model supports at most 15 seconds")
 		}
 		body, err = sjson.SetBytes(body, "model", result.UpstreamModel)
@@ -436,6 +448,9 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 		// Ark creation returns an ID; keep the downstream Videos contract.
 		responseBody, _ = json.Marshal(map[string]any{"id": responseID, "object": "video", "status": "queued", "model": videosInfo.Model, "seconds": videosInfo.DurationSeconds})
 	}
+	if create && result.SeedanceVideosTariff != nil && result.SeedanceVideosTariff.EstimatedUsage != nil {
+		responseBody, _ = sjson.SetBytes(responseBody, "billing", seedanceDiscountBillingNotice(result.SeedanceVideosTariff.EstimatedUsage))
+	}
 	if !create && (status == "completed" || (nativeArk && status == "succeeded")) {
 		result.UpstreamModel = gjson.GetBytes(responseBody, "model").String()
 		if nativeArk {
@@ -450,7 +465,15 @@ func (s *OpenAIGatewayService) forwardSeedanceVideos(ctx context.Context, c *gin
 		// This API is authenticated with the inference key; never depend on a
 		// human login session or store the upstream dashboard password.
 		var usageErr error
-		result.SeedanceVideosUsage, usageErr = s.seedanceVideosFinalUsage(ctx, account, base, id, result.UpstreamModel)
+		if tariff, ok := ctx.Value(seedanceVideosTariffContextKey{}).(*SeedanceVideosTariff); ok && tariff != nil && tariff.EstimatedUsage != nil && isSeedanceDiscountModel(tariff.Model) {
+			usage := *tariff.EstimatedUsage
+			result.UpstreamModel = tariff.Model
+			result.SeedanceVideosUsage = &usage
+			responseBody, _ = sjson.SetBytes(responseBody, "usage.estimated", true)
+			responseBody, _ = sjson.SetBytes(responseBody, "billing", seedanceDiscountBillingNotice(&usage))
+		} else {
+			result.SeedanceVideosUsage, usageErr = s.seedanceVideosFinalUsage(ctx, account, base, id, result.UpstreamModel)
+		}
 		if usageErr != nil {
 			c.Header("Retry-After", "5")
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": gin.H{"type": "usage_pending", "message": "Video completed; final token settlement is unavailable. Retry this task; do not resubmit generation."}})
