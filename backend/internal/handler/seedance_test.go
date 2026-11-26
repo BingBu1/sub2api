@@ -95,3 +95,31 @@ func TestSeedanceHandlerLifecycleAndOwnership(t *testing.T) {
 	}
 	require.Len(t, bindings.billed, 1)
 }
+
+func TestSeedanceDiscountEstimatedBillingClaimsOnce(t *testing.T) {
+	h, _, bindings, _ := newGrokMediaSlotHandler(t, false, false, service.PlatformOpenAI)
+	c, _ := grokMediaSlotContext(context.Background(), false)
+	key, _ := middleware.GetAPIKeyFromContext(c)
+	subject, _ := middleware.GetAuthSubjectFromContext(c)
+	usage := &service.SeedanceVideosUsage{Model: "Seedance2.0-Discount", Tokens: 108000, Resolution: "720p", VideoInput: "none"}
+	tariff := &service.SeedanceVideosTariff{Model: usage.Model, Rates: map[string][2]float64{"720p": {46, 28}}, EstimatedUsage: usage}
+	task := "seedance:estimated-task"
+	require.NoError(t, h.gatewayService.StoreGrokVideoPendingBilling(context.Background(), task, subject.UserID, key.ID, service.GrokVideoPendingBilling{
+		Model: "Seedance2.0", BillingModel: "Seedance2.0", UpstreamModel: usage.Model, SeedanceVideosTariff: tariff,
+	}))
+	failed := &service.OpenAIForwardResult{ResponseID: task}
+	require.Nil(t, prepareSeedanceCompletionBilling(context.Background(), h, key, subject, task, failed))
+	require.Empty(t, bindings.billed)
+	result := &service.OpenAIForwardResult{ResponseID: task, Usage: service.OpenAIUsage{OutputTokens: 108000}, SeedanceVideosUsage: usage}
+	for i := 0; i < 20; i++ {
+		bill := prepareSeedanceCompletionBilling(context.Background(), h, key, subject, task, result)
+		if i == 0 {
+			require.NotNil(t, bill)
+			require.InDelta(t, 4.968, *bill.SeedanceVideosCostCNY, 1e-10)
+			require.Equal(t, "Seedance2.0", bill.BillingModel)
+		} else {
+			require.Nil(t, bill)
+		}
+	}
+	require.Len(t, bindings.billed, 1)
+}

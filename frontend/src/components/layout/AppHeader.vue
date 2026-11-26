@@ -23,6 +23,7 @@
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
       <div class="flex shrink-0 items-center gap-1 sm:gap-3">
+        <HeaderQQGroup v-if="user" />
         <HeaderSupportContact v-if="user && backendSupportContact.trim()" :contact-info="backendSupportContact" :site-name="appStore.siteName" />
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
@@ -262,6 +263,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import HeaderSupportContact from './HeaderSupportContact.vue'
+import HeaderQQGroup from './HeaderQQGroup.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'

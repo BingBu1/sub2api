@@ -865,6 +865,7 @@ export default {
       withReferenceVideo: '有参考视频',
       withoutReferenceVideo: '无参考视频',
       videoTokenNote: '按实际输出 Token 计费，单价由分辨率和是否使用参考视频决定；实付价已含分组或用户专属倍率。',
+      videoTokenEstimatedNote: '估算计费：仅成功任务收费。估算 Token =（请求的输出秒数 + 声明的参考视频总秒数）× 宽 × 高 × 24 ÷ 1024，向上取整；不代表上游真实 Token 用量。720p 按 1280×720、1080p 按 1920×1080，支持横竖屏；480p、4K 暂未开放。含视频输入时合计参考视频与输出视频用量，须提供 reference_video_seconds。实付价已含分组或用户专属倍率，单位为人民币/百万 Token。',
       videoTokenCurrencyNote: '每个价格下方列出人民币参考价（元 / 百万 Token），实际扣费按上方计费币种结算。',
       rate: '折扣倍率',
       unitPerMillion: '{currency} / 1M token',

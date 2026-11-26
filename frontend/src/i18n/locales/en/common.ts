@@ -1,5 +1,11 @@
 export default {
   common: {
+    qqGroupGift: 'Join for gifts',
+    qqGroupNumber: 'QQ group: {number}',
+    qqCommunity: 'QQ community',
+    openQQGroup: 'Open QQ to join',
+    copyQQGroup: 'Copy group number',
+    qqGroupHint: 'QQ must be installed. If it does not open, copy the group number and search for it in QQ to request to join.',
     dedicatedSupport: 'Dedicated support',
     loading: 'Loading...',
     submitting: 'Submitting...',

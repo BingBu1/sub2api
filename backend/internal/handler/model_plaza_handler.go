@@ -76,6 +76,7 @@ type modelPlazaModel struct {
 }
 
 type modelPlazaVideoTokenTier struct {
+	Estimated       bool    `json:"estimated,omitempty"`
 	BillingCurrency string  `json:"billing_currency"`
 	Resolution      string  `json:"resolution"`
 	ReferenceVideo  bool    `json:"reference_video"`
@@ -90,6 +91,7 @@ func toModelPlazaVideoTokenTiers(tiers []service.PlazaVideoTokenTier) []modelPla
 			BillingCurrency: "CNY",
 			Resolution:      tier.Resolution, ReferenceVideo: tier.ReferenceVideo,
 			OutputPrice: tier.OutputPrice, SourcePriceCNY: tier.SourcePriceCNY,
+			Estimated: tier.Estimated,
 		})
 	}
 	return out

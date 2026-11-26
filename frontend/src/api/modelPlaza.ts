@@ -58,6 +58,8 @@ export interface PlazaModel {
 }
 
 export interface PlazaVideoTokenTier {
+	/** Estimated from requested duration and dimensions, not reported actual usage. */
+	estimated?: boolean
   billing_currency?: 'CNY'
   resolution: string
   reference_video: boolean

@@ -1,10 +1,10 @@
 <template>
   <div class="video-token-pricing" data-testid="video-token-pricing">
-    <p class="px-5 py-3 text-xs leading-5 text-gray-500 dark:text-dark-400">
-      {{ t('modelPlaza.table.videoTokenNote') }}
-    </p>
     <section v-for="model in models" :key="`${model.platform}:${model.name}`" class="border-t border-gray-100 dark:border-dark-700">
       <h3 class="break-words px-5 py-3 text-sm font-semibold text-gray-900 dark:text-white">{{ model.name }}</h3>
+      <p class="px-5 pb-3 text-xs leading-5 text-gray-500 dark:text-dark-400">
+        {{ t(model.video_token_tiers?.some(tier => tier.estimated) ? 'modelPlaza.table.videoTokenEstimatedNote' : 'modelPlaza.table.videoTokenNote') }}
+      </p>
       <table class="w-full border-collapse text-left text-sm tabular-nums">
         <caption class="px-5 pb-2 text-left text-xs text-gray-500 dark:text-dark-400">
           {{ t('modelPlaza.table.unitPerMillion', { currency: billingCurrency }) }}

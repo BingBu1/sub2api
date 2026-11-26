@@ -1,4 +1,4 @@
-.business-dialog, .header-support {
+.business-dialog, .header-support, .header-qq-group {
   --support-bg: #f8f9fd;
   --support-surface: #ffffff;
   --support-surface-alt: #edf2fc;
@@ -15,7 +15,7 @@
   --support-hero-halo: #e1e9fb;
 }
 
-.dark :is(.business-dialog, .header-support) {
+.dark :is(.business-dialog, .header-support, .header-qq-group) {
   --support-bg: #192a49;
   --support-surface: #203353;
   --support-surface-alt: #293f63;
