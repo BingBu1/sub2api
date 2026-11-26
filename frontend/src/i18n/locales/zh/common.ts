@@ -1,5 +1,11 @@
 export default {
   common: {
+    qqGroupGift: '加群赠送',
+    qqGroupNumber: '交流群：{number}',
+    qqCommunity: 'QQ 交流群',
+    openQQGroup: '打开 QQ 加群',
+    copyQQGroup: '复制群号',
+    qqGroupHint: '需安装 QQ。如未打开，请复制群号，在 QQ 中搜索并申请加入。',
     dedicatedSupport: '专属客服',
     loading: '加载中...',
     submitting: '提交中...',
